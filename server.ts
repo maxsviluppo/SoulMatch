@@ -1,0 +1,262 @@
+import express from "express";
+import { createServer as createViteServer } from "vite";
+import Database from "better-sqlite3";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const db = new Database("soulmatch.db");
+
+// Initialize Database
+db.exec(`
+  CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    surname TEXT NOT NULL,
+    dob TEXT NOT NULL,
+    city TEXT NOT NULL,
+    job TEXT,
+    description TEXT,
+    hobbies TEXT,
+    desires TEXT,
+    gender TEXT,
+    orientation TEXT,
+    is_paid INTEGER DEFAULT 0,
+    looking_for_gender TEXT,
+    looking_for_job TEXT,
+    looking_for_hobbies TEXT,
+    looking_for_city TEXT,
+    looking_for_age_min INTEGER,
+    looking_for_age_max INTEGER,
+    looking_for_height TEXT,
+    looking_for_body_type TEXT,
+    looking_for_other TEXT,
+    photo_url TEXT,
+    id_document_url TEXT,
+    photos TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS interactions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    from_user_id INTEGER NOT NULL,
+    to_user_id INTEGER NOT NULL,
+    type TEXT NOT NULL, -- 'like' or 'heart'
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(from_user_id, to_user_id, type)
+  );
+
+  CREATE TABLE IF NOT EXISTS chat_requests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    from_user_id INTEGER NOT NULL,
+    to_user_id INTEGER NOT NULL,
+    status TEXT DEFAULT 'pending', -- 'pending', 'approved', 'rejected'
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(from_user_id, to_user_id)
+  );
+`);
+
+// Ensure columns exist (for schema evolution)
+try {
+  db.prepare("ALTER TABLE users ADD COLUMN orientation TEXT").run();
+} catch (e) {}
+try {
+  db.prepare("ALTER TABLE users ADD COLUMN is_online INTEGER DEFAULT 0").run();
+} catch (e) {}
+
+// Seed Data
+const seedUsers = [
+  { name: 'Giulia', surname: 'Bianchi', dob: '1995-05-15', city: 'Roma', gender: 'Donna', orientation: 'Eterosessuale', looking_for_gender: 'Uomo', is_online: 1, photo_url: 'https://picsum.photos/seed/giulia/400/600', photos: JSON.stringify(['https://picsum.photos/seed/giulia1/400/600', 'https://picsum.photos/seed/giulia2/400/600']) },
+  { name: 'Marco', surname: 'Rossi', dob: '1990-08-22', city: 'Milano', gender: 'Uomo', orientation: 'Eterosessuale', looking_for_gender: 'Donna', is_online: 0, photo_url: 'https://picsum.photos/seed/marco/400/600', photos: JSON.stringify(['https://picsum.photos/seed/marco1/400/600']) },
+  { name: 'Elena', surname: 'Verdi', dob: '1998-12-01', city: 'Napoli', gender: 'Donna', orientation: 'Lesbica', looking_for_gender: 'Donna', is_online: 1, photo_url: 'https://picsum.photos/seed/elena/400/600', photos: JSON.stringify(['https://picsum.photos/seed/elena1/400/600']) },
+  { name: 'Luca', surname: 'Neri', dob: '1988-03-10', city: 'Torino', gender: 'Uomo', orientation: 'Gay', looking_for_gender: 'Uomo', is_online: 0, photo_url: 'https://picsum.photos/seed/luca/400/600', photos: JSON.stringify(['https://picsum.photos/seed/luca1/400/600']) },
+  { name: 'Sofia', surname: 'Gialli', dob: '1992-07-18', city: 'Firenze', gender: 'Donna', orientation: 'Bisessuale', looking_for_gender: 'Tutti', is_online: 1, photo_url: 'https://picsum.photos/seed/sofia/400/600', photos: JSON.stringify(['https://picsum.photos/seed/sofia1/400/600']) },
+  { name: 'Andrea', surname: 'Blu', dob: '1994-11-25', city: 'Bologna', gender: 'Altro', orientation: 'Pansessuale', looking_for_gender: 'Tutti', is_online: 1, photo_url: 'https://picsum.photos/seed/andrea/400/600', photos: JSON.stringify(['https://picsum.photos/seed/andrea1/400/600']) },
+];
+
+const checkUsers = db.prepare("SELECT count(*) as count FROM users").get() as { count: number };
+if (checkUsers.count === 0) {
+  const insert = db.prepare(`
+    INSERT INTO users (name, surname, dob, city, gender, orientation, looking_for_gender, is_online, photo_url, photos, is_paid)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+  `);
+  for (const user of seedUsers) {
+    insert.run(user.name, user.surname, user.dob, user.city, user.gender, user.orientation, user.looking_for_gender, user.is_online, user.photo_url, user.photos);
+  }
+
+  // Seed some interactions
+  const seedInteractions = [
+    { from: 1, to: 2, type: 'like' },
+    { from: 1, to: 3, type: 'heart' },
+    { from: 2, to: 1, type: 'like' },
+    { from: 3, to: 1, type: 'heart' },
+    { from: 4, to: 1, type: 'like' },
+    { from: 5, to: 2, type: 'heart' },
+  ];
+  const insertInteraction = db.prepare("INSERT OR IGNORE INTO interactions (from_user_id, to_user_id, type) VALUES (?, ?, ?)");
+  for (const inter of seedInteractions) {
+    insertInteraction.run(inter.from, inter.to, inter.type);
+  }
+}
+
+async function startServer() {
+  const app = express();
+  app.use(express.json());
+
+  // API Routes
+  app.get("/api/profiles", (req, res) => {
+    const profiles = db.prepare(`
+      SELECT u.*, 
+        (SELECT COUNT(*) FROM interactions WHERE to_user_id = u.id AND type = 'like') as likes_count,
+        (SELECT COUNT(*) FROM interactions WHERE to_user_id = u.id AND type = 'heart') as hearts_count
+      FROM users u
+    `).all();
+    
+    const parsedProfiles = profiles.map((p: any) => ({
+      ...p,
+      photos: p.photos ? JSON.parse(p.photos) : [],
+      likes_count: p.likes_count || 0,
+      hearts_count: p.hearts_count || 0
+    }));
+    res.json(parsedProfiles);
+  });
+
+  app.get("/api/profiles/:id", (req, res) => {
+    const { id } = req.params;
+    const profile = db.prepare(`
+      SELECT u.*, 
+        (SELECT COUNT(*) FROM interactions WHERE to_user_id = u.id AND type = 'like') as likes_count,
+        (SELECT COUNT(*) FROM interactions WHERE to_user_id = u.id AND type = 'heart') as hearts_count
+      FROM users u
+      WHERE u.id = ?
+    `).get(id) as any;
+    
+    if (!profile) return res.status(404).json({ error: "Not found" });
+
+    res.json({
+      ...profile,
+      photos: profile.photos ? JSON.parse(profile.photos) : [],
+      likes_count: profile.likes_count || 0,
+      hearts_count: profile.hearts_count || 0
+    });
+  });
+
+  app.post("/api/interactions", (req, res) => {
+    const { from_user_id, to_user_id, type } = req.body;
+    try {
+      const stmt = db.prepare("INSERT INTO interactions (from_user_id, to_user_id, type) VALUES (?, ?, ?)");
+      stmt.run(from_user_id, to_user_id, type);
+      res.json({ success: true });
+    } catch (err) {
+      // If already exists, we could remove it (toggle)
+      const del = db.prepare("DELETE FROM interactions WHERE from_user_id = ? AND to_user_id = ? AND type = ?");
+      const result = del.run(from_user_id, to_user_id, type);
+      res.json({ success: true, toggled: result.changes > 0 });
+    }
+  });
+
+  app.get("/api/interactions/:fromId/:toId", (req, res) => {
+    const { fromId, toId } = req.params;
+    const interactions = db.prepare("SELECT type FROM interactions WHERE from_user_id = ? AND to_user_id = ?").all(fromId, toId);
+    res.json(interactions.map((i: any) => i.type));
+  });
+
+  app.post("/api/register", (req, res) => {
+    const userData = req.body;
+    const stmt = db.prepare(`
+      INSERT INTO users (
+        name, surname, dob, city, job, description, hobbies, desires, gender, orientation, is_paid,
+        looking_for_gender, looking_for_job, looking_for_hobbies, looking_for_city,
+        looking_for_age_min, looking_for_age_max, looking_for_height, looking_for_body_type,
+        looking_for_other, photo_url, id_document_url, photos
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    const result = stmt.run(
+      userData.name,
+      userData.surname,
+      userData.dob,
+      userData.city,
+      userData.job,
+      userData.description,
+      userData.hobbies,
+      userData.desires,
+      userData.gender,
+      userData.orientation,
+      userData.is_paid ? 1 : 0,
+      userData.looking_for_gender,
+      userData.looking_for_job,
+      userData.looking_for_hobbies,
+      userData.looking_for_city,
+      userData.looking_for_age_min,
+      userData.looking_for_age_max,
+      userData.looking_for_height,
+      userData.looking_for_body_type,
+      userData.looking_for_other,
+      userData.photo_url || (userData.photos && userData.photos.length > 0 ? userData.photos[0] : `https://picsum.photos/seed/${Math.random()}/400/600`),
+      userData.id_document_url,
+      JSON.stringify(userData.photos || [])
+    );
+
+    res.json({ id: result.lastInsertRowid, ...userData });
+  });
+
+  // Chat Requests
+  app.post("/api/chat-requests", (req, res) => {
+    const { from_user_id, to_user_id } = req.body;
+    try {
+      const stmt = db.prepare("INSERT INTO chat_requests (from_user_id, to_user_id) VALUES (?, ?)");
+      stmt.run(from_user_id, to_user_id);
+      res.json({ success: true });
+    } catch (err) {
+      res.status(400).json({ error: "Richiesta già inviata o errore." });
+    }
+  });
+
+  app.get("/api/chat-requests/:userId", (req, res) => {
+    const { userId } = req.params;
+    const requests = db.prepare(`
+      SELECT cr.*, u.name, u.surname, u.photo_url 
+      FROM chat_requests cr
+      JOIN users u ON cr.from_user_id = u.id
+      WHERE cr.to_user_id = ? AND cr.status = 'pending'
+    `).all(userId);
+    res.json(requests);
+  });
+
+  app.patch("/api/chat-requests/:id", (req, res) => {
+    const { id } = req.params;
+    const { status } = req.body; // 'approved' or 'rejected'
+    const stmt = db.prepare("UPDATE chat_requests SET status = ? WHERE id = ?");
+    stmt.run(status, id);
+    res.json({ success: true });
+  });
+
+  app.get("/api/chat-status/:fromId/:toId", (req, res) => {
+    const { fromId, toId } = req.params;
+    const request = db.prepare("SELECT * FROM chat_requests WHERE from_user_id = ? AND to_user_id = ?").get(fromId, toId);
+    res.json(request || { status: 'none' });
+  });
+
+  // Vite middleware for development
+  if (process.env.NODE_ENV !== "production") {
+    const vite = await createViteServer({
+      server: { middlewareMode: true },
+      appType: "spa",
+    });
+    app.use(vite.middlewares);
+  } else {
+    app.use(express.static(path.join(__dirname, "dist")));
+    app.get("*", (req, res) => {
+      res.sendFile(path.join(__dirname, "dist", "index.html"));
+    });
+  }
+
+  const PORT = 3000;
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+  });
+}
+
+startServer();
