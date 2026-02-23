@@ -32,6 +32,7 @@ import {
   EyeOff,
   Trash2,
   RefreshCw,
+  Plus,
   X
 } from 'lucide-react';
 import { cn, calculateAge, calculateMatchScore } from './utils';
@@ -1495,9 +1496,13 @@ const AdminPage = () => {
 
 const RegisterPage = () => {
   const navigate = useNavigate();
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(() => {
+    const savedUser = localStorage.getItem('soulmatch_user');
+    return savedUser ? 2 : 1;
+  });
   const [isLogin, setIsLogin] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
   const [formData, setFormData] = useState<UserProfile>({
     email: '',
     password: '',
@@ -1532,9 +1537,13 @@ const RegisterPage = () => {
   useEffect(() => {
     const initData = async () => {
       try {
+        const savedUserStr = localStorage.getItem('soulmatch_user');
         const savedDraft = localStorage.getItem('soulmatch_reg_draft');
+
         if (savedDraft) {
           setFormData(JSON.parse(savedDraft));
+          // If we had a draft but now we are edit-mode logged-in, 
+          // ensure we stay in edit mode steps if the draft says step 1
           return;
         }
 
@@ -1575,7 +1584,7 @@ const RegisterPage = () => {
       return;
     }
     if (!formData.email || !formData.password || !formData.nickname) {
-      alert("Inserisci email, password e nickname per procedere.");
+      setToast({ message: "Inserisci email, password e nickname per procedere.", type: 'info' });
       return;
     }
     setStep(2);
@@ -1584,7 +1593,7 @@ const RegisterPage = () => {
   const handleLogin = async () => {
     console.log("Starting login for:", formData.email);
     if (!formData.email || !formData.password) {
-      alert("Inserisci email e password per accedere.");
+      setToast({ message: "Inserisci email e password per accedere.", type: 'info' });
       return;
     }
     try {
@@ -1598,7 +1607,10 @@ const RegisterPage = () => {
 
       if (authError) {
         console.error("Auth login error:", authError);
-        alert("Errore accesso: " + authError.message);
+        setToast({
+          message: authError.message === 'Invalid login credentials' ? "Credenziali non valide. Riprova." : "Errore accesso: " + authError.message,
+          type: 'error'
+        });
         return;
       }
 
@@ -1621,13 +1633,13 @@ const RegisterPage = () => {
         navigate('/bacheca');
       } else {
         console.log("No profile record found in 'users' table. Redirecting to complete registration.");
-        alert("Bentornato! Il tuo account esiste ma il profilo non è completo. Per favore completa i dati mancanti.");
+        setToast({ message: "Bentornato! Il tuo account esiste ma il profilo non è completo. Per favore completa i dati mancanti.", type: 'info' });
         setIsLogin(false);
         setStep(2);
       }
     } catch (e) {
       console.error("Exception during login process:", e);
-      alert("Errore imprevisto durante l'accesso.");
+      setToast({ message: "Errore imprevisto durante l'accesso.", type: 'error' });
     }
   };
 
@@ -1635,7 +1647,7 @@ const RegisterPage = () => {
     const required = ['name', 'surname', 'dob', 'city', 'job', 'description'];
     const missing = required.filter(k => !formData[k as keyof UserProfile]);
     if (missing.length > 0) {
-      alert("Per favore, completa tutti i campi del profilo per continuare.");
+      setToast({ message: "Per favore, completa tutti i campi del profilo per continuare.", type: 'info' });
       return;
     }
     setStep(3);
@@ -1643,7 +1655,7 @@ const RegisterPage = () => {
 
   const handleNextToStep3 = () => {
     if (!formData.looking_for_age_min || !formData.looking_for_age_max) {
-      alert("Inserisci l'età minima e massima che cerchi in un partner.");
+      setToast({ message: "Inserisci l'età minima e massima che cerchi in un partner.", type: 'info' });
       return;
     }
     setStep(4);
@@ -1720,12 +1732,15 @@ const RegisterPage = () => {
 
         if (authError) {
           console.error("Auth error:", authError);
-          alert("Errore durante la creazione account: " + authError.message);
+          const msg = authError.message === 'User already registered'
+            ? "Questo utente è già registrato. Vai alla pagina di accesso."
+            : "Errore durante la creazione account: " + authError.message;
+          setToast({ message: msg, type: 'error' });
           return;
         }
 
         if (!authData.user) {
-          alert("Errore imprevisto durante la registrazione.");
+          setToast({ message: "Errore imprevisto durante la registrazione.", type: 'error' });
           return;
         }
 
@@ -1743,7 +1758,7 @@ const RegisterPage = () => {
 
       if (error) {
         console.error("Supabase Profile error:", error);
-        alert("Errore durante il salvataggio del profilo: " + error.message);
+        setToast({ message: "Errore durante il salvataggio del profilo: " + error.message, type: 'error' });
         return;
       }
 
@@ -1757,12 +1772,17 @@ const RegisterPage = () => {
       }, 100);
     } catch (err) {
       console.error("Process error:", err);
-      alert("Errore di connessione o configurazione.");
+      setToast({ message: "Errore di connessione o configurazione.", type: 'error' });
     }
   };
 
+  const isEditing = !!formData.id;
+
   return (
     <div className="min-h-screen pt-20 pb-12 px-4 bg-stone-50 flex justify-center">
+      <AnimatePresence>
+        {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      </AnimatePresence>
       <div className="w-full max-w-md">
         <div className="mb-6 flex justify-between items-end">
           <div className="flex items-center gap-4">
@@ -1774,7 +1794,7 @@ const RegisterPage = () => {
             </button>
             <div>
               <h1 className="text-2xl font-serif font-bold text-stone-900">
-                {localStorage.getItem('soulmatch_user') ? 'Modifica Profilo' : 'Iscriviti'}
+                {isEditing ? 'Modifica Profilo' : 'Iscriviti'}
               </h1>
               <p className="text-stone-500 text-xs">Step {step} di 6</p>
             </div>
@@ -2030,12 +2050,25 @@ const RegisterPage = () => {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-stone-700 ml-1">Altezza</label>
-                    <input name="looking_for_height" value={formData.looking_for_height} onChange={handleInputChange} className="w-full p-3.5 rounded-xl bg-stone-50 border border-stone-200 text-sm focus:ring-2 focus:ring-rose-500 outline-none" placeholder="175cm" />
+                    <label className="text-xs font-bold text-stone-700 ml-1">Altezza Preferita</label>
+                    <select name="looking_for_height" value={formData.looking_for_height} onChange={handleInputChange} className="w-full p-3.5 rounded-xl bg-stone-50 border border-stone-200 text-sm focus:ring-2 focus:ring-rose-500 outline-none">
+                      <option value="">Indifferente</option>
+                      <option value="Piccola (<160)">Piccola (&lt;160cm)</option>
+                      <option value="Media (160-175)">Media (160-175cm)</option>
+                      <option value="Alta (175-190)">Alta (175-190cm)</option>
+                      <option value="Molto Alta (>190)">Molto Alta (&gt;190cm)</option>
+                    </select>
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-stone-700 ml-1">Statura</label>
-                    <input name="looking_for_body_type" value={formData.looking_for_body_type} onChange={handleInputChange} className="w-full p-3.5 rounded-xl bg-stone-50 border border-stone-200 text-sm focus:ring-2 focus:ring-rose-500 outline-none" placeholder="Atletica" />
+                    <label className="text-xs font-bold text-stone-700 ml-1">Statura/Corp.</label>
+                    <select name="looking_for_body_type" value={formData.looking_for_body_type} onChange={handleInputChange} className="w-full p-3.5 rounded-xl bg-stone-50 border border-stone-200 text-sm focus:ring-2 focus:ring-rose-500 outline-none">
+                      <option value="Tutte">Tutte</option>
+                      <option value="Snella">Snella</option>
+                      <option value="Atletica">Atletica</option>
+                      <option value="Normale">Normale</option>
+                      <option value="Curvy">Curvy</option>
+                      <option value="Robusta">Robusta</option>
+                    </select>
                   </div>
                 </div>
                 <div className="space-y-1.5 pt-2">
@@ -2606,6 +2639,64 @@ const ProfilePage = () => {
     }
   };
 
+  const removeProfilePhoto = async (index: number) => {
+    if (!user) return;
+    const newPhotos = user.photos.filter((_, i) => i !== index);
+
+    const { error } = await supabase
+      .from('users')
+      .update({ photos: newPhotos })
+      .eq('id', user.id);
+
+    if (error) {
+      setToast({ message: "Errore durante l'eliminazione.", type: 'error' });
+    } else {
+      setToast({ message: "Foto rimossa correttamente!", type: 'success' });
+      fetchData(user.id);
+    }
+  };
+
+  const replaceProfilePhoto = async (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!user || !e.target.files?.[0]) return;
+    const file = e.target.files[0];
+    const newPhotoUrl = URL.createObjectURL(file as any);
+
+    const newPhotos = [...user.photos];
+    newPhotos[index] = newPhotoUrl;
+
+    const { error } = await supabase
+      .from('users')
+      .update({ photos: newPhotos })
+      .eq('id', user.id);
+
+    if (error) {
+      setToast({ message: "Errore durante la sostituzione.", type: 'error' });
+    } else {
+      setToast({ message: "Foto aggiornata!", type: 'success' });
+      fetchData(user.id);
+    }
+  };
+
+  const addProfilePhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!user || !e.target.files) return;
+    const files = Array.from(e.target.files);
+    const newUrls = files.map(f => URL.createObjectURL(f as any));
+
+    const newPhotos = [...(user.photos || []), ...newUrls].slice(0, 5);
+
+    const { error } = await supabase
+      .from('users')
+      .update({ photos: newPhotos })
+      .eq('id', user.id);
+
+    if (error) {
+      setToast({ message: "Errore durante l'aggiunta.", type: 'error' });
+    } else {
+      setToast({ message: "Foto aggiunte alla galleria!", type: 'success' });
+      fetchData(user.id);
+    }
+  };
+
   if (loading) return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-stone-50 gap-4">
       <div className="w-12 h-12 border-4 border-rose-600 border-t-transparent rounded-full animate-spin" />
@@ -2748,6 +2839,58 @@ const ProfilePage = () => {
                 ))
               )}
             </div>
+          </div>
+        </motion.div>
+
+        {/* Gallery Management Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="bg-white p-10 rounded-[56px] shadow-2xl border border-stone-100 space-y-8"
+        >
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-serif font-black text-stone-900 flex items-center gap-4">
+              <div className="w-12 h-12 bg-rose-50 rounded-2xl flex items-center justify-center border border-rose-100">
+                <Camera className="w-6 h-6 text-rose-500" />
+              </div>
+              La Mia Galleria
+            </h2>
+            <p className="text-[10px] text-stone-400 font-black uppercase tracking-widest">{user.photos?.length || 0}/5 FOTO</p>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            {user.photos?.map((url, i) => (
+              <div key={i} className="aspect-square rounded-[32px] overflow-hidden border-2 border-stone-50 relative group shadow-lg">
+                <img src={url} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                  <label className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center text-stone-600 cursor-pointer hover:text-rose-600 shadow-xl transition-all active:scale-90">
+                    <RefreshCw className="w-4 h-4" />
+                    <input type="file" accept="image/*" className="hidden" onChange={(e) => replaceProfilePhoto(i, e)} />
+                  </label>
+                  <button
+                    onClick={() => {
+                      if (window.confirm("Vuoi davvero eliminare questa foto?")) {
+                        removeProfilePhoto(i);
+                      }
+                    }}
+                    className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center text-stone-600 hover:text-rose-600 shadow-xl transition-all active:scale-90"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+                {i === 0 && <div className="absolute top-3 left-3 bg-rose-600 text-[8px] text-white px-2 py-1 rounded-lg font-black uppercase tracking-widest shadow-lg">Principale</div>}
+              </div>
+            ))}
+            {(user.photos?.length || 0) < 5 && (
+              <label className="aspect-square rounded-[32px] border-4 border-dashed border-stone-100 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-stone-50 hover:border-rose-200 transition-all group">
+                <div className="w-10 h-10 bg-stone-50 rounded-2xl flex items-center justify-center group-hover:scale-110 group-hover:bg-rose-50 transition-all">
+                  <Plus className="w-6 h-6 text-stone-300 group-hover:text-rose-400" />
+                </div>
+                <span className="text-[9px] font-black text-stone-400 uppercase tracking-widest group-hover:text-rose-400">Aggiungi</span>
+                <input type="file" multiple accept="image/*" className="hidden" onChange={addProfilePhoto} />
+              </label>
+            )}
           </div>
         </motion.div>
 
