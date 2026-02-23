@@ -27,7 +27,12 @@ import {
   Image as ImageIcon,
   Settings2,
   Bell,
-  ArrowRight
+  ArrowRight,
+  Eye,
+  EyeOff,
+  Trash2,
+  RefreshCw,
+  X
 } from 'lucide-react';
 import { cn, calculateAge, calculateMatchScore } from './utils';
 import { UserProfile, ChatRequest, Post } from './types';
@@ -341,6 +346,10 @@ const HomePage = () => {
     setSimulatedProfiles(next);
   };
 
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   return (
     <div className="min-h-screen pt-[450px] pb-12 px-4 flex flex-col items-center justify-center bg-stone-50 relative overflow-x-hidden">
       <HomeSlider />
@@ -361,7 +370,6 @@ const HomePage = () => {
           </h1>
 
           <p className="text-stone-500 text-[11px] font-black uppercase tracking-[0.2em] mb-4 flex items-center justify-center gap-2">
-            <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
             Membri Certificati e Sicurezza Garantita
           </p>
 
@@ -471,8 +479,8 @@ const HomePage = () => {
                           <span className="ml-1 text-[10px] font-bold">{p.hearts}</span>
                         </button>
                       </div>
-                      <button className="px-3 py-2 bg-rose-600 text-white rounded-xl text-[10px] font-black uppercase tracking-tighter flex items-center gap-1">
-                        <Sparkles className="w-3 h-3" /> Match
+                      <button className="w-9 h-9 bg-rose-600 text-white rounded-xl flex items-center justify-center shadow-lg shadow-rose-100 hover:scale-110 active:scale-95 transition-all">
+                        <Sparkles className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
@@ -527,11 +535,13 @@ const ProfileDetailPage = () => {
         .from('users')
         .select(`
           *,
-          likes_count:interactions!interactions_to_user_id_fkey(count),
-          hearts_count:interactions!interactions_to_user_id_fkey(count)
+          likes_count:interactions!to_user_id(count),
+          hearts_count:interactions!to_user_id(count)
         `)
         .eq('id', id)
         .single();
+
+      if (error) console.error("ProfileDetail fetch error:", error);
 
       if (userProfile && !error) {
         // Post-process counts from aliases if needed, or handle them as objects
@@ -541,6 +551,8 @@ const ProfileDetailPage = () => {
           hearts_count: (userProfile as any).hearts_count?.[0]?.count || 0
         };
         setProfile(profileWithCounts);
+      } else {
+        console.warn("No detail profile found for ID:", id);
       }
       setLoading(false);
     };
@@ -591,8 +603,8 @@ const ProfileDetailPage = () => {
       .from('users')
       .select(`
         *,
-        likes_count:interactions!interactions_to_user_id_fkey(count),
-        hearts_count:interactions!interactions_to_user_id_fkey(count)
+        likes_count:interactions!to_user_id(count),
+        hearts_count:interactions!to_user_id(count)
       `)
       .eq('id', id)
       .single();
@@ -1068,8 +1080,8 @@ const BachecaPage = () => {
       .from('users')
       .select(`
         *,
-        likes_count:interactions!interactions_to_user_id_fkey(count),
-        hearts_count:interactions!interactions_to_user_id_fkey(count)
+        likes_count:interactions!to_user_id(count),
+        hearts_count:interactions!to_user_id(count)
       `);
 
     if (data && !error) {
@@ -1484,6 +1496,8 @@ const AdminPage = () => {
 const RegisterPage = () => {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
+  const [isLogin, setIsLogin] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState<UserProfile>({
     email: '',
     password: '',
@@ -1555,11 +1569,51 @@ const RegisterPage = () => {
   }, [formData]);
 
   const handleNextToStep1 = () => {
+    if (isLogin) {
+      handleLogin();
+      return;
+    }
     if (!formData.email || !formData.password || !formData.nickname) {
       alert("Inserisci email, password e nickname per procedere.");
       return;
     }
     setStep(2);
+  };
+
+  const handleLogin = async () => {
+    if (!formData.email || !formData.password) {
+      alert("Inserisci email e password per accedere.");
+      return;
+    }
+    try {
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
+      });
+
+      if (authError) {
+        alert("Errore accesso: " + authError.message);
+        return;
+      }
+
+      const { data: profile } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', authData.user.id)
+        .single();
+
+      if (profile) {
+        localStorage.setItem('soulmatch_user', JSON.stringify(profile));
+        window.dispatchEvent(new Event('user-auth-change'));
+        navigate('/bacheca');
+      } else {
+        alert("Account creato, ma profilo incompleto. Completa i dati ora.");
+        setIsLogin(false);
+        setStep(2);
+      }
+    } catch (e) {
+      alert("Errore di connessione.");
+    }
   };
 
   const handleNextToStep2 = () => {
@@ -1586,11 +1640,30 @@ const RegisterPage = () => {
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      const files = Array.from(e.target.files).slice(0, 5);
-      // In a real app, we'd upload these to a server and get URLs back.
-      // For this demo, we'll create object URLs to show preview.
+      const files = Array.from(e.target.files);
       const newPhotoUrls = files.map(file => URL.createObjectURL(file as File));
-      setFormData(prev => ({ ...prev, photos: [...(prev.photos || []), ...newPhotoUrls].slice(0, 5) }));
+      setFormData(prev => ({
+        ...prev,
+        photos: [...(prev.photos || []), ...newPhotoUrls].slice(0, 5)
+      }));
+    }
+  };
+
+  const removePhoto = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      photos: (prev.photos || []).filter((_, i) => i !== index)
+    }));
+  };
+
+  const replacePhoto = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const newUrl = URL.createObjectURL(e.target.files[0] as File);
+      setFormData(prev => {
+        const newPhotos = [...(prev.photos || [])];
+        newPhotos[index] = newUrl;
+        return { ...prev, photos: newPhotos };
+      });
     }
   };
 
@@ -1709,8 +1782,8 @@ const RegisterPage = () => {
                 className="space-y-6"
               >
                 <div className="text-center space-y-1">
-                  <h3 className="text-xl font-bold text-stone-900">Crea Account</h3>
-                  <p className="text-stone-500 text-[11px]">Dati necessari per l'accesso.</p>
+                  <h3 className="text-xl font-bold text-stone-900">{isLogin ? 'Bentornato/a' : 'Crea Account'}</h3>
+                  <p className="text-stone-500 text-[11px]">{isLogin ? 'Inserisci i tuoi dati per accedere.' : 'Dati necessari per l\'accesso.'}</p>
                 </div>
                 <div className="space-y-4">
                   <div className="space-y-1.5">
@@ -1719,15 +1792,44 @@ const RegisterPage = () => {
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-stone-700 ml-1">Password</label>
-                    <input name="password" type="password" value={formData.password} onChange={handleInputChange} className="w-full p-3.5 rounded-xl bg-stone-50 border border-stone-200 text-sm focus:ring-2 focus:ring-rose-500 outline-none" placeholder="Minimo 6 caratteri" />
+                    <div className="relative">
+                      <input
+                        name="password"
+                        type={showPassword ? "text" : "password"}
+                        value={formData.password}
+                        onChange={handleInputChange}
+                        className="w-full p-3.5 rounded-xl bg-stone-50 border border-stone-200 text-sm focus:ring-2 focus:ring-rose-500 outline-none pr-12"
+                        placeholder="Minimo 6 caratteri"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 transition-colors"
+                      >
+                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                      </button>
+                    </div>
                   </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-stone-700 ml-1">Nickname (Nome Utente)</label>
-                    <input name="nickname" value={formData.nickname} onChange={handleInputChange} className="w-full p-3.5 rounded-xl bg-stone-50 border border-stone-200 text-sm focus:ring-2 focus:ring-rose-500 outline-none" placeholder="Mario90" />
-                    <p className="text-[10px] text-stone-500 ml-1">Verrà usato per identificarti nella community.</p>
-                  </div>
+                  {!isLogin && (
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-stone-700 ml-1">Nickname (Nome Utente)</label>
+                      <input name="nickname" value={formData.nickname} onChange={handleInputChange} className="w-full p-3.5 rounded-xl bg-stone-50 border border-stone-200 text-sm focus:ring-2 focus:ring-rose-500 outline-none" placeholder="Mario90" />
+                      <p className="text-[10px] text-stone-500 ml-1">Verrà usato per identificarti nella community.</p>
+                    </div>
+                  )}
                 </div>
-                <button onClick={handleNextToStep1} className="btn-primary w-full py-4 text-sm mt-2">Continua</button>
+                <div className="space-y-4">
+                  <button onClick={handleNextToStep1} className="btn-primary w-full py-4 text-sm mt-2">
+                    {isLogin ? 'Accedi' : 'Continua'}
+                  </button>
+                  <p className="text-center text-xs text-stone-500 font-medium">
+                    {isLogin ? (
+                      <>Non hai un account? <button onClick={() => setIsLogin(false)} className="text-rose-600 font-bold hover:underline">Iscriviti</button></>
+                    ) : (
+                      <>Hai già un account? <button onClick={() => setIsLogin(true)} className="text-rose-600 font-bold hover:underline">Accedi qui</button></>
+                    )}
+                  </p>
+                </div>
               </motion.div>
             )}
 
@@ -1812,8 +1914,21 @@ const RegisterPage = () => {
                   <label className="text-xs font-bold text-stone-700 ml-1">Foto Profilo (Max 5)</label>
                   <div className="grid grid-cols-5 gap-2">
                     {formData.photos?.map((url, i) => (
-                      <div key={i} className="aspect-square rounded-lg overflow-hidden border border-stone-200 relative">
+                      <div key={i} className="aspect-square rounded-lg overflow-hidden border border-stone-200 relative group">
                         <img src={url} className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                          <label className="p-1.5 bg-white rounded-full text-stone-600 cursor-pointer hover:text-rose-600 shadow-sm">
+                            <RefreshCw className="w-3.5 h-3.5" />
+                            <input type="file" accept="image/*" className="hidden" onChange={(e) => replacePhoto(i, e)} />
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => removePhoto(i)}
+                            className="p-1.5 bg-white rounded-full text-stone-600 hover:text-rose-600 shadow-sm"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                         {i === 0 && <div className="absolute bottom-0 left-0 right-0 bg-rose-600 text-[8px] text-white text-center py-0.5 font-bold">Principale</div>}
                       </div>
                     ))}
@@ -2126,7 +2241,7 @@ const RegisterPage = () => {
   );
 };
 
-const FeedComponent = ({ userId, isOwner }: { userId: number, isOwner?: boolean }) => {
+const FeedComponent = ({ userId, isOwner }: { userId: any, isOwner?: boolean }) => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [newPostDesc, setNewPostDesc] = useState('');
   const [newPostPhotos, setNewPostPhotos] = useState<string[]>([]);
@@ -2399,27 +2514,36 @@ const ProfilePage = () => {
         .from('users')
         .select(`
           *,
-          likes_count:interactions!interactions_to_user_id_fkey(count),
-          hearts_count:interactions!interactions_to_user_id_fkey(count)
+          likes_count:interactions!to_user_id(count),
+          hearts_count:interactions!to_user_id(count)
         `)
         .eq('id', userId)
         .single();
 
-      if (profileData && !profileErr) {
+      if (profileErr) {
+        console.error("Profile fetch error:", profileErr);
+      }
+
+      if (profileData) {
         setUser({
           ...profileData,
           likes_count: (profileData as any).likes_count?.[0]?.count || 0,
           hearts_count: (profileData as any).hearts_count?.[0]?.count || 0
         });
+      } else {
+        console.warn("No profile found for ID:", userId);
+        // Do not redirect immediately if it's a connection/schema issue
       }
 
-      const { data: requestsData } = await supabase
+      const { data: requestsData, error: requestsErr } = await supabase
         .from('chat_requests')
         .select(`
           *,
-          from_user:users!chat_requests_from_user_id_fkey(name, surname, photo_url, photos)
+          from_user:users!from_user_id(name, surname, photo_url, photos)
         `)
         .eq('to_user_id', userId);
+
+      if (requestsErr) console.error("Requests fetch error:", requestsErr);
 
       if (requestsData) {
         const processedRequests = requestsData.map((r: any) => ({
@@ -2432,6 +2556,7 @@ const ProfilePage = () => {
       }
       setLoading(false);
     } catch (e) {
+      console.error("fetchData exception:", e);
       setLoading(false);
     }
   };
@@ -2462,8 +2587,26 @@ const ProfilePage = () => {
     }
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center"><div className="w-10 h-10 border-4 border-rose-600 border-t-transparent rounded-full animate-spin" /></div>;
-  if (!user) return null;
+  if (loading) return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-stone-50 gap-4">
+      <div className="w-12 h-12 border-4 border-rose-600 border-t-transparent rounded-full animate-spin" />
+      <p className="text-stone-400 text-sm font-medium animate-pulse">Caricamento profilo...</p>
+    </div>
+  );
+
+  if (!user) return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-stone-50 p-6 text-center">
+      <div className="w-20 h-20 bg-stone-100 rounded-full flex items-center justify-center mb-6">
+        <Info className="w-10 h-10 text-stone-300" />
+      </div>
+      <h2 className="text-xl font-serif font-black text-stone-900 mb-2">Profilo non trovato</h2>
+      <p className="text-stone-500 text-sm mb-8 max-w-xs">Non è stato possibile caricare i dati del tuo profilo. Potrebbe esserci un problema di connessione o il database non è aggiornato.</p>
+      <div className="flex flex-col gap-3 w-full max-w-xs">
+        <button onClick={() => navigate('/register')} className="btn-primary py-4">Completa Registrazione</button>
+        <button onClick={() => window.location.reload()} className="btn-secondary py-4">Riprova</button>
+      </div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-stone-50 pt-24 pb-24 px-6 relative overflow-x-hidden">
