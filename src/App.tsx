@@ -1569,6 +1569,7 @@ const RegisterPage = () => {
   }, [formData]);
 
   const handleNextToStep1 = () => {
+    console.log("handleNextToStep1 called, isLogin:", isLogin);
     if (isLogin) {
       handleLogin();
       return;
@@ -1581,38 +1582,52 @@ const RegisterPage = () => {
   };
 
   const handleLogin = async () => {
+    console.log("Starting login for:", formData.email);
     if (!formData.email || !formData.password) {
       alert("Inserisci email e password per accedere.");
       return;
     }
     try {
+      const email = formData.email.trim();
+      const password = formData.password;
+
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: formData.email,
-        password: formData.password,
+        email,
+        password,
       });
 
       if (authError) {
+        console.error("Auth login error:", authError);
         alert("Errore accesso: " + authError.message);
         return;
       }
 
-      const { data: profile } = await supabase
+      console.log("Auth success, fetching profile for:", authData.user?.id);
+
+      const { data: profile, error: profileErr } = await supabase
         .from('users')
         .select('*')
-        .eq('id', authData.user.id)
+        .eq('id', authData.user?.id)
         .single();
 
+      if (profileErr) {
+        console.warn("Profile fetch error after login:", profileErr);
+      }
+
       if (profile) {
+        console.log("Profile found, saving to local storage");
         localStorage.setItem('soulmatch_user', JSON.stringify(profile));
         window.dispatchEvent(new Event('user-auth-change'));
         navigate('/bacheca');
       } else {
-        alert("Account creato, ma profilo incompleto. Completa i dati ora.");
+        console.log("No profile record found in 'users' table. Redirecting to complete registration.");
+        alert("Bentornato! Il tuo account esiste ma il profilo non è completo. Per favore completa i dati mancanti.");
         setIsLogin(false);
         setStep(2);
       }
     } catch (e) {
-      alert("Errore di connessione.");
+      console.error("Exception during login process:", e);
+      alert("Errore imprevisto durante l'accesso.");
     }
   };
 
@@ -1819,14 +1834,18 @@ const RegisterPage = () => {
                   )}
                 </div>
                 <div className="space-y-4">
-                  <button onClick={handleNextToStep1} className="btn-primary w-full py-4 text-sm mt-2">
+                  <button
+                    type="button"
+                    onClick={handleNextToStep1}
+                    className="btn-primary w-full py-4 text-sm mt-2"
+                  >
                     {isLogin ? 'Accedi' : 'Continua'}
                   </button>
                   <p className="text-center text-xs text-stone-500 font-medium">
                     {isLogin ? (
-                      <>Non hai un account? <button onClick={() => setIsLogin(false)} className="text-rose-600 font-bold hover:underline">Iscriviti</button></>
+                      <>Non hai un account? <button type="button" onClick={() => { console.log("Switching to Register"); setIsLogin(false); }} className="text-rose-600 font-bold hover:underline">Iscriviti</button></>
                     ) : (
-                      <>Hai già un account? <button onClick={() => setIsLogin(true)} className="text-rose-600 font-bold hover:underline">Accedi qui</button></>
+                      <>Hai già un account? <button type="button" onClick={() => { console.log("Switching to Login"); setIsLogin(true); }} className="text-rose-600 font-bold hover:underline">Accedi qui</button></>
                     )}
                   </p>
                 </div>
