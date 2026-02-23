@@ -1537,18 +1537,16 @@ const RegisterPage = () => {
   useEffect(() => {
     const initData = async () => {
       try {
-        const savedUserStr = localStorage.getItem('soulmatch_user');
+        const authenticatedUserRaw = localStorage.getItem('soulmatch_user');
         const savedDraft = localStorage.getItem('soulmatch_reg_draft');
 
         if (savedDraft) {
           setFormData(JSON.parse(savedDraft));
-          // If we had a draft but now we are edit-mode logged-in, 
-          // ensure we stay in edit mode steps if the draft says step 1
           return;
         }
 
-        if (savedUserStr) {
-          const user = JSON.parse(savedUserStr);
+        if (authenticatedUserRaw) {
+          const user = JSON.parse(authenticatedUserRaw);
           if (user.id) {
             // Fetch fresh data from Supabase
             const { data, error } = await supabase
@@ -1582,7 +1580,7 @@ const RegisterPage = () => {
       handleLogin();
       return;
     }
-    if (!formData.email || !formData.password || !formData.nickname) {
+    if (!isEditing && (!formData.email || !formData.password || !formData.nickname)) {
       setToast({ message: "Inserisci email, password e nickname per procedere.", type: 'info' });
       return;
     }
