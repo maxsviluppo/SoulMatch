@@ -1,5 +1,5 @@
 export interface UserProfile {
-  id?: number;
+  id?: any;
   name: string;
   surname: string;
   dob: string;
@@ -27,13 +27,16 @@ export interface UserProfile {
   likes_count?: number;
   hearts_count?: number;
   is_online?: boolean;
+  email?: string;
+  password?: string;
+  nickname?: string;
   conosciamoci_meglio?: Record<string, string>;
 }
 
 export interface ChatRequest {
-  id: number;
-  from_user_id: number;
-  to_user_id: number;
+  id: any;
+  from_user_id: any;
+  to_user_id: any;
   status: 'pending' | 'approved' | 'rejected';
   message?: string;
   created_at: string;
@@ -46,8 +49,8 @@ export type Gender = 'Uomo' | 'Donna' | 'Non-binario' | 'Transgender' | 'Genderf
 export type Orientation = 'Eterosessuale' | 'Gay' | 'Lesbica' | 'Bisessuale' | 'Pansessuale' | 'Queer' | 'Altro';
 
 export interface Post {
-  id: number;
-  user_id: number;
+  id: any;
+  user_id: any;
   author_name?: string;
   author_photo?: string;
   photos: string[]; // Up to 3 photos

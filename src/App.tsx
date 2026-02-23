@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { cn, calculateAge, calculateMatchScore } from './utils';
 import { UserProfile, ChatRequest, Post } from './types';
+import { supabase } from './supabase';
 
 // --- Components ---
 
@@ -499,15 +500,18 @@ const ProfileDetailPage = () => {
   const [messageText, setMessageText] = useState('');
   const navigate = useNavigate();
 
-  const fetchInteractionState = (currentUserId: number) => {
-    fetch(`/api/interactions/${currentUserId}/${id}`)
-      .then(res => res.json())
-      .then(data => setUserInteractions(data));
+  const fetchInteractionState = async (currentUserId: string) => {
+    const { data } = await supabase
+      .from('interactions')
+      .select('type')
+      .eq('from_user_id', currentUserId)
+      .eq('to_user_id', id);
+    if (data) setUserInteractions(data.map(i => i.type));
   };
 
   useEffect(() => {
     window.scrollTo(0, 0);
-    let currentUserId: number | null = null;
+    let currentUserId: string | null = null;
     try {
       const saved = localStorage.getItem('soulmatch_user');
       if (saved) {
@@ -517,20 +521,48 @@ const ProfileDetailPage = () => {
       }
     } catch (e) { }
 
-    fetch(`/api/profiles/${id}`)
-      .then(res => res.json())
-      .then(data => {
-        setProfile(data);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
+    const fetchProfile = async () => {
+      // Get user with like/heart counts
+      const { data: userProfile, error } = await supabase
+        .from('users')
+        .select(`
+          *,
+          likes_count:interactions!interactions_to_user_id_fkey(count),
+          hearts_count:interactions!interactions_to_user_id_fkey(count)
+        `)
+        .eq('id', id)
+        .single();
 
-    if (currentUserId && id) {
-      fetch(`/api/chat-status/${currentUserId}/${id}`)
-        .then(res => res.json())
-        .then(data => setChatStatus(data.status));
+      if (userProfile && !error) {
+        // Post-process counts from aliases if needed, or handle them as objects
+        const profileWithCounts = {
+          ...userProfile,
+          likes_count: (userProfile as any).likes_count?.[0]?.count || 0,
+          hearts_count: (userProfile as any).hearts_count?.[0]?.count || 0
+        };
+        setProfile(profileWithCounts);
+      }
+      setLoading(false);
+    };
+
+    const fetchStatus = async () => {
+      if (!currentUserId || !id) return;
+
+      const { data } = await supabase
+        .from('chat_requests')
+        .select('status')
+        .eq('from_user_id', currentUserId)
+        .eq('to_user_id', id)
+        .single();
+
+      if (data) setChatStatus(data.status);
+      else setChatStatus('none');
+
       fetchInteractionState(currentUserId);
-    }
+    };
+
+    fetchProfile();
+    fetchStatus();
   }, [id]);
 
   const handleInteract = async (type: 'like' | 'heart') => {
@@ -538,18 +570,42 @@ const ProfileDetailPage = () => {
       setToast({ message: "Devi essere iscritto per interagire!", type: 'error' });
       return;
     }
-    await fetch('/api/interactions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from_user_id: currentUser.id, to_user_id: profile?.id, type })
-    });
-
-    const res = await fetch(`/api/profiles/${id}`);
-    const data = await res.json();
-    setProfile(data);
-    fetchInteractionState(currentUser.id);
 
     const isRemoving = userInteractions.includes(type);
+
+    if (isRemoving) {
+      await supabase
+        .from('interactions')
+        .delete()
+        .eq('from_user_id', currentUser.id)
+        .eq('to_user_id', profile?.id)
+        .eq('type', type);
+    } else {
+      await supabase
+        .from('interactions')
+        .insert([{ from_user_id: currentUser.id, to_user_id: profile?.id, type }]);
+    }
+
+    // Refresh profile and state
+    const { data: updatedProfile } = await supabase
+      .from('users')
+      .select(`
+        *,
+        likes_count:interactions!interactions_to_user_id_fkey(count),
+        hearts_count:interactions!interactions_to_user_id_fkey(count)
+      `)
+      .eq('id', id)
+      .single();
+
+    if (updatedProfile) {
+      setProfile({
+        ...updatedProfile,
+        likes_count: (updatedProfile as any).likes_count?.[0]?.count || 0,
+        hearts_count: (updatedProfile as any).hearts_count?.[0]?.count || 0
+      });
+    }
+    fetchInteractionState(currentUser.id);
+
     setToast({
       message: isRemoving ? "Interazione rimossa." : (type === 'like' ? "Like inviato!" : "Cuore inviato!"),
       type: isRemoving ? 'info' : 'success'
@@ -582,16 +638,20 @@ const ProfileDetailPage = () => {
       return;
     }
 
-    // Send instant chat request
-    const res = await fetch('/api/chat-requests', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from_user_id: currentUser.id, to_user_id: profile?.id, message: "Richiesta di chat istantanea" })
-    });
+    // Send instant chat request to Supabase
+    const { error } = await supabase
+      .from('chat_requests')
+      .insert([{
+        from_user_id: currentUser.id,
+        to_user_id: profile?.id,
+        message: "Richiesta di chat istantanea"
+      }]);
 
-    if (res.ok) {
+    if (!error) {
       setChatStatus('pending');
       setToast({ message: "Richiesta di chat istantanea inviata!", type: 'success' });
+    } else {
+      setToast({ message: "Errore durante l'invio della richiesta.", type: 'error' });
     }
   };
 
@@ -616,17 +676,20 @@ const ProfileDetailPage = () => {
     setMessageText('');
 
     try {
-      const res = await fetch('/api/chat-requests', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ from_user_id: currentUser!.id, to_user_id: profile?.id, message: textToSend })
-      });
-      const data = await res.json();
-      if (res.ok) {
+      const { error } = await supabase
+        .from('chat_requests')
+        .insert([{
+          from_user_id: currentUser!.id,
+          to_user_id: profile?.id,
+          message: textToSend
+        }]);
+
+      if (!error) {
         setChatStatus('pending');
         setToast({ message: "Messaggio inviato con successo!", type: 'success' });
       } else {
-        setToast({ message: data.error || "Errore durante l'invio", type: 'error' });
+        console.error("Supabase error:", error);
+        setToast({ message: "Errore durante l'invio del messaggio.", type: 'error' });
       }
     } catch (err) {
       setToast({ message: "Errore di connessione", type: 'error' });
@@ -1000,13 +1063,25 @@ const BachecaPage = () => {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
 
-  const fetchProfiles = () => {
-    fetch('/api/profiles')
-      .then(res => res.json())
-      .then(data => {
-        setProfiles(data);
-        setLoading(false);
-      });
+  const fetchProfiles = async () => {
+    const { data, error } = await supabase
+      .from('users')
+      .select(`
+        *,
+        likes_count:interactions!interactions_to_user_id_fkey(count),
+        hearts_count:interactions!interactions_to_user_id_fkey(count)
+      `);
+
+    if (data && !error) {
+      // Map counts from nested objects
+      const processed = data.map(u => ({
+        ...u,
+        likes_count: (u as any).likes_count?.[0]?.count || 0,
+        hearts_count: (u as any).hearts_count?.[0]?.count || 0
+      }));
+      setProfiles(processed);
+    }
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -1410,6 +1485,9 @@ const RegisterPage = () => {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState<UserProfile>({
+    email: '',
+    password: '',
+    nickname: '',
     name: '',
     surname: '',
     dob: '',
@@ -1433,6 +1511,8 @@ const RegisterPage = () => {
     photos: [],
     id_document_url: '',
     body_type: 'Normale',
+    province: '',
+    conosciamoci_meglio: {},
   });
 
   useEffect(() => {
@@ -1448,12 +1528,17 @@ const RegisterPage = () => {
         if (savedUserStr) {
           const user = JSON.parse(savedUserStr);
           if (user.id) {
-            // Fetch fresh data from server to ensure we have all fields
-            const res = await fetch(`/api/profiles/${user.id}`);
-            if (res.ok) {
-              const freshData = await res.json();
-              setFormData(prev => ({ ...prev, ...freshData }));
-            } else {
+            // Fetch fresh data from Supabase
+            const { data, error } = await supabase
+              .from('users')
+              .select('*')
+              .eq('id', user.id)
+              .single();
+
+            if (data && !error) {
+              setFormData(prev => ({ ...prev, ...data }));
+            } else if (typeof user.id === 'string' && user.id.length > 10) {
+              // Probably already a UUID, just use it
               setFormData(prev => ({ ...prev, ...user }));
             }
           }
@@ -1469,6 +1554,14 @@ const RegisterPage = () => {
     localStorage.setItem('soulmatch_reg_draft', JSON.stringify(formData));
   }, [formData]);
 
+  const handleNextToStep1 = () => {
+    if (!formData.email || !formData.password || !formData.nickname) {
+      alert("Inserisci email, password e nickname per procedere.");
+      return;
+    }
+    setStep(2);
+  };
+
   const handleNextToStep2 = () => {
     const required = ['name', 'surname', 'dob', 'city', 'job', 'description'];
     const missing = required.filter(k => !formData[k as keyof UserProfile]);
@@ -1476,7 +1569,7 @@ const RegisterPage = () => {
       alert("Per favore, completa tutti i campi del profilo per continuare.");
       return;
     }
-    setStep(2);
+    setStep(3);
   };
 
   const handleNextToStep3 = () => {
@@ -1484,7 +1577,11 @@ const RegisterPage = () => {
       alert("Inserisci l'età minima e massima che cerchi in un partner.");
       return;
     }
-    setStep(3);
+    setStep(4);
+  };
+
+  const handleNextToStep4 = () => {
+    setStep(5);
   };
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1512,23 +1609,57 @@ const RegisterPage = () => {
   const handleSubmit = async () => {
     try {
       console.log("Submitting formData:", formData);
-      const url = formData.id ? `/api/profiles/${formData.id}` : '/api/register';
-      const method = formData.id ? 'PUT' : 'POST';
 
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      });
+      const submissionData = { ...formData };
+      const userId = submissionData.id;
+      const email = submissionData.email;
+      const password = submissionData.password;
 
-      if (!res.ok) {
-        const errorData = await res.json();
-        alert("Errore: " + (errorData.error || res.statusText));
+      // Clean up data for database insert
+      delete (submissionData as any).id;
+      delete (submissionData as any).password; // Don't store plain password in public table
+      delete (submissionData as any).likes_count;
+      delete (submissionData as any).hearts_count;
+
+      let finalUserId = userId;
+
+      if (!userId) {
+        // 1. Sign up user with Supabase Auth
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: email!,
+          password: password!,
+        });
+
+        if (authError) {
+          console.error("Auth error:", authError);
+          alert("Errore durante la creazione account: " + authError.message);
+          return;
+        }
+
+        if (!authData.user) {
+          alert("Errore imprevisto durante la registrazione.");
+          return;
+        }
+
+        finalUserId = authData.user.id;
+      }
+
+      // 2. Insert or Update profile in public.users table
+      const profileData = { ...submissionData, id: finalUserId };
+
+      const { data, error } = await supabase
+        .from('users')
+        .upsert(profileData)
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Supabase Profile error:", error);
+        alert("Errore durante il salvataggio del profilo: " + error.message);
         return;
       }
 
-      const data = await res.json();
-      console.log("Registration/Update success:", data);
+      console.log("Supabase Success:", data);
       localStorage.setItem('soulmatch_user', JSON.stringify(data));
       localStorage.removeItem('soulmatch_reg_draft');
       window.dispatchEvent(new Event('user-auth-change'));
@@ -1537,8 +1668,8 @@ const RegisterPage = () => {
         navigate('/bacheca');
       }, 100);
     } catch (err) {
-      console.error("Submission error:", err);
-      alert("Errore di connessione.");
+      console.error("Process error:", err);
+      alert("Errore di connessione o configurazione.");
     }
   };
 
@@ -1557,11 +1688,11 @@ const RegisterPage = () => {
               <h1 className="text-2xl font-serif font-bold text-stone-900">
                 {localStorage.getItem('soulmatch_user') ? 'Modifica Profilo' : 'Iscriviti'}
               </h1>
-              <p className="text-stone-500 text-xs">Step {step} di 5</p>
+              <p className="text-stone-500 text-xs">Step {step} di 6</p>
             </div>
           </div>
           <div className="flex gap-1.5 pb-1">
-            {[1, 2, 3, 4, 5].map(i => (
+            {[1, 2, 3, 4, 5, 6].map(i => (
               <div key={i} className={cn("w-2 h-2 rounded-full", step >= i ? "bg-rose-600" : "bg-stone-200")} />
             ))}
           </div>
@@ -1572,6 +1703,37 @@ const RegisterPage = () => {
             {step === 1 && (
               <motion.div
                 key="step1"
+                initial={{ opacity: 0, x: 10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -10 }}
+                className="space-y-6"
+              >
+                <div className="text-center space-y-1">
+                  <h3 className="text-xl font-bold text-stone-900">Crea Account</h3>
+                  <p className="text-stone-500 text-[11px]">Dati necessari per l'accesso.</p>
+                </div>
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-stone-700 ml-1">Email</label>
+                    <input name="email" type="email" value={formData.email} onChange={handleInputChange} className="w-full p-3.5 rounded-xl bg-stone-50 border border-stone-200 text-sm focus:ring-2 focus:ring-rose-500 outline-none" placeholder="mario@esempio.it" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-stone-700 ml-1">Password</label>
+                    <input name="password" type="password" value={formData.password} onChange={handleInputChange} className="w-full p-3.5 rounded-xl bg-stone-50 border border-stone-200 text-sm focus:ring-2 focus:ring-rose-500 outline-none" placeholder="Minimo 6 caratteri" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-stone-700 ml-1">Nickname (Nome Utente)</label>
+                    <input name="nickname" value={formData.nickname} onChange={handleInputChange} className="w-full p-3.5 rounded-xl bg-stone-50 border border-stone-200 text-sm focus:ring-2 focus:ring-rose-500 outline-none" placeholder="Mario90" />
+                    <p className="text-[10px] text-stone-500 ml-1">Verrà usato per identificarti nella community.</p>
+                  </div>
+                </div>
+                <button onClick={handleNextToStep1} className="btn-primary w-full py-4 text-sm mt-2">Continua</button>
+              </motion.div>
+            )}
+
+            {step === 2 && (
+              <motion.div
+                key="step2"
                 initial={{ opacity: 0, x: 10 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -10 }}
@@ -1669,7 +1831,7 @@ const RegisterPage = () => {
                     <CreditCard className="w-4 h-4" /> Documento d'Identità
                   </div>
                   <p className="text-[10px] text-stone-500 leading-tight mb-2">
-                    Carica un documento per la sicurezza della community. La tua richiesta sarà valutata dall'amministrazione.
+                    Carica un documento per la sicurezza della community.
                   </p>
                   <label className={cn(
                     "w-full p-3 rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors",
@@ -1678,7 +1840,7 @@ const RegisterPage = () => {
                     {formData.id_document_url ? (
                       <>
                         <CheckCircle className="w-5 h-5 text-emerald-500" />
-                        <span className="text-[10px] font-bold text-emerald-700">Documento Caricato</span>
+                        <span className="text-[10px] font-bold text-emerald-700">Caricato</span>
                       </>
                     ) : (
                       <>
@@ -1690,13 +1852,16 @@ const RegisterPage = () => {
                   </label>
                 </div>
 
-                <button onClick={handleNextToStep2} className="btn-primary w-full py-4 text-sm mt-2">Continua</button>
+                <div className="flex gap-3 pt-2">
+                  <button onClick={() => setStep(1)} className="btn-secondary flex-1 py-4 text-sm">Indietro</button>
+                  <button onClick={handleNextToStep2} className="btn-primary flex-1 py-4 text-sm">Continua</button>
+                </div>
               </motion.div>
             )}
 
-            {step === 2 && (
+            {step === 3 && (
               <motion.div
-                key="step2"
+                key="step3"
                 initial={{ opacity: 0, x: 10 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -10 }}
@@ -1704,7 +1869,7 @@ const RegisterPage = () => {
               >
                 <div className="p-3 bg-rose-50 rounded-xl flex gap-2 items-start border border-rose-100">
                   <Info className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-                  <p className="text-[11px] text-rose-800 leading-tight">Questi dati servono per il matching intelligente Premium.</p>
+                  <p className="text-[11px] text-rose-800 leading-tight">Dati per il matching intelligente.</p>
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-stone-700 ml-1">Chi cerchi?</label>
@@ -1741,19 +1906,18 @@ const RegisterPage = () => {
                 </div>
                 <div className="space-y-1.5 pt-2">
                   <label className="text-xs font-bold text-stone-700 ml-1">Cosa Cerchi in un Partner?</label>
-                  <textarea name="looking_for_other" value={formData.looking_for_other} onChange={handleInputChange} className="w-full p-3.5 rounded-xl bg-stone-50 border border-stone-200 text-sm focus:ring-2 focus:ring-rose-500 outline-none h-24" placeholder="Descrivi il tuo partner ideale, che connessione cerchi, che momenti speciali vuoi condividere..." />
-                  <p className="text-[10px] text-stone-500 ml-1 leading-tight">Questo testo sarà visibile sul tuo profilo sotto la voce "Cosa Cerca".</p>
+                  <textarea name="looking_for_other" value={formData.looking_for_other} onChange={handleInputChange} className="w-full p-3.5 rounded-xl bg-stone-50 border border-stone-200 text-sm focus:ring-2 focus:ring-rose-500 outline-none h-24" placeholder="Descrivi il tuo partner ideale..." />
                 </div>
                 <div className="flex gap-3 pt-2">
-                  <button onClick={() => setStep(1)} className="btn-secondary flex-1 py-4 text-sm">Indietro</button>
+                  <button onClick={() => setStep(2)} className="btn-secondary flex-1 py-4 text-sm">Indietro</button>
                   <button onClick={handleNextToStep3} className="btn-primary flex-1 py-4 text-sm">Continua</button>
                 </div>
               </motion.div>
             )}
 
-            {step === 3 && (
+            {step === 4 && (
               <motion.div
-                key="step3"
+                key="step4"
                 initial={{ opacity: 0, x: 10 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -10 }}
@@ -1761,8 +1925,8 @@ const RegisterPage = () => {
               >
                 <div className="p-3 bg-stone-50 rounded-xl flex gap-2 items-start border border-stone-200 text-center flex-col items-center">
                   <Sparkles className="w-5 h-5 text-rose-500 mb-1" />
-                  <h3 className="text-sm font-bold text-stone-900">Conosciamoci Meglio (Opzionale)</h3>
-                  <p className="text-[10px] text-stone-500 leading-tight block">Più dettagli fornisci, più il matching sarà preciso.</p>
+                  <h3 className="text-sm font-bold text-stone-900">Conosciamoci Meglio</h3>
+                  <p className="text-[10px] text-stone-500 leading-tight">Opzionale ma consigliato.</p>
                 </div>
 
                 {[
@@ -1789,15 +1953,15 @@ const RegisterPage = () => {
                 ))}
 
                 <div className="flex gap-3 pt-2">
-                  <button onClick={() => setStep(2)} className="btn-secondary flex-1 py-4 text-sm">Indietro</button>
-                  <button onClick={() => setStep(4)} className="btn-primary flex-1 py-4 text-sm">Continua</button>
+                  <button onClick={() => setStep(3)} className="btn-secondary flex-1 py-4 text-sm">Indietro</button>
+                  <button onClick={() => setStep(5)} className="btn-primary flex-1 py-4 text-sm">Continua</button>
                 </div>
               </motion.div>
             )}
 
-            {step === 4 && (
+            {step === 5 && (
               <motion.div
-                key="step4"
+                key="step5"
                 initial={{ opacity: 0, x: 10 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -10 }}
@@ -1863,15 +2027,15 @@ const RegisterPage = () => {
                 )}
 
                 <div className="flex gap-3 pt-2">
-                  <button onClick={() => setStep(3)} className="btn-secondary flex-1 py-4 text-sm">Indietro</button>
-                  <button onClick={() => setStep(5)} className="btn-primary flex-1 py-4 text-sm">Riepilogo</button>
+                  <button onClick={() => setStep(4)} className="btn-secondary flex-1 py-4 text-sm">Indietro</button>
+                  <button onClick={() => setStep(6)} className="btn-primary flex-1 py-4 text-sm">Riepilogo</button>
                 </div>
               </motion.div>
             )}
 
-            {step === 5 && (
+            {step === 6 && (
               <motion.div
-                key="step5"
+                key="step6"
                 initial={{ opacity: 0, x: 10 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -10 }}
@@ -1884,6 +2048,13 @@ const RegisterPage = () => {
 
                 <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 scrollbar-hide">
                   <div className="p-4 bg-stone-50 rounded-2xl border border-stone-100 space-y-3">
+                    <h4 className="text-xs font-bold text-rose-600 uppercase tracking-wider">Account</h4>
+                    <div className="grid grid-cols-2 gap-y-2 text-xs">
+                      <div className="text-stone-400">Email:</div> <div className="text-stone-900 font-medium">{formData.email}</div>
+                      <div className="text-stone-400">Nickname:</div> <div className="text-stone-900 font-medium">{formData.nickname}</div>
+                    </div>
+                  </div>
+                  <div className="p-4 bg-stone-50 rounded-2xl border border-stone-100 space-y-3">
                     <h4 className="text-xs font-bold text-rose-600 uppercase tracking-wider">Dati Personali</h4>
                     <div className="grid grid-cols-2 gap-y-2 text-xs">
                       <div className="text-stone-400">Nome:</div> <div className="text-stone-900 font-medium">{formData.name} {formData.surname}</div>
@@ -1894,6 +2065,19 @@ const RegisterPage = () => {
                       <div className="text-stone-400">Lavoro:</div> <div className="text-stone-900 font-medium">{formData.job}</div>
                     </div>
                   </div>
+
+                  {formData.conosciamoci_meglio && Object.keys(formData.conosciamoci_meglio).some(key => formData.conosciamoci_meglio[key]) && (
+                    <div className="p-4 bg-stone-50 rounded-2xl border border-stone-100 space-y-3">
+                      <h4 className="text-xs font-bold text-rose-600 uppercase tracking-wider">Conosciamoci Meglio</h4>
+                      <div className="grid grid-cols-2 gap-y-2 text-xs">
+                        {Object.entries(formData.conosciamoci_meglio).map(([key, value]) => value && (
+                          <>
+                            <div className="text-stone-400">{key.replace(/_/g, ' ')}:</div> <div className="text-stone-900 font-medium">{value}</div>
+                          </>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   <div className="p-4 bg-stone-50 rounded-2xl border border-stone-100 space-y-3">
                     <h4 className="text-xs font-bold text-rose-600 uppercase tracking-wider">Preferenze Matching</h4>
@@ -1930,7 +2114,7 @@ const RegisterPage = () => {
                 </div>
 
                 <div className="flex gap-3 pt-2">
-                  <button onClick={() => setStep(4)} className="btn-secondary flex-1 py-4 text-sm">Indietro</button>
+                  <button onClick={() => setStep(5)} className="btn-secondary flex-1 py-4 text-sm">Indietro</button>
                   <button onClick={handleSubmit} className="btn-primary flex-1 py-4 text-sm">Termina</button>
                 </div>
               </motion.div>
@@ -1950,13 +2134,49 @@ const FeedComponent = ({ userId, isOwner }: { userId: number, isOwner?: boolean 
 
   const fetchPosts = async () => {
     try {
-      const viewerId = localStorage.getItem('soulmatch_user') ? JSON.parse(localStorage.getItem('soulmatch_user')!).id : undefined;
-      let url = viewerId ? `/api/users/${userId}/posts?user_id=${viewerId}` : `/api/users/${userId}/posts`;
-      const res = await fetch(url);
-      if (res.ok) {
-        setPosts(await res.json());
+      const viewer = localStorage.getItem('soulmatch_user') ? JSON.parse(localStorage.getItem('soulmatch_user')!) : null;
+      const viewerId = viewer?.id;
+
+      // Fetch posts with author info and interaction counts
+      const { data: postsData, error } = await supabase
+        .from('posts')
+        .select(`
+          *,
+          user:users (name, photos, photo_url),
+          likes_count:post_interactions!post_interactions_post_id_fkey(count),
+          hearts_count:post_interactions!post_interactions_post_id_fkey(count)
+        `)
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (postsData && !error) {
+        // Fetch current viewer's interactions for these posts
+        let viewerInteractions: any[] = [];
+        if (viewerId) {
+          const { data: interactionData } = await supabase
+            .from('post_interactions')
+            .select('post_id, type')
+            .eq('user_id', viewerId)
+            .in('post_id', postsData.map(p => p.id));
+          viewerInteractions = interactionData || [];
+        }
+
+        const processed = postsData.map((p: any) => ({
+          ...p,
+          author_name: p.user?.name,
+          author_photo: p.user?.photos?.[0] || p.user?.photo_url,
+          likes_count: p.likes_count?.[0]?.count || 0,
+          hearts_count: p.hearts_count?.[0]?.count || 0,
+          has_liked: viewerInteractions.some(i => i.post_id === p.id && i.type === 'like'),
+          has_hearted: viewerInteractions.some(i => i.post_id === p.id && i.type === 'heart'),
+        }));
+        setPosts(processed);
+      } else if (error) {
+        console.error("Fetch posts error:", error);
       }
-    } catch (e) { }
+    } catch (e) {
+      console.error("Fetch posts exception:", e);
+    }
   };
 
   useEffect(() => {
@@ -1975,42 +2195,48 @@ const FeedComponent = ({ userId, isOwner }: { userId: number, isOwner?: boolean 
     if (newPostPhotos.length === 0 && !newPostDesc) return;
     setIsPosting(true);
     try {
-      const res = await fetch('/api/posts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const { error } = await supabase
+        .from('posts')
+        .insert([{
           user_id: userId,
           photos: newPostPhotos,
           description: newPostDesc
-        })
-      });
-      if (res.ok) {
+        }]);
+
+      if (!error) {
         setNewPostDesc('');
         setNewPostPhotos([]);
         fetchPosts();
       } else {
-        const err = await res.json();
-        alert(err.error || "Errore");
+        alert("Errore durante la pubblicazione: " + error.message);
       }
     } catch (e) {
-      alert("Errore");
+      alert("Errore di connessione.");
     }
     setIsPosting(false);
   };
 
-  const toggleInteraction = async (postId: number, type: 'like' | 'heart') => {
+  const toggleInteraction = async (postId: string, type: 'like' | 'heart') => {
     try {
       const viewer = localStorage.getItem('soulmatch_user') ? JSON.parse(localStorage.getItem('soulmatch_user')!) : null;
-      if (!viewer) {
-        alert("Devi registrarti per interagire!");
-        return;
+      if (!viewer?.id) return;
+
+      const post = posts.find(p => p.id === postId);
+      const isRemoving = type === 'like' ? post?.has_liked : post?.has_hearted;
+
+      if (isRemoving) {
+        await supabase
+          .from('post_interactions')
+          .delete()
+          .eq('post_id', postId)
+          .eq('user_id', viewer.id)
+          .eq('type', type);
+      } else {
+        await supabase
+          .from('post_interactions')
+          .insert([{ post_id: postId, user_id: viewer.id, type }]);
       }
-      const res = await fetch(`/api/posts/${postId}/interactions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: viewer.id, type })
-      });
-      if (res.ok) fetchPosts();
+      fetchPosts();
     } catch (e) { }
   };
 
@@ -2167,16 +2393,43 @@ const ProfilePage = () => {
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
   const navigate = useNavigate();
 
-  const fetchData = async (userId: number) => {
+  const fetchData = async (userId: string) => {
     try {
-      const [profileRes, requestsRes] = await Promise.all([
-        fetch(`/api/profiles/${userId}`),
-        fetch(`/api/chat-requests/${userId}`)
-      ]);
-      const profileData = await profileRes.json();
-      const requestsData = await requestsRes.json();
-      setUser(profileData);
-      setChatRequests(requestsData);
+      const { data: profileData, error: profileErr } = await supabase
+        .from('users')
+        .select(`
+          *,
+          likes_count:interactions!interactions_to_user_id_fkey(count),
+          hearts_count:interactions!interactions_to_user_id_fkey(count)
+        `)
+        .eq('id', userId)
+        .single();
+
+      if (profileData && !profileErr) {
+        setUser({
+          ...profileData,
+          likes_count: (profileData as any).likes_count?.[0]?.count || 0,
+          hearts_count: (profileData as any).hearts_count?.[0]?.count || 0
+        });
+      }
+
+      const { data: requestsData } = await supabase
+        .from('chat_requests')
+        .select(`
+          *,
+          from_user:users!chat_requests_from_user_id_fkey(name, surname, photo_url, photos)
+        `)
+        .eq('to_user_id', userId);
+
+      if (requestsData) {
+        const processedRequests = requestsData.map((r: any) => ({
+          ...r,
+          name: r.from_user?.name,
+          surname: r.from_user?.surname,
+          photo_url: r.from_user?.photos?.[0] || r.from_user?.photo_url
+        }));
+        setChatRequests(processedRequests);
+      }
       setLoading(false);
     } catch (e) {
       setLoading(false);
@@ -2194,13 +2447,13 @@ const ProfilePage = () => {
     } else navigate('/register');
   }, [navigate]);
 
-  const handleRequestAction = async (requestId: number, status: 'approved' | 'rejected') => {
-    const res = await fetch(`/api/chat-requests/${requestId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status })
-    });
-    if (res.ok) {
+  const handleRequestAction = async (requestId: string, status: 'approved' | 'rejected') => {
+    const { error } = await supabase
+      .from('chat_requests')
+      .update({ status })
+      .eq('id', requestId);
+
+    if (!error) {
       setToast({
         message: status === 'approved' ? "Richiesta approvata!" : "Richiesta rifiutata.",
         type: status === 'approved' ? 'success' : 'info'
