@@ -1547,7 +1547,6 @@ const RegisterPage = () => {
           return;
         }
 
-        const savedUserStr = localStorage.getItem('soulmatch_user');
         if (savedUserStr) {
           const user = JSON.parse(savedUserStr);
           if (user.id) {
