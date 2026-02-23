@@ -1667,7 +1667,7 @@ const RegisterPage = () => {
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const files = Array.from(e.target.files);
-      const newPhotoUrls = files.map(file => URL.createObjectURL(file as File));
+      const newPhotoUrls = files.map(file => URL.createObjectURL(file as any));
       setFormData(prev => ({
         ...prev,
         photos: [...(prev.photos || []), ...newPhotoUrls].slice(0, 5)
@@ -1684,7 +1684,7 @@ const RegisterPage = () => {
 
   const replacePhoto = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      const newUrl = URL.createObjectURL(e.target.files[0] as File);
+      const newUrl = URL.createObjectURL(e.target.files[0] as any);
       setFormData(prev => {
         const newPhotos = [...(prev.photos || [])];
         newPhotos[index] = newUrl;
@@ -1696,7 +1696,7 @@ const RegisterPage = () => {
   const handleIdUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       // Simulate upload
-      setFormData(prev => ({ ...prev, id_document_url: URL.createObjectURL(e.target.files![0] as File) }));
+      setFormData(prev => ({ ...prev, id_document_url: URL.createObjectURL(e.target.files![0] as any) }));
     }
   };
 
@@ -2352,7 +2352,7 @@ const FeedComponent = ({ userId, isOwner }: { userId: any, isOwner?: boolean }) 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const files = Array.from(e.target.files).slice(0, 3 - newPostPhotos.length);
-      const newUrls = files.map(f => URL.createObjectURL(f as File));
+      const newUrls = files.map(f => URL.createObjectURL(f as any));
       setNewPostPhotos(prev => [...prev, ...newUrls].slice(0, 3));
     }
   };
