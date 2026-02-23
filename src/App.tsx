@@ -24,7 +24,10 @@ import {
   Mars,
   Camera,
   LayoutGrid,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Settings2,
+  Bell,
+  ArrowRight
 } from 'lucide-react';
 import { cn, calculateAge, calculateMatchScore } from './utils';
 import { UserProfile, ChatRequest, Post } from './types';
@@ -57,32 +60,39 @@ const Toast = ({ message, type, onClose }: { message: string, type: 'success' | 
 
 const BackgroundDecorations = () => {
   const location = useLocation();
-  const [randomData, setRandomData] = useState<{ icon: string, pos: string, rot: string } | null>(null);
+  const [bgImage, setBgImage] = useState<string>('');
 
   useEffect(() => {
-    const icons = ['venus', 'mars', 'heart'];
-    const positions = [
-      '-top-32 -left-32 w-[60rem] h-[60rem]',
-      'top-[20%] -right-48 w-[55rem] h-[55rem]',
-      '-bottom-48 -left-24 w-[50rem] h-[50rem]',
-      'bottom-[10%] -right-32 w-[45rem] h-[45rem]'
+    // Random high-quality generic images for page backgrounds
+    const backgrounds = [
+      "https://images.unsplash.com/photo-1516589174184-c68526614488?q=80&w=2000&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1522673607200-164848d79c6f?q=80&w=2000&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1516062423079-7ca13cdc7f5a?q=80&w=2000&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?q=80&w=2000&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?q=80&w=2000&auto=format&fit=crop"
     ];
-    const rotations = ['rotate-12', '-rotate-12', 'rotate-45', '-rotate-45', 'rotate-[30deg]'];
-
-    setRandomData({
-      icon: icons[Math.floor(Math.random() * icons.length)],
-      pos: positions[Math.floor(Math.random() * positions.length)],
-      rot: rotations[Math.floor(Math.random() * rotations.length)]
-    });
+    setBgImage(backgrounds[Math.floor(Math.random() * backgrounds.length)]);
   }, [location.pathname]);
-
-  if (!randomData) return null;
 
   return (
     <div className="fixed inset-0 pointer-events-none overflow-hidden z-[-1] select-none">
-      {randomData.icon === 'venus' && <Venus className={cn("absolute text-[#FFF9E5] opacity-20", randomData.pos, randomData.rot)} />}
-      {randomData.icon === 'mars' && <Mars className={cn("absolute text-[#FFF9E5] opacity-20", randomData.pos, randomData.rot)} />}
-      {randomData.icon === 'heart' && <Heart className={cn("absolute text-[#FFF9E5] opacity-20", randomData.pos, randomData.rot)} />}
+      {/* Soft Background Image */}
+      {bgImage && (
+        <motion.div
+          key={location.pathname}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 0.08 }}
+          transition={{ duration: 2 }}
+          className="absolute inset-0"
+        >
+          <img src={bgImage} className="w-full h-full object-cover grayscale brightness-150 contrast-50" alt="" />
+          <div className="absolute inset-0 bg-gradient-to-b from-stone-50 via-transparent to-stone-50" />
+        </motion.div>
+      )}
+
+      {/* Floating Decorative Elements */}
+      <div className="absolute top-1/4 -left-20 w-[40rem] h-[40rem] bg-rose-200/5 rounded-full blur-[100px] animate-pulse" />
+      <div className="absolute bottom-1/4 -right-20 w-[40rem] h-[40rem] bg-emerald-200/5 rounded-full blur-[100px] animate-pulse delay-1000" />
     </div>
   );
 };
@@ -224,7 +234,7 @@ const ProfileCard: React.FC<{ profile: UserProfile; onInteract?: () => void }> =
           <div>
             <div className="flex items-center justify-between mb-1">
               <h3 className="text-base font-black text-stone-900 truncate pr-2">
-                {profile.name}, {calculateAge(profile.dob)}
+                {profile.name}{calculateAge(profile.dob) > 0 ? `, ${calculateAge(profile.dob)}` : ""}
               </h3>
             </div>
             <div className="flex items-center gap-1.5 text-stone-500">
@@ -258,7 +268,7 @@ const ProfileCard: React.FC<{ profile: UserProfile; onInteract?: () => void }> =
 
             <button
               onClick={handleTestMatch}
-              className="px-4 py-2 bg-rose-600 text-white rounded-xl text-[10px] font-black uppercase tracking-tighter hover:bg-stone-900 transition-colors shadow-md shadow-rose-100 flex items-center gap-1.5"
+              className="px-3 py-2 bg-rose-600 text-white rounded-xl text-[10px] font-black uppercase tracking-tighter hover:bg-stone-900 transition-colors shadow-md shadow-rose-100 flex items-center gap-1"
             >
               <Sparkles className="w-3 h-3" /> Match
             </button>
@@ -270,6 +280,49 @@ const ProfileCard: React.FC<{ profile: UserProfile; onInteract?: () => void }> =
 };
 
 // --- Pages ---
+
+// --- Home Slider ---
+const HomeSlider = () => {
+  const [images, setImages] = useState<string[]>([]);
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    fetch('/api/settings/home_slider')
+      .then(res => res.json())
+      .then(data => setImages(data))
+      .catch(() => { });
+  }, []);
+
+  const fallbackImages = [
+    "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?q=80&w=2000&auto=format&fit=crop"
+  ];
+  const displayImages = images.length > 0 ? images : fallbackImages;
+
+  useEffect(() => {
+    if (displayImages.length <= 1) return;
+    const itv = setInterval(() => {
+      setIndex(prev => (prev + 1) % displayImages.length);
+    }, 5000);
+    return () => clearInterval(itv);
+  }, [displayImages]);
+
+  return (
+    <div className="absolute top-0 left-0 right-0 h-[450px] w-full overflow-hidden">
+      <AnimatePresence mode="wait">
+        <motion.img
+          key={index}
+          src={displayImages[index]}
+          initial={{ opacity: 0, scale: 1.1 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 1.05 }}
+          transition={{ duration: 1.5 }}
+          className="w-full h-full object-cover"
+        />
+      </AnimatePresence>
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/5 to-stone-50" />
+    </div>
+  );
+};
 
 const HomePage = () => {
   const [simulatedProfiles, setSimulatedProfiles] = useState([
@@ -288,58 +341,87 @@ const HomePage = () => {
   };
 
   return (
-    <div className="min-h-screen pt-20 pb-12 px-4 flex flex-col items-center justify-center bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-rose-50 via-stone-50 to-white">
+    <div className="min-h-screen pt-[450px] pb-12 px-4 flex flex-col items-center justify-center bg-stone-50 relative overflow-x-hidden">
+      <HomeSlider />
+
       <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="w-full max-w-md text-center space-y-6"
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full max-w-md text-center space-y-12 relative z-10"
       >
-        {/* ... existing content ... */}
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-rose-100 text-rose-700 rounded-full text-[10px] font-bold uppercase tracking-wider mb-2">
-          <Sparkles className="w-3 h-3" />
-          Community in crescita
+        <div className="space-y-4">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-rose-600 text-white rounded-full text-[11px] font-black uppercase tracking-wider mb-2 shadow-lg shadow-rose-200">
+            <Sparkles className="w-3.5 h-3.5" />
+            Community in crescita
+          </div>
+
+          <h1 className="text-5xl font-serif font-black leading-[1.1] tracking-tight text-stone-900 drop-shadow-sm">
+            Trova la tua <br /><span className="text-rose-600 italic">compagnia</span> ideale.
+          </h1>
+
+          <p className="text-stone-500 text-[11px] font-black uppercase tracking-[0.2em] mb-4 flex items-center justify-center gap-2">
+            <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
+            Membri Certificati e Sicurezza Garantita
+          </p>
+
+          <p className="text-lg text-stone-600 leading-relaxed px-4 font-medium opacity-80">
+            SoulMatch è il luogo sicuro dove incontrare persone reali. Ogni profilo è verificato manualmente per la tua sicurezza.
+          </p>
         </div>
 
-        <h1 className="text-4xl font-serif font-bold leading-tight tracking-tight text-stone-900">
-          Trova la tua <span className="text-rose-600 italic">compagnia</span> ideale.
-        </h1>
-
-        <p className="text-stone-500 text-[10px] font-medium uppercase tracking-widest mb-4 flex items-center justify-center gap-2">
-          <CheckCircle className="w-3 h-3 text-emerald-500" />
-          Membri Certificati e Sicurezza Garantita
-        </p>
-
-        <p className="text-base text-stone-600 leading-relaxed px-2">
-          SoulMatch è il luogo sicuro dove incontrare persone reali. Ogni profilo è verificato manualmente per la tua sicurezza.
-        </p>
-
-        <div className="flex flex-col gap-3 pt-4 px-4">
-          <Link to="/register" className="btn-primary text-base py-4 flex items-center justify-center gap-2">
-            Inizia Ora <ChevronRight className="w-4 h-4" />
+        <div className="flex flex-col gap-4 pt-4 px-4">
+          <Link to="/register" className="bg-rose-600 text-white text-lg py-5 rounded-[24px] font-black uppercase tracking-widest flex items-center justify-center gap-3 shadow-2xl shadow-rose-200 hover:scale-[1.02] active:scale-95 transition-all">
+            Inizia Ora <ArrowRight className="w-5 h-5" />
           </Link>
-          <Link to="/bacheca" className="btn-secondary text-base py-4 flex items-center justify-center gap-2">
-            Esplora Bacheca <Users className="w-4 h-4" />
-          </Link>
-          <Link to="/profile" className="btn-secondary text-base py-4 flex items-center justify-center gap-2">
-            La Mia Bacheca <LayoutGrid className="w-4 h-4" />
-          </Link>
+          <div className="grid grid-cols-2 gap-3">
+            <Link to="/bacheca" className="bg-white text-stone-900 text-sm py-4 rounded-[20px] font-bold border border-stone-100 flex items-center justify-center gap-2 shadow-xl shadow-stone-200 hover:bg-stone-50 transition-all">
+              <Users className="w-4 h-4 text-rose-500" /> Esplora
+            </Link>
+            <Link to="/profile" className="bg-white text-stone-900 text-sm py-4 rounded-[20px] font-bold border border-stone-100 flex items-center justify-center gap-2 shadow-xl shadow-stone-200 hover:bg-stone-50 transition-all">
+              <LayoutGrid className="w-4 h-4 text-rose-500" /> Profilo
+            </Link>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 pt-12">
+        {/* Square Feature Buttons */}
+        <div className="grid grid-cols-2 gap-4 pt-12 pb-8">
           {[
-            { icon: UserPlus, title: "Iscrizione Semplice", desc: "Crea il tuo profilo in pochi minuti." },
-            { icon: MessageSquare, title: "Messaggi Illimitati", desc: "Per gli utenti Premium." },
-            { icon: Sparkles, title: "Matching Smart", desc: "Filtri basati sulle tue preferenze." }
+            { icon: UserPlus, title: "Iscrizione", desc: "Semplice e Veloce", delay: 0.1, color: "rose", colSpan: false },
+            { icon: MessageSquare, title: "Messaggi", desc: "Sempre Illimitati", delay: 0.2, color: "emerald", colSpan: false },
+            { icon: Sparkles, title: "Matching", desc: "Smart & Intelligente", delay: 0.3, color: "rose", colSpan: true }
           ].map((feature, i) => (
-            <div key={i} className="p-5 rounded-2xl bg-white border border-stone-100 shadow-sm text-left flex items-center gap-4">
-              <div className="w-10 h-10 bg-stone-50 rounded-xl flex items-center justify-center text-rose-600 shrink-0">
-                <feature.icon className="w-5 h-5" />
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, scale: 0.9 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ delay: feature.delay }}
+              whileHover={{ y: -8, rotateX: 4, rotateY: 2, scale: 1.02 }}
+              className={cn(
+                "aspect-square rounded-[40px] bg-white border border-stone-100 shadow-[0_20px_45px_rgba(0,0,0,0.06)] flex flex-col items-center justify-center gap-4 group p-8 text-center select-none cursor-pointer relative overflow-hidden perspective-1000",
+                feature.colSpan ? "col-span-2 aspect-[auto] py-10" : ""
+              )}
+              style={{ transformStyle: 'preserve-3d' }}
+            >
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-rose-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+
+              <div
+                className={cn(
+                  "w-20 h-20 rounded-[28px] flex items-center justify-center transition-all group-hover:scale-110 group-hover:rotate-3 shadow-lg",
+                  feature.color === 'rose' ? "bg-rose-50 text-rose-600 shadow-rose-100" : "bg-emerald-50 text-emerald-600 shadow-emerald-100"
+                )}
+                style={{ transform: 'translateZ(20px)' }}
+              >
+                <feature.icon className="w-10 h-10" />
               </div>
-              <div>
-                <h3 className="text-sm font-bold text-stone-900">{feature.title}</h3>
-                <p className="text-stone-500 text-xs leading-relaxed">{feature.desc}</p>
+              <div className="space-y-1" style={{ transform: 'translateZ(10px)' }}>
+                <h3 className="text-[13px] font-black text-stone-900 uppercase tracking-[0.15em]">{feature.title}</h3>
+                <p className="text-stone-400 text-[10px] font-black uppercase tracking-[0.2em] opacity-60">{feature.desc}</p>
               </div>
-            </div>
+              <div className="absolute -bottom-4 -right-4 opacity-[0.03] group-hover:opacity-[0.05] transition-opacity">
+                <feature.icon className="w-24 h-24" />
+              </div>
+            </motion.div>
           ))}
         </div>
 
@@ -388,7 +470,7 @@ const HomePage = () => {
                           <span className="ml-1 text-[10px] font-bold">{p.hearts}</span>
                         </button>
                       </div>
-                      <button className="px-4 py-2 bg-rose-600 text-white rounded-xl text-[10px] font-black uppercase tracking-tighter flex items-center gap-1.5">
+                      <button className="px-3 py-2 bg-rose-600 text-white rounded-xl text-[10px] font-black uppercase tracking-tighter flex items-center gap-1">
                         <Sparkles className="w-3 h-3" /> Match
                       </button>
                     </div>
@@ -474,7 +556,7 @@ const ProfileDetailPage = () => {
     });
   };
 
-  const handleChatRequest = async () => {
+  const handleInstantChat = async () => {
     if (!currentUser?.id) {
       setToast({ message: "Devi essere iscritto!", type: 'error' });
       return;
@@ -483,30 +565,71 @@ const ProfileDetailPage = () => {
       setToast({ message: "Funzione riservata agli utenti Premium!", type: 'info' });
       return;
     }
-    if (chatStatus === 'none' || chatStatus === 'rejected') {
-      setIsMessageModalOpen(true);
-    } else if (chatStatus === 'approved') {
-      setToast({ message: "Chat già attiva!", type: 'success' });
-    } else {
-      setToast({ message: "Richiesta già in attesa", type: 'info' });
+
+    // Check if user is online for instant chat
+    if (!profile?.is_online) {
+      setToast({ message: "L'utente non è online. Puoi solo inviare un messaggio offline (in basso).", type: 'info' });
+      return;
     }
+
+    if (chatStatus === 'approved') {
+      setToast({ message: "Chat già attiva!", type: 'success' });
+      return;
+    }
+
+    if (chatStatus === 'pending') {
+      setToast({ message: "Richiesta già inviata!", type: 'info' });
+      return;
+    }
+
+    // Send instant chat request
+    const res = await fetch('/api/chat-requests', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from_user_id: currentUser.id, to_user_id: profile?.id, message: "Richiesta di chat istantanea" })
+    });
+
+    if (res.ok) {
+      setChatStatus('pending');
+      setToast({ message: "Richiesta di chat istantanea inviata!", type: 'success' });
+    }
+  };
+
+  const handleOpenMessageModal = () => {
+    if (!currentUser?.id) {
+      setToast({ message: "Devi essere iscritto!", type: 'error' });
+      return;
+    }
+    if (!currentUser.is_paid) {
+      setToast({ message: "Funzione Premium riservata!", type: 'info' });
+      return;
+    }
+    setIsMessageModalOpen(true);
   };
 
   const sendChatMessage = async () => {
     if (!messageText.trim()) return;
-    const res = await fetch('/api/chat-requests', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from_user_id: currentUser!.id, to_user_id: profile?.id, message: messageText })
-    });
-    const data = await res.json();
-    if (res.ok) {
-      setChatStatus('pending');
-      setToast({ message: "Messaggio inviato!", type: 'success' });
-      setIsMessageModalOpen(false);
-      setMessageText('');
-    } else {
-      setToast({ message: data.error || "Errore", type: 'error' });
+
+    // Close modal immediately for better UX
+    setIsMessageModalOpen(false);
+    const textToSend = messageText;
+    setMessageText('');
+
+    try {
+      const res = await fetch('/api/chat-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ from_user_id: currentUser!.id, to_user_id: profile?.id, message: textToSend })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setChatStatus('pending');
+        setToast({ message: "Messaggio inviato con successo!", type: 'success' });
+      } else {
+        setToast({ message: data.error || "Errore durante l'invio", type: 'error' });
+      }
+    } catch (err) {
+      setToast({ message: "Errore di connessione", type: 'error' });
     }
   };
 
@@ -561,7 +684,7 @@ const ProfileDetailPage = () => {
 
         <div className="absolute bottom-8 left-8 right-8 text-white">
           <div className="flex items-center gap-2 mb-2">
-            {profile.is_paid && (
+            {!!profile.is_paid && (
               <span className="bg-amber-400 text-stone-900 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
                 <Sparkles className="w-3 h-3" /> Premium
               </span>
@@ -570,7 +693,7 @@ const ProfileDetailPage = () => {
               {profile.gender}
             </span>
           </div>
-          <h1 className="text-4xl font-serif font-bold">{profile.name}, {calculateAge(profile.dob)}</h1>
+          <h1 className="text-4xl font-serif font-bold">{profile.name}{calculateAge(profile.dob) > 0 ? `, ${calculateAge(profile.dob)}` : ""}</h1>
           <p className="flex items-center gap-1 opacity-80 text-sm mt-1"><MapPin className="w-4 h-4" /> {profile.city}</p>
         </div>
       </div>
@@ -608,7 +731,7 @@ const ProfileDetailPage = () => {
           </button>
 
           <button
-            onClick={handleChatRequest}
+            onClick={handleInstantChat}
             className="flex flex-col items-center gap-1 group relative"
           >
             <div className={cn(
@@ -772,20 +895,34 @@ const ProfileDetailPage = () => {
         </div>
 
         <div className="pt-6 space-y-4 text-center">
-          <div className="p-4 bg-rose-600 text-white rounded-[32px] shadow-xl shadow-rose-200 space-y-3">
-            <p className="text-[11px] font-bold uppercase tracking-widest">Incrocio dati intelligente</p>
-            <h3 className="text-2xl font-serif font-bold">Invia un Messaggio</h3>
-            <p className="text-xs text-rose-100 px-4 leading-relaxed">
-              {(currentUser && profile) ? `Siete compatibili al ${calculateMatchScore(currentUser, profile)}%. Non lasciarti scappare questa occasione!` : "Scopri il tuo livello di affinità iscrivendoti oggi!"}
-            </p>
-            <button
-              onClick={handleChatRequest}
-              className="w-full bg-white text-rose-600 py-4 rounded-2xl text-base font-black uppercase tracking-tighter shadow-lg hover:bg-stone-50 transition-all flex items-center justify-center gap-3"
-            >
-              <MessageSquare className="w-5 h-5 fill-current" />
-              {chatStatus === 'approved' ? 'Apri Chat' : chatStatus === 'pending' ? 'Richiesta Inviata' : 'Inizia Conversazione'}
-            </button>
-          </div>
+          {chatStatus !== 'pending' && (
+            <div className="p-4 bg-rose-600 text-white rounded-[32px] shadow-xl shadow-rose-200 space-y-3">
+              <p className="text-[11px] font-bold uppercase tracking-widest">Incrocio dati intelligente</p>
+              <h3 className="text-2xl font-serif font-bold">{chatStatus === 'approved' ? 'Chat Attiva' : 'Invia un Messaggio'}</h3>
+              <p className="text-xs text-rose-100 px-4 leading-relaxed">
+                {chatStatus === 'approved'
+                  ? "Siete compatibili! Potete parlare liberamente."
+                  : (currentUser && profile) ? `Siete compatibili al ${calculateMatchScore(currentUser, profile)}%. Non lasciarti scappare questa occasione!` : "Scopri il tuo livello di affinità iscrivendoti oggi!"}
+              </p>
+              <button
+                onClick={handleOpenMessageModal}
+                className="w-full bg-white text-rose-600 py-4 rounded-2xl text-base font-black uppercase tracking-tighter shadow-lg hover:bg-stone-50 transition-all flex items-center justify-center gap-3"
+              >
+                <MessageSquare className="w-5 h-5 fill-current" />
+                {chatStatus === 'approved' ? 'Apri Chat' : 'Inizia Conversazione'}
+              </button>
+            </div>
+          )}
+
+          {chatStatus === 'pending' && (
+            <div className="p-6 bg-emerald-50 border border-emerald-100 rounded-[32px] text-center space-y-2">
+              <div className="w-10 h-10 bg-emerald-500 text-white rounded-full flex items-center justify-center mx-auto mb-2">
+                <CheckCircle className="w-6 h-6" />
+              </div>
+              <p className="text-emerald-800 font-black uppercase text-[10px] tracking-widest">Richiesta Inviata</p>
+              <p className="text-emerald-600/70 text-xs font-medium italic">Il tuo messaggio è in attesa di essere letto.</p>
+            </div>
+          )}
 
           <button
             onClick={() => navigate('/bacheca')}
@@ -795,6 +932,59 @@ const ProfileDetailPage = () => {
           </button>
         </div>
       </div>
+
+      {/* Message Modal */}
+      <AnimatePresence>
+        {isMessageModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsMessageModalOpen(false)}
+              className="absolute inset-0 bg-stone-900/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-sm bg-white rounded-[40px] p-8 shadow-2xl space-y-6"
+            >
+              <div className="text-center space-y-2">
+                <div className="w-16 h-16 bg-rose-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <MessageSquare className="w-8 h-8 text-rose-600" />
+                </div>
+                <h3 className="text-xl font-serif font-bold text-stone-900">Invia Messaggio</h3>
+                <p className="text-stone-500 text-xs">Scrivi qualcosa a {profile.name} per iniziare.</p>
+              </div>
+
+              <textarea
+                value={messageText}
+                onChange={(e) => setMessageText(e.target.value)}
+                placeholder="Ciao! Mi piacerebbe conoscerti..."
+                className="w-full h-32 p-4 rounded-2xl bg-stone-50 border border-stone-200 text-sm outline-none focus:ring-2 focus:ring-rose-500 focus:bg-white transition-all resize-none font-medium text-stone-800"
+                autoFocus
+              />
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setIsMessageModalOpen(false)}
+                  className="flex-1 py-4 text-stone-400 text-xs font-black uppercase tracking-widest hover:text-stone-600 transition-all font-serif"
+                >
+                  Annulla
+                </button>
+                <button
+                  onClick={sendChatMessage}
+                  disabled={!messageText.trim()}
+                  className="flex-1 bg-rose-600 text-white py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-xl shadow-rose-200 disabled:opacity-50 disabled:shadow-none hover:bg-rose-700 transition-all active:scale-95"
+                >
+                  Invia Ora
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
@@ -1111,6 +1301,111 @@ const BachecaPage = () => {
   );
 };
 
+// --- Admin Page ---
+const AdminPage = () => {
+  const [sliderImages, setSliderImages] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [newUrl, setNewUrl] = useState('');
+  const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
+
+  const fetchSliderImages = async () => {
+    try {
+      const res = await fetch('/api/settings/home_slider');
+      if (res.ok) {
+        setSliderImages(await res.json());
+      }
+    } catch (e) { }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchSliderImages();
+  }, []);
+
+  const handleUpdateSlider = async (newImages: string[]) => {
+    try {
+      const res = await fetch('/api/settings/home_slider', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ value: newImages })
+      });
+      if (res.ok) {
+        setSliderImages(newImages);
+        setToast({ message: "Slider aggiornato con successo!", type: 'success' });
+      }
+    } catch (e) {
+      setToast({ message: "Errore durante l'aggiornamento.", type: 'error' });
+    }
+  };
+
+  const addImage = () => {
+    if (!newUrl) return;
+    const updated = [...sliderImages, newUrl];
+    handleUpdateSlider(updated);
+    setNewUrl('');
+  };
+
+  const removeImage = (index: number) => {
+    const updated = sliderImages.filter((_, i) => i !== index);
+    handleUpdateSlider(updated);
+  };
+
+  if (loading) return <div className="min-h-screen flex items-center justify-center">Caricamento Admin...</div>;
+
+  return (
+    <div className="min-h-screen pt-24 pb-12 px-6 bg-stone-50">
+      <AnimatePresence>
+        {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      </AnimatePresence>
+      <div className="max-w-2xl mx-auto space-y-8">
+        <div className="bg-white p-8 rounded-[40px] shadow-2xl border border-stone-100 italic">
+          <h1 className="text-3xl font-serif font-black text-stone-900 mb-2 flex items-center gap-3">
+            <Settings2 className="w-8 h-8 text-rose-600" />
+            Pannello Amministrativo
+          </h1>
+          <p className="text-stone-500 text-sm mb-8">Gestisci i contenuti globali dell'applicazione.</p>
+
+          <div className="space-y-6">
+            <div className="p-6 bg-stone-50 rounded-3xl border border-stone-100">
+              <h2 className="text-lg font-bold text-stone-800 mb-4 flex items-center gap-2">
+                <ImageIcon className="w-5 h-5 text-rose-500" />
+                Gestione Slider Home
+              </h2>
+              <div className="grid grid-cols-3 gap-4 mb-6">
+                {sliderImages.map((img, i) => (
+                  <div key={i} className="aspect-video rounded-2xl overflow-hidden relative group border border-stone-200 shadow-sm transition-transform hover:scale-[1.02]">
+                    <img src={img} className="w-full h-full object-cover" />
+                    <button
+                      onClick={() => removeImage(i)}
+                      className="absolute top-2 right-2 w-8 h-8 bg-black/60 backdrop-blur-md text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <input
+                  value={newUrl}
+                  onChange={(e) => setNewUrl(e.target.value)}
+                  placeholder="URL nuova immagine..."
+                  className="flex-1 p-4 rounded-2xl bg-white border border-stone-200 text-sm outline-none focus:ring-2 focus:ring-rose-500 transition-all font-medium"
+                />
+                <button
+                  onClick={addImage}
+                  className="bg-rose-600 text-white px-6 py-4 rounded-2xl text-sm font-black uppercase tracking-wider hover:bg-rose-700 transition-all shadow-lg shadow-rose-200 active:scale-95"
+                >
+                  Aggiungi
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const RegisterPage = () => {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
@@ -1141,20 +1436,44 @@ const RegisterPage = () => {
   });
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem('soulmatch_user');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed) {
-          setFormData(prev => ({ ...prev, ...parsed }));
+    const initData = async () => {
+      try {
+        const savedDraft = localStorage.getItem('soulmatch_reg_draft');
+        if (savedDraft) {
+          setFormData(JSON.parse(savedDraft));
+          return;
         }
+
+        const savedUserStr = localStorage.getItem('soulmatch_user');
+        if (savedUserStr) {
+          const user = JSON.parse(savedUserStr);
+          if (user.id) {
+            // Fetch fresh data from server to ensure we have all fields
+            const res = await fetch(`/api/profiles/${user.id}`);
+            if (res.ok) {
+              const freshData = await res.json();
+              setFormData(prev => ({ ...prev, ...freshData }));
+            } else {
+              setFormData(prev => ({ ...prev, ...user }));
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Error initializing registration form:", e);
       }
-    } catch (e) { }
+    };
+    initData();
   }, []);
 
+  useEffect(() => {
+    localStorage.setItem('soulmatch_reg_draft', JSON.stringify(formData));
+  }, [formData]);
+
   const handleNextToStep2 = () => {
-    if (!formData.name || !formData.surname || !formData.dob || !formData.city || !formData.job || !formData.description) {
-      alert("Compila tutti i campi obbligatori del primo step (Nome, Cognome, Nascita, Città, Lavoro, Descrizione) per proseguire.");
+    const required = ['name', 'surname', 'dob', 'city', 'job', 'description'];
+    const missing = required.filter(k => !formData[k as keyof UserProfile]);
+    if (missing.length > 0) {
+      alert("Per favore, completa tutti i campi del profilo per continuare.");
       return;
     }
     setStep(2);
@@ -1192,17 +1511,34 @@ const RegisterPage = () => {
 
   const handleSubmit = async () => {
     try {
-      const res = await fetch('/api/register', {
-        method: 'POST',
+      console.log("Submitting formData:", formData);
+      const url = formData.id ? `/api/profiles/${formData.id}` : '/api/register';
+      const method = formData.id ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
       });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        alert("Errore: " + (errorData.error || res.statusText));
+        return;
+      }
+
       const data = await res.json();
+      console.log("Registration/Update success:", data);
       localStorage.setItem('soulmatch_user', JSON.stringify(data));
+      localStorage.removeItem('soulmatch_reg_draft');
       window.dispatchEvent(new Event('user-auth-change'));
-      navigate('/bacheca');
+
+      setTimeout(() => {
+        navigate('/bacheca');
+      }, 100);
     } catch (err) {
-      console.error(err);
+      console.error("Submission error:", err);
+      alert("Errore di connessione.");
     }
   };
 
@@ -1210,9 +1546,19 @@ const RegisterPage = () => {
     <div className="min-h-screen pt-20 pb-12 px-4 bg-stone-50 flex justify-center">
       <div className="w-full max-w-md">
         <div className="mb-6 flex justify-between items-end">
-          <div>
-            <h1 className="text-2xl font-serif font-bold text-stone-900">Iscriviti</h1>
-            <p className="text-stone-500 text-xs">Step {step} di 5</p>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => navigate(-1)}
+              className="w-10 h-10 bg-white border border-stone-200 rounded-full flex items-center justify-center text-stone-600 shadow-sm hover:bg-stone-50 transition-all"
+            >
+              <ChevronRight className="w-5 h-5 rotate-180" />
+            </button>
+            <div>
+              <h1 className="text-2xl font-serif font-bold text-stone-900">
+                {localStorage.getItem('soulmatch_user') ? 'Modifica Profilo' : 'Iscriviti'}
+              </h1>
+              <p className="text-stone-500 text-xs">Step {step} di 5</p>
+            </div>
           </div>
           <div className="flex gap-1.5 pb-1">
             {[1, 2, 3, 4, 5].map(i => (
@@ -1669,30 +2015,39 @@ const FeedComponent = ({ userId, isOwner }: { userId: number, isOwner?: boolean 
   };
 
   return (
-    <div className="space-y-6">
-      <h2 className="text-xl font-serif font-bold text-stone-900 flex items-center gap-2">
-        <LayoutGrid className="w-5 h-5 text-rose-600" />
-        {isOwner ? "La Mia Bacheca" : "Bacheca Feed"}
-      </h2>
+    <div className="space-y-8">
+      <div className="flex items-center justify-between px-2">
+        <h2 className="text-xl font-serif font-black text-stone-900 flex items-center gap-3">
+          <div className="w-10 h-10 bg-emerald-50 rounded-2xl flex items-center justify-center">
+            <LayoutGrid className="w-5 h-5 text-emerald-500" />
+          </div>
+          {isOwner ? "La Mia Bacheca" : "Bacheca Feed"}
+        </h2>
+      </div>
 
       {isOwner && (
-        <div className="bg-white p-4 rounded-3xl shadow-sm border border-stone-100 flex flex-col gap-3">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white p-6 rounded-[32px] shadow-xl border border-stone-100 flex flex-col gap-4 relative overflow-hidden"
+        >
+          <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500 opacity-20" />
           <textarea
             value={newPostDesc}
             onChange={(e) => setNewPostDesc(e.target.value)}
             placeholder="A cosa stai pensando oggi?"
-            className="w-full text-sm outline-none resize-none bg-transparent placeholder:text-stone-400"
-            rows={2}
+            className="w-full text-base outline-none resize-none bg-transparent placeholder:text-stone-300 font-medium leading-relaxed"
+            rows={3}
           />
 
           {newPostPhotos.length > 0 && (
-            <div className="flex gap-2 mb-2 overflow-x-auto pb-2 scrollbar-hide">
+            <div className="flex gap-3 mb-2 overflow-x-auto pb-2 scrollbar-hide">
               {newPostPhotos.map((url, i) => (
-                <div key={i} className="w-20 h-20 shrink-0 rounded-2xl overflow-hidden relative border border-stone-200">
+                <div key={i} className="w-24 h-24 shrink-0 rounded-[20px] overflow-hidden relative border-2 border-stone-50 shadow-md">
                   <img src={url} className="w-full h-full object-cover" />
                   <button
                     onClick={() => setNewPostPhotos(p => p.filter((_, idx) => idx !== i))}
-                    className="absolute top-1 right-1 w-5 h-5 bg-rose-600 text-white rounded-full flex items-center justify-center text-[10px] shadow-sm"
+                    className="absolute top-1.5 right-1.5 w-6 h-6 bg-rose-600 text-white rounded-full flex items-center justify-center text-xs shadow-xl active:scale-90 transition-transform"
                   >
                     ×
                   </button>
@@ -1701,63 +2056,103 @@ const FeedComponent = ({ userId, isOwner }: { userId: number, isOwner?: boolean 
             </div>
           )}
 
-          <div className="flex items-center justify-between border-t border-stone-100 pt-3">
+          <div className="flex items-center justify-between border-t border-stone-50 pt-4 mt-2">
             <div className="flex items-center gap-2">
-              <label className="flex items-center gap-1.5 text-xs text-stone-500 font-bold bg-stone-50 px-3 py-1.5 rounded-xl cursor-pointer hover:bg-stone-100 transition-colors">
-                <ImageIcon className="w-4 h-4 text-emerald-500" />
-                {newPostPhotos.length < 3 ? "Aggiungi Foto" : "Max 3 foto"}
+              <label className="flex items-center gap-2 text-[11px] text-emerald-700 font-black uppercase tracking-widest bg-emerald-50 px-4 py-2.5 rounded-2xl cursor-pointer hover:bg-emerald-100 transition-all active:scale-95">
+                <ImageIcon className="w-4 h-4" />
+                {newPostPhotos.length < 3 ? "Aggiungi Foto" : "Max Raggiunto"}
                 <input type="file" accept="image/*" multiple className="hidden" disabled={newPostPhotos.length >= 3} onChange={handlePhotoUpload} />
               </label>
             </div>
             <button
               onClick={submitPost}
               disabled={isPosting || (newPostPhotos.length === 0 && !newPostDesc)}
-              className="bg-rose-600 text-white px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider disabled:opacity-50 transition-all hover:bg-rose-700"
+              className="bg-stone-900 text-white px-8 py-3 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] disabled:opacity-20 transition-all hover:bg-black shadow-lg active:scale-95"
             >
               Pubblica
             </button>
           </div>
-        </div>
+        </motion.div>
       )}
 
-      <div className="space-y-5">
+      <div className="space-y-8">
         {posts.length === 0 ? (
-          <p className="text-center text-stone-400 text-xs py-8 italic border border-dashed border-stone-200 rounded-3xl">Nessun post da mostrare.</p>
+          <div className="text-center py-16 bg-white rounded-[40px] border border-dashed border-stone-200">
+            <div className="w-16 h-16 bg-stone-50 rounded-full flex items-center justify-center mx-auto mb-4">
+              <ImageIcon className="w-8 h-8 text-stone-200" />
+            </div>
+            <p className="text-stone-400 text-sm font-medium italic">Ancora nessun post nella tua bacheca.</p>
+          </div>
         ) : (
           posts.map(post => (
-            <div key={post.id} className="bg-white rounded-3xl overflow-hidden shadow-sm border border-stone-100">
-              <div className="p-3 flex items-center gap-3">
-                <img src={post.author_photo || `https://picsum.photos/seed/${post.author_name}/100`} className="w-8 h-8 rounded-full object-cover border border-stone-200" />
+            <motion.div
+              key={post.id}
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true }}
+              className="bg-white rounded-[40px] overflow-hidden shadow-2xl border border-stone-50 group hover:shadow-rose-100/50 transition-shadow duration-500"
+            >
+              <div className="p-5 flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl overflow-hidden border-2 border-stone-50 ring-4 ring-stone-50/50">
+                  <img src={post.author_photo || `https://picsum.photos/seed/${post.author_name}/100`} className="w-full h-full object-cover" />
+                </div>
                 <div>
-                  <h4 className="text-xs font-bold text-stone-900">{post.author_name}</h4>
-                  <p className="text-[10px] text-stone-400">{new Date(post.created_at).toLocaleDateString()} alle {new Date(post.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                  <h4 className="text-sm font-black text-stone-900 leading-none mb-1">{post.author_name}</h4>
+                  <p className="text-[10px] text-stone-400 font-bold uppercase tracking-widest">
+                    {new Date(post.created_at).toLocaleDateString()} • {new Date(post.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </p>
                 </div>
               </div>
 
               {post.photos.length > 0 && (
-                <div className="w-full aspect-square overflow-x-auto snap-x snap-mandatory flex scrollbar-hide">
+                <div className="w-full aspect-square overflow-x-auto snap-x snap-mandatory flex scrollbar-hide relative group/slider">
                   {post.photos.map((ph, i) => (
                     <div key={i} className="w-full h-full shrink-0 snap-center">
                       <img src={ph} className="w-full h-full object-cover" onContextMenu={(e) => e.preventDefault()} />
                     </div>
                   ))}
+                  {post.photos.length > 1 && (
+                    <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1.5">
+                      {post.photos.map((_, i) => (
+                        <div key={i} className="w-1.5 h-1.5 rounded-full bg-white/50 backdrop-blur-md" />
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 
-              <div className="p-4 space-y-3">
-                <p className="text-sm text-stone-800 leading-relaxed"><span className="font-bold text-xs">{post.author_name}</span> {post.description}</p>
-                <div className="flex gap-4 items-center pt-2">
-                  <button onClick={() => toggleInteraction(post.id, 'like')} className={cn("flex items-center gap-1.5 text-xs font-bold transition-colors", post.has_liked ? "text-blue-500" : "text-stone-400 hover:text-blue-400")}>
-                    <ThumbsUp className={cn("w-5 h-5", post.has_liked ? "fill-current" : "")} />
+              <div className="p-6 space-y-5">
+                <p className="text-base text-stone-800 leading-relaxed font-medium">
+                  {post.description}
+                </p>
+                <div className="flex gap-6 items-center pt-2">
+                  <button
+                    onClick={() => toggleInteraction(post.id, 'like')}
+                    className={cn(
+                      "flex items-center gap-2.5 text-xs font-black tracking-widest uppercase transition-all",
+                      post.has_liked ? "text-blue-500 scale-110" : "text-stone-300 hover:text-blue-400"
+                    )}
+                  >
+                    <div className={cn("w-10 h-10 rounded-2xl flex items-center justify-center transition-all", post.has_liked ? "bg-blue-50" : "bg-stone-50")}>
+                      <ThumbsUp className={cn("w-5 h-5", post.has_liked ? "fill-current" : "")} />
+                    </div>
                     {post.likes_count}
                   </button>
-                  <button onClick={() => toggleInteraction(post.id, 'heart')} className={cn("flex items-center gap-1.5 text-xs font-bold transition-colors", post.has_hearted ? "text-rose-500" : "text-stone-400 hover:text-rose-400")}>
-                    <Heart className={cn("w-5 h-5", post.has_hearted ? "fill-current" : "")} />
+                  <button
+                    onClick={() => toggleInteraction(post.id, 'heart')}
+                    className={cn(
+                      "flex items-center gap-2.5 text-xs font-black tracking-widest uppercase transition-all",
+                      post.has_hearted ? "text-rose-500 scale-110" : "text-stone-300 hover:text-rose-400"
+                    )}
+                  >
+                    <div className={cn("w-10 h-10 rounded-2xl flex items-center justify-center transition-all", post.has_hearted ? "bg-rose-50" : "bg-stone-50")}>
+                      <Heart className={cn("w-5 h-5", post.has_hearted ? "fill-current" : "")} />
+                    </div>
                     {post.hearts_count}
                   </button>
                 </div>
               </div>
-            </div>
+            </motion.div>
           ))
         )}
       </div>
@@ -1789,25 +2184,14 @@ const ProfilePage = () => {
   };
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem('soulmatch_user');
-      if (saved) {
+    const saved = localStorage.getItem('soulmatch_user');
+    if (saved) {
+      try {
         const parsed = JSON.parse(saved);
-        if (parsed && parsed.id) {
-          fetchData(parsed.id);
-        } else {
-          setLoading(false);
-          navigate('/register');
-        }
-      } else {
-        setLoading(false);
-        navigate('/register');
-      }
-    } catch (e) {
-      console.error("Failed to parse user from localStorage", e);
-      setLoading(false);
-      navigate('/register');
-    }
+        if (parsed?.id) fetchData(parsed.id);
+        else navigate('/register');
+      } catch (e) { navigate('/register'); }
+    } else navigate('/register');
   }, [navigate]);
 
   const handleRequestAction = async (requestId: number, status: 'approved' | 'rejected') => {
@@ -1825,19 +2209,26 @@ const ProfilePage = () => {
     }
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-4 border-rose-600 border-t-transparent rounded-full animate-spin" /></div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center"><div className="w-10 h-10 border-4 border-rose-600 border-t-transparent rounded-full animate-spin" /></div>;
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-stone-50 pt-24 pb-12 px-6">
+    <div className="min-h-screen bg-stone-50 pt-24 pb-24 px-6 relative overflow-x-hidden">
       <AnimatePresence>
         {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       </AnimatePresence>
 
-      <div className="max-w-md mx-auto space-y-8">
-        <div className="bg-white p-6 rounded-3xl border border-stone-200 shadow-lg space-y-6">
-          <div className="flex items-center gap-4">
-            <div className="w-20 h-20 rounded-2xl overflow-hidden border-2 border-rose-100 bg-stone-100">
+      <div className="max-w-md mx-auto space-y-12">
+        {/* Header Stats Box */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-white p-8 rounded-[48px] shadow-[0_40px_80px_-15px_rgba(0,0,0,0.08)] border border-stone-100 space-y-10 relative overflow-hidden"
+        >
+          <div className="absolute top-0 right-0 w-48 h-48 bg-rose-50 rounded-full blur-[80px] -mr-16 -mt-16 opacity-70" />
+
+          <div className="flex items-center gap-6 relative z-10">
+            <div className="w-28 h-28 rounded-[38px] overflow-hidden border-4 border-white shadow-2xl rotate-3">
               <img
                 src={(user.photos && user.photos.length > 0) ? user.photos[0] : (user.photo_url || `https://picsum.photos/seed/${user.name}/200`)}
                 className="w-full h-full object-cover"
@@ -1845,125 +2236,133 @@ const ProfilePage = () => {
               />
             </div>
             <div>
-              <h1 className="text-2xl font-serif font-bold text-stone-900">{user.name} {user.surname}</h1>
-              <p className="text-stone-500 text-xs">{user.is_paid ? 'Membro Premium' : 'Membro Base'}</p>
+              <h1 className="text-3xl font-serif font-black text-stone-900 leading-none mb-2">{user.name}</h1>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className={cn(
+                  "px-3 py-1 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-sm border",
+                  user.is_paid ? "bg-rose-600 text-white border-rose-500" : "bg-white text-stone-400 border-stone-100"
+                )}>
+                  {user.is_paid ? 'Membro Premium' : 'Piano Base'}
+                </span>
+              </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
-            <div className="bg-stone-50 p-3 rounded-2xl text-center">
-              <p className="text-stone-400 text-[10px] uppercase font-bold">Like</p>
-              <p className="text-xl font-bold text-stone-900">{user.likes_count || 0}</p>
-            </div>
-            <div className="bg-stone-50 p-3 rounded-2xl text-center">
-              <p className="text-stone-400 text-[10px] uppercase font-bold">Cuori</p>
-              <p className="text-xl font-bold text-stone-900">{user.hearts_count || 0}</p>
-            </div>
-            <div className="bg-stone-50 p-3 rounded-2xl text-center">
-              <p className="text-stone-400 text-[10px] uppercase font-bold">Messaggi</p>
-              <p className="text-xl font-bold text-stone-900">0</p>
-            </div>
-          </div>
-
-        </div>
-
-        <div className="space-y-4 pt-4 border-t border-stone-100">
-          <h3 className="text-sm font-bold text-stone-900 pb-2">Galleria</h3>
-          {user.photos && user.photos.length > 0 ? (
-            <div className="grid grid-cols-2 gap-2">
-              {user.photos.map((url, i) => (
-                <div key={i} className="aspect-square rounded-2xl overflow-hidden border border-stone-200">
-                  <img src={url} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+          <div className="grid grid-cols-4 gap-4 relative z-10">
+            {[
+              { label: 'Like', val: user.likes_count || 0, icon: ThumbsUp, color: 'blue' },
+              { label: 'Cuori', val: user.hearts_count || 0, icon: Heart, color: 'rose' },
+              { label: 'Foto', val: user.photos?.length || 0, icon: Camera, color: 'emerald' },
+              { label: 'Msg', val: 0, icon: MessageSquare, color: 'amber' }
+            ].map((stat, i) => (
+              <div key={i} className="bg-stone-50/40 backdrop-blur-sm p-4 rounded-[28px] text-center border border-white/50 shadow-inner flex flex-col items-center gap-2 group hover:bg-white hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                <div className={cn("w-8 h-8 rounded-xl flex items-center justify-center mb-1 transition-transform group-hover:scale-110",
+                  stat.color === 'blue' ? "bg-blue-50 text-blue-500" :
+                    stat.color === 'rose' ? "bg-rose-50 text-rose-500" :
+                      stat.color === 'emerald' ? "bg-emerald-50 text-emerald-500" : "bg-amber-50 text-amber-500"
+                )}>
+                  <stat.icon className="w-4 h-4" />
                 </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-stone-400 text-xs italic">Nessuna foto aggiunta.</p>
-          )}
-        </div>
-
-        <div className="space-y-4 pt-4 border-t border-stone-100">
-          <h3 className="text-sm font-bold text-stone-900 pb-2">I Tuoi Dati</h3>
-          <div className="space-y-2 text-xs">
-            <div className="flex justify-between"><span className="text-stone-400">Città:</span> <span className="font-medium">{user.city}</span></div>
-            <div className="flex justify-between"><span className="text-stone-400">Lavoro:</span> <span className="font-medium">{user.job || 'Non specificato'}</span></div>
-            <div className="flex justify-between"><span className="text-stone-400">Genere:</span> <span className="font-medium">{user.gender}</span></div>
-            <div className="flex justify-between"><span className="text-stone-400">Orientamento:</span> <span className="font-medium">{user.orientation}</span></div>
-            <div className="flex justify-between"><span className="text-stone-400">Cerchi:</span> <span className="font-medium">{user.looking_for_gender}</span></div>
-          </div>
-        </div>
-
-        <div className="pt-4 flex flex-col gap-3">
-          <button onClick={() => navigate('/register')} className="btn-secondary w-full py-4 text-sm font-bold shadow-sm">Modifica Profilo</button>
-          <button onClick={() => navigate('/')} className="btn-secondary w-full py-4 text-sm font-bold shadow-sm flex items-center justify-center gap-2">
-            <Home className="w-4 h-4" /> Torna in Home
-          </button>
-          <div className="pt-2 border-t border-stone-100 mt-2">
-            <button
-              onClick={() => {
-                localStorage.removeItem('soulmatch_user');
-                window.dispatchEvent(new Event('user-auth-change'));
-                navigate('/');
-              }}
-              className="w-full py-2 text-[10px] text-rose-600 font-black uppercase tracking-[0.2em] opacity-60 hover:opacity-100 transition-all"
-            >
-              Disconnetti Account
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {chatRequests.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between px-2">
-            <h3 className="text-lg font-serif font-bold text-stone-900">Richieste di Chat</h3>
-            <span className="bg-rose-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">{chatRequests.length}</span>
-          </div>
-          <div className="space-y-3">
-            {chatRequests.map((req) => (
-              <div key={req.id} className="bg-white p-4 rounded-2xl border border-stone-100 shadow-sm flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <img src={req.photo_url} className="w-10 h-10 rounded-full object-cover" referrerPolicy="no-referrer" />
-                  <div>
-                    <p className="text-sm font-bold text-stone-900">{req.name} {req.surname}</p>
-                    <p className="text-[10px] text-stone-500">Ti ha inviato una richiesta</p>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handleRequestAction(req.id, 'rejected')}
-                    className="w-8 h-8 bg-stone-100 text-stone-500 rounded-lg flex items-center justify-center hover:bg-stone-200 transition-all"
-                  >
-                    <Info className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => handleRequestAction(req.id, 'approved')}
-                    className="w-8 h-8 bg-emerald-500 text-white rounded-lg flex items-center justify-center hover:bg-emerald-600 transition-all"
-                  >
-                    <CheckCircle className="w-4 h-4" />
-                  </button>
-                </div>
+                <p className="text-2xl font-black text-stone-900 leading-none tracking-tighter">{stat.val}</p>
+                <p className="text-stone-400 text-[8px] uppercase font-black tracking-widest">{stat.label}</p>
               </div>
             ))}
           </div>
-        </div>
-      )}
+        </motion.div>
 
-      {/* Notifiche Container */}
-      <div className="bg-rose-600 text-white p-6 rounded-3xl shadow-lg shadow-rose-100 space-y-4">
-        <div className="flex items-center gap-3">
-          <Sparkles className="w-6 h-6" />
-          <h3 className="text-lg font-bold">Centro Notifiche</h3>
+        {/* Notification Center Box */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="bg-stone-900 p-10 rounded-[56px] shadow-3xl relative overflow-hidden group"
+        >
+          <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_top_right,rgba(225,29,72,0.1),transparent)]" />
+          <div className="absolute -bottom-24 -right-24 w-64 h-64 bg-rose-600/10 rounded-full blur-[100px]" />
+
+          <div className="relative z-10 space-y-8">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-serif font-black text-white flex items-center gap-4">
+                <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center border border-white/10 group-hover:scale-110 transition-transform">
+                  <Bell className="w-6 h-6 text-rose-500" />
+                </div>
+                Notifiche
+              </h2>
+              {chatRequests.length > 0 && (
+                <div className="flex flex-col items-end">
+                  <span className="bg-rose-600 text-white text-[10px] font-black px-4 py-1.5 rounded-full shadow-[0_0_30px_rgba(225,29,72,0.5)] animate-pulse">
+                    {chatRequests.length} NUOVE
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-5 max-h-[350px] overflow-y-auto pr-3 custom-scrollbar">
+              {chatRequests.length === 0 ? (
+                <div className="text-center py-16 bg-white/5 rounded-[40px] border border-dashed border-white/10">
+                  <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <CheckCircle className="w-8 h-8 text-white/10" />
+                  </div>
+                  <p className="text-white/40 text-[14px] font-bold tracking-tight">Tutto tranquillo! Nessuna novità.</p>
+                </div>
+              ) : (
+                chatRequests.map((req) => (
+                  <motion.div
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    key={req.id}
+                    className="p-6 bg-white/5 rounded-[36px] border border-white/5 flex items-center justify-between gap-4 group/item hover:bg-white/10 transition-all duration-500 hover:scale-[1.02]"
+                  >
+                    <div className="flex items-center gap-5">
+                      <div className="w-16 h-16 rounded-[24px] overflow-hidden border-2 border-white/10 ring-4 ring-white/5 shadow-2xl transition-transform group-hover/item:rotate-3">
+                        <img src={req.photo_url || `https://picsum.photos/seed/${req.from_user_id}/100`} className="w-full h-full object-cover" />
+                      </div>
+                      <div className="max-w-[140px]">
+                        <h4 className="text-base font-black text-white leading-tight mb-1">{req.name}</h4>
+                        <p className="text-[10px] text-rose-400 font-black uppercase tracking-[0.1em] opacity-80">
+                          {req.message?.slice(0, 25) || "Ti ha notato!"}...
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-3">
+                      <button onClick={() => handleRequestAction(req.id, 'approved')} className="w-12 h-12 bg-rose-600 text-white rounded-[20px] flex items-center justify-center hover:bg-rose-500 transition-all active:scale-90 shadow-xl shadow-rose-900/60">
+                        <Heart className="w-6 h-6 fill-current" />
+                      </button>
+                    </div>
+                  </motion.div>
+                ))
+              )}
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Feed Section */}
+        <div className="pt-4">
+          <FeedComponent userId={user.id} isOwner={true} />
         </div>
-        <p className="text-rose-100 text-xs leading-relaxed">Qui potrai vedere chi ha visitato il tuo profilo e chi ti ha inviato un like o un cuore.</p>
-        <div className="bg-white/10 p-4 rounded-2xl text-center">
-          <p className="text-[10px] font-bold uppercase tracking-widest opacity-80">{chatRequests.length > 0 ? `Hai ${chatRequests.length} nuove richieste` : 'Nessuna nuova notifica'}</p>
+
+        {/* Action Buttons Box */}
+        <div className="bg-white p-10 rounded-[56px] shadow-2xl border border-stone-100 flex flex-col gap-5">
+          <div className="grid grid-cols-2 gap-5">
+            <button onClick={() => navigate('/register')} className="flex-1 bg-stone-50 text-stone-900 py-6 rounded-[32px] text-[12px] font-black uppercase tracking-[0.2em] hover:bg-stone-100 transition-all flex items-center justify-center gap-3 active:scale-95 border border-stone-200">
+              <Settings2 className="w-5 h-5 text-rose-600" /> Profilo
+            </button>
+            <button onClick={() => navigate('/')} className="flex-1 bg-stone-900 text-white py-6 rounded-[32px] text-[12px] font-black uppercase tracking-[0.2em] shadow-2xl shadow-stone-400 hover:bg-black transition-all flex items-center justify-center gap-3 active:scale-95">
+              <Home className="w-5 h-5" /> Home
+            </button>
+          </div>
+          <button
+            onClick={() => {
+              localStorage.removeItem('soulmatch_user');
+              window.dispatchEvent(new Event('user-auth-change'));
+              navigate('/');
+            }}
+            className="w-full py-4 text-[10px] text-rose-600 font-black uppercase tracking-[0.5em] opacity-20 hover:opacity-100 transition-all mt-4 hover:tracking-[0.6em] duration-500"
+          >
+            Esci dall'Account
+          </button>
         </div>
       </div>
-
-      {/* Area Post/Feed Utente */}
-      <FeedComponent userId={user.id} isOwner={true} />
-
     </div>
   );
 };
@@ -1978,6 +2377,7 @@ export default function App() {
         <Route path="/bacheca" element={<BachecaPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/admin" element={<AdminPage />} />
         <Route path="/profile-detail/:id" element={<ProfileDetailPage />} />
       </Routes>
     </Router>

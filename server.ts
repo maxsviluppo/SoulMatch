@@ -77,6 +77,11 @@ db.exec(`
     FOREIGN KEY(post_id) REFERENCES posts(id),
     FOREIGN KEY(user_id) REFERENCES users(id)
   );
+
+  CREATE TABLE IF NOT EXISTS site_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT
+  );
 `);
 
 // Ensure columns exist (for schema evolution)
@@ -95,6 +100,17 @@ try {
 try {
   db.prepare("ALTER TABLE users ADD COLUMN body_type TEXT").run();
 } catch (e) { }
+
+// Initialize site settings if empty
+const checkSettings = db.prepare("SELECT count(*) as count FROM site_settings").get() as { count: number };
+if (checkSettings.count === 0) {
+  const defaultSlider = [
+    "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?q=80&w=2000&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1491438590914-bc09fcaaf77a?q=80&w=2000&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?q=80&w=2000&auto=format&fit=crop"
+  ];
+  db.prepare("INSERT OR IGNORE INTO site_settings (key, value) VALUES (?, ?)").run('home_slider', JSON.stringify(defaultSlider));
+}
 
 // Seed Data
 const seedUsers = [
@@ -235,7 +251,52 @@ async function startServer() {
       userData.conosciamoci_meglio ? JSON.stringify(userData.conosciamoci_meglio) : null
     );
 
-    res.json({ id: result.lastInsertRowid, ...userData });
+    const user = db.prepare("SELECT * FROM users WHERE id = ?").get(result.lastInsertRowid) as any;
+    res.json({
+      ...user,
+      is_paid: user.is_paid === 1,
+      photos: JSON.parse(user.photos || '[]'),
+      conosciamoci_meglio: user.conosciamoci_meglio ? JSON.parse(user.conosciamoci_meglio) : {}
+    });
+  });
+
+  app.put("/api/profiles/:id", (req, res) => {
+    const { id } = req.params;
+    const userData = req.body;
+    try {
+      const stmt = db.prepare(`
+        UPDATE users SET 
+          name = ?, surname = ?, dob = ?, city = ?, province = ?, job = ?, description = ?, 
+          hobbies = ?, desires = ?, gender = ?, orientation = ?, is_paid = ?,
+          looking_for_gender = ?, looking_for_job = ?, looking_for_hobbies = ?, looking_for_city = ?,
+          looking_for_age_min = ?, looking_for_age_max = ?, looking_for_height = ?, looking_for_body_type = ?,
+          looking_for_other = ?, photos = ?, body_type = ?, conosciamoci_meglio = ?
+        WHERE id = ?
+      `);
+
+      stmt.run(
+        userData.name, userData.surname, userData.dob, userData.city, userData.province,
+        userData.job, userData.description, userData.hobbies, userData.desires,
+        userData.gender, userData.orientation, userData.is_paid ? 1 : 0,
+        userData.looking_for_gender, userData.looking_for_job, userData.looking_for_hobbies,
+        userData.looking_for_city, userData.looking_for_age_min, userData.looking_for_age_max,
+        userData.looking_for_height, userData.looking_for_body_type, userData.looking_for_other,
+        JSON.stringify(userData.photos || []), userData.body_type,
+        JSON.stringify(userData.conosciamoci_meglio || {}),
+        id
+      );
+
+      const user = db.prepare("SELECT * FROM users WHERE id = ?").get(id) as any;
+      res.json({
+        ...user,
+        is_paid: user.is_paid === 1,
+        photos: JSON.parse(user.photos || '[]'),
+        conosciamoci_meglio: user.conosciamoci_meglio ? JSON.parse(user.conosciamoci_meglio) : {}
+      });
+    } catch (err) {
+      console.error("Update error:", err);
+      res.status(500).json({ error: "Errore durante l'aggiornamento" });
+    }
   });
 
   // Chat Requests
@@ -353,6 +414,24 @@ async function startServer() {
       const result = del.run(postId, user_id, type);
       res.json({ success: true, toggled: result.changes > 0 });
     }
+  });
+
+  // Site Settings
+  app.get("/api/settings/:key", (req, res) => {
+    const { key } = req.params;
+    const setting = db.prepare("SELECT value FROM site_settings WHERE key = ?").get(key) as any;
+    if (setting) {
+      res.json(JSON.parse(setting.value));
+    } else {
+      res.status(404).json({ error: "Not found" });
+    }
+  });
+
+  app.post("/api/settings/:key", (req, res) => {
+    const { key } = req.params;
+    const { value } = req.body;
+    db.prepare("INSERT OR REPLACE INTO site_settings (key, value) VALUES (?, ?)").run(key, JSON.stringify(value));
+    res.json({ success: true });
   });
 
   // Vite middleware for development
