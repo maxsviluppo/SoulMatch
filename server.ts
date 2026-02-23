@@ -222,42 +222,47 @@ async function startServer() {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
-    const result = stmt.run(
-      userData.name,
-      userData.surname,
-      userData.dob,
-      userData.city,
-      userData.province,
-      userData.job,
-      userData.description,
-      userData.hobbies,
-      userData.desires,
-      userData.gender,
-      userData.orientation,
-      userData.is_paid ? 1 : 0,
-      userData.looking_for_gender,
-      userData.looking_for_job,
-      userData.looking_for_hobbies,
-      userData.looking_for_city,
-      userData.looking_for_age_min,
-      userData.looking_for_age_max,
-      userData.looking_for_height,
-      userData.looking_for_body_type,
-      userData.looking_for_other,
-      userData.photo_url || (userData.photos && userData.photos.length > 0 ? userData.photos[0] : `https://picsum.photos/seed/${Math.random()}/400/600`),
-      userData.id_document_url,
-      JSON.stringify(userData.photos || []),
-      userData.body_type,
-      userData.conosciamoci_meglio ? JSON.stringify(userData.conosciamoci_meglio) : null
-    );
+    try {
+      const result = stmt.run(
+        userData.name,
+        userData.surname,
+        userData.dob,
+        userData.city,
+        userData.province || null,
+        userData.job,
+        userData.description,
+        userData.hobbies,
+        userData.desires,
+        userData.gender,
+        userData.orientation,
+        userData.is_paid ? 1 : 0,
+        userData.looking_for_gender,
+        userData.looking_for_job,
+        userData.looking_for_hobbies,
+        userData.looking_for_city,
+        userData.looking_for_age_min,
+        userData.looking_for_age_max,
+        userData.looking_for_height,
+        userData.looking_for_body_type,
+        userData.looking_for_other,
+        userData.photo_url || (userData.photos && userData.photos.length > 0 ? userData.photos[0] : `https://picsum.photos/seed/${Math.random()}/400/600`),
+        userData.id_document_url,
+        JSON.stringify(userData.photos || []),
+        userData.body_type,
+        userData.conosciamoci_meglio ? JSON.stringify(userData.conosciamoci_meglio) : null
+      );
 
-    const user = db.prepare("SELECT * FROM users WHERE id = ?").get(result.lastInsertRowid) as any;
-    res.json({
-      ...user,
-      is_paid: user.is_paid === 1,
-      photos: JSON.parse(user.photos || '[]'),
-      conosciamoci_meglio: user.conosciamoci_meglio ? JSON.parse(user.conosciamoci_meglio) : {}
-    });
+      const user = db.prepare("SELECT * FROM users WHERE id = ?").get(result.lastInsertRowid) as any;
+      res.json({
+        ...user,
+        is_paid: user.is_paid === 1,
+        photos: JSON.parse(user.photos || '[]'),
+        conosciamoci_meglio: user.conosciamoci_meglio ? JSON.parse(user.conosciamoci_meglio) : {}
+      });
+    } catch (err) {
+      console.error("Registration error details:", err);
+      res.status(500).json({ error: "Errore interno durante l'iscrizione. Verifica i dati inseriti." });
+    }
   });
 
   app.put("/api/profiles/:id", (req, res) => {
