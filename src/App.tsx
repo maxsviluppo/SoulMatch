@@ -35,7 +35,8 @@ import {
   Plus,
   X,
   LogOut,
-  ShieldCheck
+  ShieldCheck,
+  Share2
 } from 'lucide-react';
 import { cn, calculateAge, calculateMatchScore, fileToBase64, playTapSound } from './utils';
 import { UserProfile, ChatRequest, Post } from './types';
@@ -354,6 +355,24 @@ const HomePage = () => {
     if (saved) setIsLoggedIn(true);
   }, []);
 
+  const handleShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'SoulMatch',
+          text: 'Entra anche tu in SoulMatch, la community per trovare la tua compagnia ideale! ❤️',
+          url: window.location.origin,
+        });
+      } catch (error) {
+        console.log('Error sharing:', error);
+      }
+    } else {
+      // Fallback for browsers that don't support share
+      navigator.clipboard.writeText(window.location.origin);
+      alert('Link copiato negli appunti! Condividilo con i tuoi amici.');
+    }
+  };
+
   return (
     <div className="min-h-screen pt-[450px] pb-12 px-4 flex flex-col items-center justify-center bg-stone-50 relative overflow-x-hidden">
       <HomeSlider />
@@ -365,10 +384,25 @@ const HomePage = () => {
       >
         {/* Hero text */}
         <div className="space-y-4">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-rose-600 text-white rounded-full text-[11px] font-black uppercase tracking-wider mb-2 shadow-sm">
-            <Sparkles className="w-3.5 h-3.5" />
-            Community in crescita
-          </div>
+          <motion.button
+            onClick={handleShare}
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            whileHover={{ scale: 1.05, backgroundColor: '#be123c' }}
+            whileTap={{ scale: 0.95 }}
+            className="inline-flex flex-col items-center gap-1.5 px-6 py-3 bg-rose-600 text-white rounded-[22px] shadow-xl shadow-rose-200 transition-all mb-4 border border-rose-500/20 group"
+          >
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 animate-pulse" />
+              <span className="text-[12px] font-black uppercase tracking-[0.15em]">Community in crescita</span>
+            </div>
+            <div className="flex items-center gap-2 opacity-90 border-t border-white/20 pt-2 w-full justify-center">
+              <div className="flex items-center gap-2 bg-white/10 px-4 py-1 rounded-full group-hover:bg-white/20 transition-colors">
+                <Share2 className="w-4 h-4" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-white">Condividi App</span>
+              </div>
+            </div>
+          </motion.button>
 
           <h1 className="text-5xl font-serif font-black leading-[1.1] tracking-tight text-stone-900 drop-shadow-sm">
             Trova la tua <br /><span className="text-rose-600 italic">compagnia</span> ideale.
@@ -3760,38 +3794,8 @@ const AppFooter = () => {
   ];
 
   return (
-    <footer className="w-full bg-stone-900 text-white mt-0">
-      {/* Artistic multi-layer wave transition */}
-      <div className="relative overflow-hidden" style={{ height: 80, background: 'linear-gradient(to bottom, #fafaf9, #1c1917)' }}>
-        {/* Layer 1 — deep back wave, subtle */}
-        <svg viewBox="0 0 1200 80" className="absolute inset-0 w-full h-full" preserveAspectRatio="none">
-          <path
-            d="M0 80 C150 30 300 60 450 35 C600 10 750 55 900 30 C1050 5 1150 45 1200 25 L1200 80 Z"
-            fill="#1c1917"
-            opacity="0.35"
-          />
-        </svg>
-        {/* Layer 2 — mid wave */}
-        <svg viewBox="0 0 1200 80" className="absolute inset-0 w-full h-full" preserveAspectRatio="none">
-          <path
-            d="M0 80 C200 20 350 65 550 40 C750 15 900 60 1100 32 C1150 28 1180 38 1200 35 L1200 80 Z"
-            fill="#1c1917"
-            opacity="0.65"
-          />
-        </svg>
-        {/* Layer 3 — foreground wave, full opacity */}
-        <svg viewBox="0 0 1200 80" className="absolute inset-0 w-full h-full" preserveAspectRatio="none">
-          <path
-            d="M0 80 C100 55 280 70 480 52 C680 34 820 68 1000 50 C1100 40 1160 56 1200 50 L1200 80 Z"
-            fill="#1c1917"
-          />
-        </svg>
-        {/* Tiny dot pattern — tono su tono */}
-        <div
-          className="absolute inset-x-0 bottom-0 h-10 opacity-[0.04]"
-          style={{ backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '18px 18px' }}
-        />
-      </div>
+    <footer className="w-full bg-stone-900 text-white mt-12 border-t-4 border-rose-600">
+
 
       <div className="px-6 pt-2 pb-10 max-w-md mx-auto">
         {/* Logo row */}
