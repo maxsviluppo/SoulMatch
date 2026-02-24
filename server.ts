@@ -442,7 +442,7 @@ async function startServer() {
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: { middlewareMode: true, hmr: { port: 24700 } },
       appType: "spa",
     });
     app.use(vite.middlewares);
@@ -453,7 +453,7 @@ async function startServer() {
     });
   }
 
-  const PORT = 3005;
+  const PORT = process.env.PORT || 3006;
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
   });

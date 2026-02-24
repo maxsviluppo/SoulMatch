@@ -31,6 +31,8 @@ export interface UserProfile {
   password?: string;
   nickname?: string;
   conosciamoci_meglio?: Record<string, string>;
+  body_type?: string;
+  height_cm?: number;
 }
 
 export interface ChatRequest {
