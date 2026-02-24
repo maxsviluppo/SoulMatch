@@ -33,9 +33,10 @@ import {
   Trash2,
   RefreshCw,
   Plus,
-  X
+  X,
+  LogOut
 } from 'lucide-react';
-import { cn, calculateAge, calculateMatchScore } from './utils';
+import { cn, calculateAge, calculateMatchScore, fileToBase64, playTapSound } from './utils';
 import { UserProfile, ChatRequest, Post } from './types';
 import { supabase } from './supabase';
 
@@ -201,7 +202,7 @@ const ProfileCard: React.FC<{ profile: UserProfile; onInteract?: () => void }> =
         <div className="aspect-[3/4.5] overflow-hidden relative shrink-0">
           <img
             src={(profile.photos && profile.photos.length > 0) ? profile.photos[0] : (profile.photo_url || `https://picsum.photos/seed/${profile.name}/400/600`)}
-            alt={profile.name}
+            alt=""
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
             referrerPolicy="no-referrer"
           />
@@ -275,9 +276,10 @@ const ProfileCard: React.FC<{ profile: UserProfile; onInteract?: () => void }> =
 
             <button
               onClick={handleTestMatch}
-              className="px-3 py-2 bg-rose-600 text-white rounded-xl text-[10px] font-black uppercase tracking-tighter hover:bg-stone-900 transition-colors shadow-md shadow-rose-100 flex items-center gap-1"
+              className="w-10 h-10 bg-rose-600 text-white rounded-xl flex items-center justify-center shadow-lg shadow-rose-200 hover:bg-stone-900 hover:scale-110 transition-all active:scale-95"
+              title="Calcola Affinità"
             >
-              <Sparkles className="w-3 h-3" /> Match
+              <Sparkles className="w-5 h-5" />
             </button>
           </div>
         </div>
@@ -361,7 +363,7 @@ const HomePage = () => {
         className="w-full max-w-md text-center space-y-12 relative z-10"
       >
         <div className="space-y-4">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-rose-600 text-white rounded-full text-[11px] font-black uppercase tracking-wider mb-2 shadow-lg shadow-rose-200">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-rose-600 text-white rounded-full text-[11px] font-black uppercase tracking-wider mb-2 shadow-sm">
             <Sparkles className="w-3.5 h-3.5" />
             Community in crescita
           </div>
@@ -380,16 +382,20 @@ const HomePage = () => {
         </div>
 
         <div className="flex flex-col gap-4 pt-4 px-4">
-          <Link to="/register" className="bg-rose-600 text-white text-lg py-5 rounded-[24px] font-black uppercase tracking-widest flex items-center justify-center gap-3 shadow-2xl shadow-rose-200 hover:scale-[1.02] active:scale-95 transition-all">
+          <Link to="/register" className="bg-rose-600 text-white text-lg py-5 rounded-[24px] font-black uppercase tracking-widest flex items-center justify-center gap-3 shadow-md hover:scale-[1.02] active:scale-95 transition-all">
             Inizia Ora <ArrowRight className="w-5 h-5" />
           </Link>
           <div className="grid grid-cols-2 gap-3">
-            <Link to="/bacheca" className="bg-white text-stone-900 text-sm py-4 rounded-[20px] font-bold border border-stone-100 flex items-center justify-center gap-2 shadow-xl shadow-stone-200 hover:bg-stone-50 transition-all">
-              <Users className="w-4 h-4 text-rose-500" /> Esplora
-            </Link>
-            <Link to="/profile" className="bg-white text-stone-900 text-sm py-4 rounded-[20px] font-bold border border-stone-100 flex items-center justify-center gap-2 shadow-xl shadow-stone-200 hover:bg-stone-50 transition-all">
-              <LayoutGrid className="w-4 h-4 text-rose-500" /> Profilo
-            </Link>
+            <motion.div whileHover={{ scale: 1.01 }} whileActive={{ scale: 0.98 }}>
+              <Link to="/bacheca" className="w-full bg-white text-stone-900 text-sm py-4 rounded-[20px] font-bold border border-stone-100 flex items-center justify-center gap-2 shadow-sm hover:bg-stone-50 transition-colors">
+                <Users className="w-4 h-4 text-rose-500" /> Esplora
+              </Link>
+            </motion.div>
+            <motion.div whileHover={{ scale: 1.01 }} whileActive={{ scale: 0.98 }}>
+              <Link to="/profile" className="w-full bg-white text-stone-900 text-sm py-4 rounded-[20px] font-bold border border-stone-100 flex items-center justify-center gap-2 shadow-sm hover:bg-stone-50 transition-colors">
+                <LayoutGrid className="w-4 h-4 text-rose-500" /> Profilo
+              </Link>
+            </motion.div>
           </div>
         </div>
 
@@ -406,9 +412,9 @@ const HomePage = () => {
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true }}
               transition={{ delay: feature.delay }}
-              whileHover={{ y: -8, rotateX: 4, rotateY: 2, scale: 1.02 }}
+              whileHover={{ scale: 1.02 }}
               className={cn(
-                "aspect-square rounded-[40px] bg-white border border-stone-100 shadow-[0_20px_45px_rgba(0,0,0,0.06)] flex flex-col items-center justify-center gap-4 group p-8 text-center select-none cursor-pointer relative overflow-hidden perspective-1000",
+                "aspect-square rounded-[40px] bg-white border border-stone-100 shadow-sm flex flex-col items-center justify-center gap-4 group p-8 text-center select-none cursor-pointer relative overflow-hidden",
                 feature.colSpan ? "col-span-2 aspect-[auto] py-10" : ""
               )}
               style={{ transformStyle: 'preserve-3d' }}
@@ -417,14 +423,14 @@ const HomePage = () => {
 
               <div
                 className={cn(
-                  "w-20 h-20 rounded-[28px] flex items-center justify-center transition-all group-hover:scale-110 group-hover:rotate-3 shadow-lg",
+                  "w-20 h-20 rounded-[28px] flex items-center justify-center transition-all group-hover:scale-105 group-hover:rotate-2 shadow-md",
                   feature.color === 'rose' ? "bg-rose-50 text-rose-600 shadow-rose-100" : "bg-emerald-50 text-emerald-600 shadow-emerald-100"
                 )}
-                style={{ transform: 'translateZ(20px)' }}
+                style={{ transform: 'translateZ(10px)' }}
               >
                 <feature.icon className="w-10 h-10" />
               </div>
-              <div className="space-y-1" style={{ transform: 'translateZ(10px)' }}>
+              <div className="space-y-1" style={{ transform: 'translateZ(5px)' }}>
                 <h3 className="text-[13px] font-black text-stone-900 uppercase tracking-[0.15em]">{feature.title}</h3>
                 <p className="text-stone-400 text-[10px] font-black uppercase tracking-[0.2em] opacity-60">{feature.desc}</p>
               </div>
@@ -1498,7 +1504,8 @@ const RegisterPage = () => {
   const navigate = useNavigate();
   const [step, setStep] = useState(() => {
     const savedUser = localStorage.getItem('soulmatch_user');
-    return savedUser ? 2 : 1;
+    const isEditing = savedUser ? true : false;
+    return isEditing ? 2 : 1;
   });
   const [isLogin, setIsLogin] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -1506,7 +1513,6 @@ const RegisterPage = () => {
   const [formData, setFormData] = useState<UserProfile>({
     email: '',
     password: '',
-    nickname: '',
     name: '',
     surname: '',
     dob: '',
@@ -1515,8 +1521,6 @@ const RegisterPage = () => {
     description: '',
     hobbies: '',
     desires: '',
-    gender: 'Uomo',
-    orientation: 'Eterosessuale',
     is_paid: false,
     looking_for_gender: 'Donna',
     looking_for_job: '',
@@ -1580,8 +1584,8 @@ const RegisterPage = () => {
       handleLogin();
       return;
     }
-    if (!isEditing && (!formData.email || !formData.password || !formData.nickname)) {
-      setToast({ message: "Inserisci email, password e nickname per procedere.", type: 'info' });
+    if (!isEditing && (!formData.email || !formData.password)) {
+      setToast({ message: "Inserisci email e password per procedere.", type: 'info' });
       return;
     }
     setStep(2);
@@ -1662,14 +1666,18 @@ const RegisterPage = () => {
     setStep(5);
   };
 
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const files = Array.from(e.target.files);
-      const newPhotoUrls = files.map(file => URL.createObjectURL(file as any));
-      setFormData(prev => ({
-        ...prev,
-        photos: [...(prev.photos || []), ...newPhotoUrls].slice(0, 5)
-      }));
+      try {
+        const base64Photos = await Promise.all(files.map(file => fileToBase64(file)));
+        setFormData(prev => ({
+          ...prev,
+          photos: [...(prev.photos || []), ...base64Photos].slice(0, 5)
+        }));
+      } catch (err) {
+        setToast({ message: "Errore durante l'elaborazione delle foto.", type: 'error' });
+      }
     }
   };
 
@@ -1680,21 +1688,29 @@ const RegisterPage = () => {
     }));
   };
 
-  const replacePhoto = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+  const replacePhoto = async (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      const newUrl = URL.createObjectURL(e.target.files[0] as any);
-      setFormData(prev => {
-        const newPhotos = [...(prev.photos || [])];
-        newPhotos[index] = newUrl;
-        return { ...prev, photos: newPhotos };
-      });
+      try {
+        const base64 = await fileToBase64(e.target.files[0]);
+        setFormData(prev => {
+          const newPhotos = [...(prev.photos || [])];
+          newPhotos[index] = base64;
+          return { ...prev, photos: newPhotos };
+        });
+      } catch (err) {
+        setToast({ message: "Errore durante l'elaborazione della foto.", type: 'error' });
+      }
     }
   };
 
-  const handleIdUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleIdUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      // Simulate upload
-      setFormData(prev => ({ ...prev, id_document_url: URL.createObjectURL(e.target.files![0] as any) }));
+      try {
+        const base64 = await fileToBase64(e.target.files[0]);
+        setFormData(prev => ({ ...prev, id_document_url: base64 }));
+      } catch (err) {
+        setToast({ message: "Errore durante l'elaborazione del documento.", type: 'error' });
+      }
     }
   };
 
@@ -1842,13 +1858,7 @@ const RegisterPage = () => {
                       </button>
                     </div>
                   </div>
-                  {!isLogin && (
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-stone-700 ml-1">Nickname (Nome Utente)</label>
-                      <input name="nickname" value={formData.nickname} onChange={handleInputChange} className="w-full p-3.5 rounded-xl bg-stone-50 border border-stone-200 text-sm focus:ring-2 focus:ring-rose-500 outline-none" placeholder="Mario90" />
-                      <p className="text-[10px] text-stone-500 ml-1">Verrà usato per identificarti nella community.</p>
-                    </div>
-                  )}
+                  {/* Nickname removed */}
                 </div>
                 <div className="space-y-4">
                   <button
@@ -1880,16 +1890,46 @@ const RegisterPage = () => {
                 <div className="space-y-4">
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-stone-700 ml-1">Nome</label>
-                    <input name="name" value={formData.name} onChange={handleInputChange} className="w-full p-3.5 rounded-xl bg-stone-50 border border-stone-200 text-sm focus:ring-2 focus:ring-rose-500 outline-none" placeholder="Mario" />
+                    <input
+                      name="name"
+                      value={formData.name}
+                      onChange={handleInputChange}
+                      disabled={isEditing && !!formData.name}
+                      className={cn(
+                        "w-full p-3.5 rounded-xl bg-stone-50 border border-stone-200 text-sm focus:ring-2 focus:ring-rose-500 outline-none",
+                        isEditing && formData.name ? "opacity-60 cursor-not-allowed bg-stone-100" : ""
+                      )}
+                      placeholder="Mario"
+                    />
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-stone-700 ml-1">Cognome</label>
-                    <input name="surname" value={formData.surname} onChange={handleInputChange} className="w-full p-3.5 rounded-xl bg-stone-50 border border-stone-200 text-sm focus:ring-2 focus:ring-rose-500 outline-none" placeholder="Rossi" />
+                    <input
+                      name="surname"
+                      value={formData.surname}
+                      onChange={handleInputChange}
+                      disabled={isEditing && !!formData.surname}
+                      className={cn(
+                        "w-full p-3.5 rounded-xl bg-stone-50 border border-stone-200 text-sm focus:ring-2 focus:ring-rose-500 outline-none",
+                        isEditing && formData.surname ? "opacity-60 cursor-not-allowed bg-stone-100" : ""
+                      )}
+                      placeholder="Rossi"
+                    />
                   </div>
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-stone-700 ml-1">Nascita</label>
-                  <input name="dob" type="date" value={formData.dob} onChange={handleInputChange} className="w-full p-3.5 rounded-xl bg-stone-50 border border-stone-200 text-sm focus:ring-2 focus:ring-rose-500 outline-none" />
+                  <input
+                    name="dob"
+                    type="date"
+                    value={formData.dob}
+                    onChange={handleInputChange}
+                    disabled={isEditing && !!formData.dob}
+                    className={cn(
+                      "w-full p-3.5 rounded-xl bg-stone-50 border border-stone-200 text-sm focus:ring-2 focus:ring-rose-500 outline-none",
+                      isEditing && formData.dob ? "opacity-60 cursor-not-allowed bg-stone-100" : ""
+                    )}
+                  />
                 </div>
                 <div className="grid grid-cols-5 gap-3">
                   <div className="space-y-1.5 col-span-3">
@@ -2215,13 +2255,12 @@ const RegisterPage = () => {
                     <h4 className="text-xs font-bold text-rose-600 uppercase tracking-wider">Account</h4>
                     <div className="grid grid-cols-2 gap-y-2 text-xs">
                       <div className="text-stone-400">Email:</div> <div className="text-stone-900 font-medium">{formData.email}</div>
-                      <div className="text-stone-400">Nickname:</div> <div className="text-stone-900 font-medium">{formData.nickname}</div>
                     </div>
                   </div>
                   <div className="p-4 bg-stone-50 rounded-2xl border border-stone-100 space-y-3">
                     <h4 className="text-xs font-bold text-rose-600 uppercase tracking-wider">Dati Personali</h4>
                     <div className="grid grid-cols-2 gap-y-2 text-xs">
-                      <div className="text-stone-400">Nome:</div> <div className="text-stone-900 font-medium">{formData.name} {formData.surname}</div>
+                      <div className="text-stone-400">Nome:</div> <div className="text-stone-900 font-medium">{formData.name}</div>
                       <div className="text-stone-400">Nascita:</div> <div className="text-stone-900 font-medium">{formData.dob}</div>
                       <div className="text-stone-400">Città:</div> <div className="text-stone-900 font-medium">{formData.city}</div>
                       <div className="text-stone-400">Genere:</div> <div className="text-stone-900 font-medium">{formData.gender}</div>
@@ -2347,11 +2386,15 @@ const FeedComponent = ({ userId, isOwner }: { userId: any, isOwner?: boolean }) 
     fetchPosts();
   }, [userId]);
 
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const files = Array.from(e.target.files).slice(0, 3 - newPostPhotos.length);
-      const newUrls = files.map(f => URL.createObjectURL(f as any));
-      setNewPostPhotos(prev => [...prev, ...newUrls].slice(0, 3));
+      try {
+        const base64s = await Promise.all(files.map(f => fileToBase64(f)));
+        setNewPostPhotos(prev => [...prev, ...base64s].slice(0, 3));
+      } catch (err) {
+        alert("Errore nell'elaborazione delle foto.");
+      }
     }
   };
 
@@ -2419,7 +2462,7 @@ const FeedComponent = ({ userId, isOwner }: { userId: any, isOwner?: boolean }) 
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white p-6 rounded-[32px] shadow-xl border border-stone-100 flex flex-col gap-4 relative overflow-hidden"
+          className="bg-white p-6 rounded-[32px] shadow-sm border border-stone-100 flex flex-col gap-4 relative overflow-hidden"
         >
           <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500 opacity-20" />
           <textarea
@@ -2478,9 +2521,9 @@ const FeedComponent = ({ userId, isOwner }: { userId: any, isOwner?: boolean }) 
             <motion.div
               key={post.id}
               initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
+              animate={{ opacity: 1 }}
               viewport={{ once: true }}
-              className="bg-white rounded-[40px] overflow-hidden shadow-2xl border border-stone-50 group hover:shadow-rose-100/50 transition-shadow duration-500"
+              className="bg-white rounded-[40px] overflow-hidden shadow-sm border border-stone-50 group hover:shadow-md transition-shadow duration-500"
             >
               <div className="p-5 flex items-center gap-4">
                 <div className="w-12 h-12 rounded-2xl overflow-hidden border-2 border-stone-50 ring-4 ring-stone-50/50">
@@ -2555,6 +2598,7 @@ const ProfilePage = () => {
   const [loading, setLoading] = useState(true);
   const [chatRequests, setChatRequests] = useState<ChatRequest[]>([]);
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
+  const [activeTab, setActiveTab] = useState<'notifications' | 'gallery' | 'feed'>('notifications');
   const navigate = useNavigate();
 
   const fetchData = async (userId: string) => {
@@ -2656,10 +2700,9 @@ const ProfilePage = () => {
   const replaceProfilePhoto = async (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
     if (!user || !e.target.files?.[0]) return;
     const file = e.target.files[0];
-    const newPhotoUrl = URL.createObjectURL(file as any);
-
+    const base64 = await fileToBase64(file);
     const newPhotos = [...user.photos];
-    newPhotos[index] = newPhotoUrl;
+    newPhotos[index] = base64;
 
     const { error } = await supabase
       .from('users')
@@ -2677,9 +2720,8 @@ const ProfilePage = () => {
   const addProfilePhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!user || !e.target.files) return;
     const files = Array.from(e.target.files);
-    const newUrls = files.map(f => URL.createObjectURL(f as any));
-
-    const newPhotos = [...(user.photos || []), ...newUrls].slice(0, 5);
+    const base64s = await Promise.all(files.map(f => fileToBase64(f)));
+    const newPhotos = [...(user.photos || []), ...base64s].slice(0, 5);
 
     const { error } = await supabase
       .from('users')
@@ -2724,198 +2766,253 @@ const ProfilePage = () => {
       <div className="max-w-md mx-auto space-y-12">
         {/* Header Stats Box */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="bg-white p-8 rounded-[48px] shadow-[0_40px_80px_-15px_rgba(0,0,0,0.08)] border border-stone-100 space-y-10 relative overflow-hidden"
+          animate={{ opacity: 1 }}
+          className="bg-gradient-to-tr from-[#FFFDF5] via-white to-[#FFFAF0] p-10 rounded-[64px] shadow-sm border border-[#F5F0E0] relative overflow-hidden"
         >
-          <div className="absolute top-0 right-0 w-48 h-48 bg-rose-50 rounded-full blur-[80px] -mr-16 -mt-16 opacity-70" />
+          {/* Decorative Glow */}
+          <div className="absolute -top-10 -left-10 w-40 h-40 bg-rose-100/30 rounded-full blur-[60px]" />
 
-          <div className="flex items-center gap-6 relative z-10">
-            <div className="w-28 h-28 rounded-[38px] overflow-hidden border-4 border-white shadow-2xl rotate-3">
-              <img
-                src={(user.photos && user.photos.length > 0) ? user.photos[0] : (user.photo_url || `https://picsum.photos/seed/${user.name}/200`)}
-                className="w-full h-full object-cover"
-                alt={user.name}
-              />
+          {/* Action Destra - Modifica e LogOut */}
+          <div className="absolute top-8 right-8 flex items-center gap-2.5 z-30">
+            <button
+              onClick={() => navigate('/register')}
+              className="w-11 h-11 rounded-2xl flex items-center justify-center transition-all duration-300 bg-white/40 backdrop-blur-md border border-white/50 shadow-sm text-stone-500 hover:text-rose-600 hover:bg-white hover:shadow-md"
+              title="Modifica"
+            >
+              <Settings2 className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => {
+                if (window.confirm("Vuoi uscire dal profilo?")) {
+                  localStorage.removeItem('soulmatch_user');
+                  window.dispatchEvent(new Event('user-auth-change'));
+                  navigate('/');
+                }
+              }}
+              className="w-11 h-11 rounded-2xl flex items-center justify-center transition-all duration-300 bg-white/40 backdrop-blur-md border border-white/50 shadow-sm text-stone-300 hover:text-rose-600 hover:border-rose-100"
+              title="Esci"
+            >
+              <LogOut className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Action Sinistra - Home */}
+          <div className="absolute top-8 left-8 z-30">
+            <button
+              onClick={() => navigate('/')}
+              className="w-11 h-11 rounded-2xl flex items-center justify-center transition-all duration-300 bg-white/40 backdrop-blur-md border border-white/50 shadow-sm text-stone-500 hover:text-rose-600 hover:bg-white hover:shadow-md"
+              title="Home"
+            >
+              <Home className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="flex flex-col items-center text-center space-y-8 relative z-10 pt-4">
+            {/* Avatar Section */}
+            <div className="relative">
+              <div className="w-32 h-32 rounded-[44px] overflow-hidden border-[6px] border-white shadow-sm relative z-10">
+                <img
+                  src={(user.photos && user.photos.length > 0) ? user.photos[0] : (user.photo_url || `https://picsum.photos/seed/${user.name}/200`)}
+                  className="w-full h-full object-cover"
+                  alt={user.name}
+                />
+              </div>
+              {user.is_online && (
+                <div className="absolute bottom-1 right-1 w-6 h-6 bg-emerald-500 border-[4px] border-white rounded-full z-20 shadow-sm" />
+              )}
             </div>
-            <div>
-              <h1 className="text-3xl font-serif font-black text-stone-900 leading-none mb-2">{user.name}</h1>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className={cn(
-                  "px-3 py-1 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-sm border",
-                  user.is_paid ? "bg-rose-600 text-white border-rose-500" : "bg-white text-stone-400 border-stone-100"
-                )}>
-                  {user.is_paid ? 'Membro Premium' : 'Piano Base'}
+
+            {/* Title Section */}
+            <div className="space-y-3">
+              <h1 className="text-4xl font-serif font-black text-stone-900 tracking-tight">{user.name}</h1>
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-white/60 backdrop-blur-sm border border-[#F0EAD6] rounded-full shadow-sm">
+                <div className={cn("w-2 h-2 rounded-full", user.is_paid ? "bg-rose-500 animate-pulse" : "bg-stone-300")} />
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-stone-600">
+                  {user.is_paid ? 'Membro Premium' : 'Profilo Base'}
                 </span>
               </div>
             </div>
-          </div>
 
-          <div className="grid grid-cols-4 gap-4 relative z-10">
-            {[
-              { label: 'Like', val: user.likes_count || 0, icon: ThumbsUp, color: 'blue' },
-              { label: 'Cuori', val: user.hearts_count || 0, icon: Heart, color: 'rose' },
-              { label: 'Foto', val: user.photos?.length || 0, icon: Camera, color: 'emerald' },
-              { label: 'Msg', val: 0, icon: MessageSquare, color: 'amber' }
-            ].map((stat, i) => (
-              <div key={i} className="bg-stone-50/40 backdrop-blur-sm p-4 rounded-[28px] text-center border border-white/50 shadow-inner flex flex-col items-center gap-2 group hover:bg-white hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-                <div className={cn("w-8 h-8 rounded-xl flex items-center justify-center mb-1 transition-transform group-hover:scale-110",
-                  stat.color === 'blue' ? "bg-blue-50 text-blue-500" :
-                    stat.color === 'rose' ? "bg-rose-50 text-rose-500" :
-                      stat.color === 'emerald' ? "bg-emerald-50 text-emerald-500" : "bg-amber-50 text-amber-500"
+            {/* Stats Row - Minimalist Design */}
+            <div className="w-full grid grid-cols-4 pt-6 border-t border-stone-100/60">
+              {[
+                { label: 'Like', val: user.likes_count || 0, color: 'text-blue-500' },
+                { label: 'Cuori', val: user.hearts_count || 0, color: 'text-rose-500' },
+                { label: 'Foto', val: user.photos?.length || 0, color: 'text-emerald-500' },
+                { label: 'Convers', val: 0, color: 'text-amber-500' }
+              ].map((stat, i) => (
+                <div key={i} className={cn(
+                  "flex flex-col items-center group",
+                  i !== 3 ? "border-r border-stone-100/80" : ""
                 )}>
-                  <stat.icon className="w-4 h-4" />
+                  <span className="text-2xl font-black text-stone-900 leading-none group-hover:scale-110 transition-transform duration-300">{stat.val}</span>
+                  <span className="text-[8px] font-black uppercase tracking-widest text-stone-400 mt-2">{stat.label}</span>
                 </div>
-                <p className="text-2xl font-black text-stone-900 leading-none tracking-tighter">{stat.val}</p>
-                <p className="text-stone-400 text-[8px] uppercase font-black tracking-widest">{stat.label}</p>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </motion.div>
 
-        {/* Notification Center Box */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="bg-stone-900 p-10 rounded-[56px] shadow-3xl relative overflow-hidden group"
-        >
-          <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_top_right,rgba(225,29,72,0.1),transparent)]" />
-          <div className="absolute -bottom-24 -right-24 w-64 h-64 bg-rose-600/10 rounded-full blur-[100px]" />
+        {/* Tabs and Content Section */}
+        <div className="space-y-6">
+          {/* Navigation Tabs */}
+          <div className="flex bg-white p-2 rounded-[32px] shadow-sm border border-stone-100 sticky top-24 z-20">
+            {[
+              { id: 'notifications', label: 'Notifiche', icon: Bell },
+              { id: 'gallery', label: 'Galleria', icon: Camera },
+              { id: 'feed', label: 'Bacheca', icon: ImageIcon }
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={cn(
+                  "flex-1 py-3.5 rounded-2xl flex flex-col items-center gap-1 transition-all duration-300 relative",
+                  activeTab === tab.id ? "text-rose-600" : "text-stone-400 hover:text-stone-600"
+                )}
+              >
+                {activeTab === tab.id && (
+                  <motion.div layoutId="activeTabSlot" className="absolute inset-0 bg-rose-50 rounded-2xl" />
+                )}
+                <tab.icon className={cn("w-5 h-5 relative z-10", activeTab === tab.id ? "animate-bounce" : "")} />
+                <span className="text-[9px] font-black uppercase tracking-widest relative z-10">{tab.label}</span>
+              </button>
+            ))}
+          </div>
 
-          <div className="relative z-10 space-y-8">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-serif font-black text-white flex items-center gap-4">
-                <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center border border-white/10 group-hover:scale-110 transition-transform">
-                  <Bell className="w-6 h-6 text-rose-500" />
-                </div>
-                Notifiche
-              </h2>
-              {chatRequests.length > 0 && (
-                <div className="flex flex-col items-end">
-                  <span className="bg-rose-600 text-white text-[10px] font-black px-4 py-1.5 rounded-full shadow-[0_0_30px_rgba(225,29,72,0.5)] animate-pulse">
-                    {chatRequests.length} NUOVE
-                  </span>
-                </div>
-              )}
-            </div>
+          <AnimatePresence mode="wait">
+            {activeTab === 'notifications' && (
+              <motion.div
+                key="tab-notif"
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 10 }}
+                className="bg-white p-10 rounded-[56px] shadow-sm border border-stone-100 relative overflow-hidden group"
+              >
+                <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_top_right,rgba(225,29,72,0.03),transparent)]" />
 
-            <div className="space-y-5 max-h-[350px] overflow-y-auto pr-3 custom-scrollbar">
-              {chatRequests.length === 0 ? (
-                <div className="text-center py-16 bg-white/5 rounded-[40px] border border-dashed border-white/10">
-                  <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <CheckCircle className="w-8 h-8 text-white/10" />
+                <div className="relative z-10 space-y-8">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-2xl font-serif font-black text-stone-900 flex items-center gap-4">
+                      <div className="w-12 h-12 bg-rose-50 rounded-2xl flex items-center justify-center border border-rose-100 group-hover:scale-110 transition-transform">
+                        <Bell className="w-6 h-6 text-rose-500" />
+                      </div>
+                      Notifiche
+                    </h2>
+                    {chatRequests.length > 0 && (
+                      <div className="flex flex-col items-end">
+                        <span className="bg-rose-600 text-white text-[10px] font-black px-4 py-1.5 rounded-full shadow-lg">
+                          {chatRequests.length} NUOVE
+                        </span>
+                      </div>
+                    )}
                   </div>
-                  <p className="text-white/40 text-[14px] font-bold tracking-tight">Tutto tranquillo! Nessuna novità.</p>
-                </div>
-              ) : (
-                chatRequests.map((req) => (
-                  <motion.div
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    key={req.id}
-                    className="p-6 bg-white/5 rounded-[36px] border border-white/5 flex items-center justify-between gap-4 group/item hover:bg-white/10 transition-all duration-500 hover:scale-[1.02]"
-                  >
-                    <div className="flex items-center gap-5">
-                      <div className="w-16 h-16 rounded-[24px] overflow-hidden border-2 border-white/10 ring-4 ring-white/5 shadow-2xl transition-transform group-hover/item:rotate-3">
-                        <img src={req.photo_url || `https://picsum.photos/seed/${req.from_user_id}/100`} className="w-full h-full object-cover" />
-                      </div>
-                      <div className="max-w-[140px]">
-                        <h4 className="text-base font-black text-white leading-tight mb-1">{req.name}</h4>
-                        <p className="text-[10px] text-rose-400 font-black uppercase tracking-[0.1em] opacity-80">
-                          {req.message?.slice(0, 25) || "Ti ha notato!"}...
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex gap-3">
-                      <button onClick={() => handleRequestAction(req.id, 'approved')} className="w-12 h-12 bg-rose-600 text-white rounded-[20px] flex items-center justify-center hover:bg-rose-500 transition-all active:scale-90 shadow-xl shadow-rose-900/60">
-                        <Heart className="w-6 h-6 fill-current" />
-                      </button>
-                    </div>
-                  </motion.div>
-                ))
-              )}
-            </div>
-          </div>
-        </motion.div>
 
-        {/* Gallery Management Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="bg-white p-10 rounded-[56px] shadow-2xl border border-stone-100 space-y-8"
-        >
-          <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-serif font-black text-stone-900 flex items-center gap-4">
-              <div className="w-12 h-12 bg-rose-50 rounded-2xl flex items-center justify-center border border-rose-100">
-                <Camera className="w-6 h-6 text-rose-500" />
-              </div>
-              La Mia Galleria
-            </h2>
-            <p className="text-[10px] text-stone-400 font-black uppercase tracking-widest">{user.photos?.length || 0}/5 FOTO</p>
-          </div>
-
-          <div className="grid grid-cols-3 gap-3">
-            {user.photos?.map((url, i) => (
-              <div key={i} className="aspect-square rounded-[32px] overflow-hidden border-2 border-stone-50 relative group shadow-lg">
-                <img src={url} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                  <label className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center text-stone-600 cursor-pointer hover:text-rose-600 shadow-xl transition-all active:scale-90">
-                    <RefreshCw className="w-4 h-4" />
-                    <input type="file" accept="image/*" className="hidden" onChange={(e) => replaceProfilePhoto(i, e)} />
-                  </label>
-                  <button
-                    onClick={() => {
-                      if (window.confirm("Vuoi davvero eliminare questa foto?")) {
-                        removeProfilePhoto(i);
-                      }
-                    }}
-                    className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center text-stone-600 hover:text-rose-600 shadow-xl transition-all active:scale-90"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  <div className="space-y-3 max-h-[500px] overflow-y-auto pr-3 custom-scrollbar scrollbar-thin">
+                    {chatRequests.length === 0 ? (
+                      <div className="text-center py-16 bg-stone-50 rounded-[40px] border border-dashed border-stone-200">
+                        <div className="w-16 h-16 bg-stone-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                          <CheckCircle className="w-8 h-8 text-stone-300" />
+                        </div>
+                        <p className="text-stone-400 text-[14px] font-bold tracking-tight">Tutto tranquillo! Nessuna novità.</p>
+                      </div>
+                    ) : (
+                      chatRequests.map((req) => (
+                        <motion.div
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          key={req.id}
+                          className="p-3.5 bg-stone-50 rounded-[28px] border border-stone-100 flex items-center justify-between gap-4 group/item hover:bg-white hover:shadow-md transition-all duration-500"
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-[18px] overflow-hidden border border-white shadow-lg shrink-0">
+                              <img src={req.photo_url || `https://picsum.photos/seed/${req.from_user_id}/100`} className="w-full h-full object-cover" />
+                            </div>
+                            <div className="max-w-[160px]">
+                              <h4 className="text-sm font-black text-stone-900 leading-tight mb-0.5">{req.name}</h4>
+                              <p className="text-[9px] text-rose-400 font-black uppercase tracking-[0.05em] opacity-80 leading-tight">
+                                {req.message?.slice(0, 30) || "Ti ha notato!"}...
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <button onClick={() => handleRequestAction(req.id, 'approved')} className="w-9 h-9 bg-rose-600 text-white rounded-[14px] flex items-center justify-center hover:bg-rose-500 transition-all active:scale-90 shadow-lg shadow-rose-900/20 shrink-0">
+                              <Heart className="w-4 h-4 fill-current" />
+                            </button>
+                          </div>
+                        </motion.div>
+                      ))
+                    )}
+                  </div>
                 </div>
-                {i === 0 && <div className="absolute top-3 left-3 bg-rose-600 text-[8px] text-white px-2 py-1 rounded-lg font-black uppercase tracking-widest shadow-lg">Principale</div>}
-              </div>
-            ))}
-            {(user.photos?.length || 0) < 5 && (
-              <label className="aspect-square rounded-[32px] border-4 border-dashed border-stone-100 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-stone-50 hover:border-rose-200 transition-all group">
-                <div className="w-10 h-10 bg-stone-50 rounded-2xl flex items-center justify-center group-hover:scale-110 group-hover:bg-rose-50 transition-all">
-                  <Plus className="w-6 h-6 text-stone-300 group-hover:text-rose-400" />
-                </div>
-                <span className="text-[9px] font-black text-stone-400 uppercase tracking-widest group-hover:text-rose-400">Aggiungi</span>
-                <input type="file" multiple accept="image/*" className="hidden" onChange={addProfilePhoto} />
-              </label>
+              </motion.div>
             )}
-          </div>
-        </motion.div>
 
-        {/* Feed Section */}
-        <div className="pt-4">
-          <FeedComponent userId={user.id} isOwner={true} />
-        </div>
+            {activeTab === 'gallery' && (
+              <motion.div
+                key="tab-gallery"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="bg-white p-10 rounded-[56px] shadow-sm border border-stone-100 space-y-8"
+              >
+                <div className="flex items-center justify-between">
+                  <h2 className="text-2xl font-serif font-black text-stone-900 flex items-center gap-4">
+                    <div className="w-12 h-12 bg-rose-50 rounded-2xl flex items-center justify-center border border-rose-100">
+                      <Camera className="w-6 h-6 text-rose-500" />
+                    </div>
+                    La Mia Galleria
+                  </h2>
+                  <p className="text-[10px] text-stone-400 font-black uppercase tracking-widest">{user.photos?.length || 0}/5 FOTO</p>
+                </div>
 
-        {/* Action Buttons Box */}
-        <div className="bg-white p-10 rounded-[56px] shadow-2xl border border-stone-100 flex flex-col gap-5">
-          <div className="grid grid-cols-2 gap-5">
-            <button onClick={() => navigate('/register')} className="flex-1 bg-stone-50 text-stone-900 py-6 rounded-[32px] text-[12px] font-black uppercase tracking-[0.2em] hover:bg-stone-100 transition-all flex items-center justify-center gap-3 active:scale-95 border border-stone-200">
-              <Settings2 className="w-5 h-5 text-rose-600" /> Profilo
-            </button>
-            <button onClick={() => navigate('/')} className="flex-1 bg-stone-900 text-white py-6 rounded-[32px] text-[12px] font-black uppercase tracking-[0.2em] shadow-2xl shadow-stone-400 hover:bg-black transition-all flex items-center justify-center gap-3 active:scale-95">
-              <Home className="w-5 h-5" /> Home
-            </button>
-          </div>
-          <button
-            onClick={() => {
-              localStorage.removeItem('soulmatch_user');
-              window.dispatchEvent(new Event('user-auth-change'));
-              navigate('/');
-            }}
-            className="w-full py-4 text-[10px] text-rose-600 font-black uppercase tracking-[0.5em] opacity-20 hover:opacity-100 transition-all mt-4 hover:tracking-[0.6em] duration-500"
-          >
-            Esci dall'Account
-          </button>
+                <div className="grid grid-cols-3 gap-3">
+                  {user.photos?.map((url, i) => (
+                    <div key={i} className="aspect-square rounded-[32px] overflow-hidden border-2 border-stone-50 relative group shadow-lg">
+                      <img src={url} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                        <label className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center text-stone-600 cursor-pointer hover:text-rose-600 shadow-xl transition-all active:scale-90">
+                          <RefreshCw className="w-4 h-4" />
+                          <input type="file" accept="image/*" className="hidden" onChange={(e) => replaceProfilePhoto(i, e)} />
+                        </label>
+                        <button
+                          onClick={() => {
+                            if (window.confirm("Vuoi davvero eliminare questa foto?")) {
+                              removeProfilePhoto(i);
+                            }
+                          }}
+                          className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center text-stone-600 hover:text-rose-600 shadow-xl transition-all active:scale-90"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                      {i === 0 && <div className="absolute top-3 left-3 bg-rose-600 text-[8px] text-white px-2 py-1 rounded-lg font-black uppercase tracking-widest shadow-lg">Principale</div>}
+                    </div>
+                  ))}
+                  {(user.photos?.length || 0) < 5 && (
+                    <label className="aspect-square rounded-[32px] border-4 border-dashed border-stone-100 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-stone-50 hover:border-rose-200 transition-all group">
+                      <div className="w-10 h-10 bg-stone-50 rounded-2xl flex items-center justify-center group-hover:scale-110 group-hover:bg-rose-50 transition-all">
+                        <Plus className="w-6 h-6 text-stone-300 group-hover:text-rose-400" />
+                      </div>
+                      <span className="text-[9px] font-black text-stone-400 uppercase tracking-widest group-hover:text-rose-400">Aggiungi</span>
+                      <input type="file" multiple accept="image/*" className="hidden" onChange={addProfilePhoto} />
+                    </label>
+                  )}
+                </div>
+              </motion.div>
+            )}
+
+            {activeTab === 'feed' && (
+              <motion.div
+                key="tab-feed"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 10 }}
+                className="space-y-4"
+              >
+                <FeedComponent userId={user.id} isOwner={true} />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </div>
@@ -2923,8 +3020,61 @@ const ProfilePage = () => {
 };
 
 export default function App() {
+  useEffect(() => {
+    const handleGlobalClick = (e: MouseEvent) => {
+      // Find if the click or its parents are a button or anchor
+      const target = e.target as HTMLElement;
+      const interactive = target.closest('button, a, [role="button"]');
+      if (interactive) {
+        playTapSound();
+      }
+    };
+
+    window.addEventListener('mousedown', handleGlobalClick);
+    return () => window.removeEventListener('mousedown', handleGlobalClick);
+  }, []);
+
   return (
     <Router>
+      <style>{`
+        /* Global Scrollbar Styles */
+        ::-webkit-scrollbar {
+          width: 5px;
+          height: 5px;
+        }
+        ::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+          background: #e11d48;
+          border-radius: 20px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+          background: #be123c;
+        }
+
+        /* Firefox */
+        * {
+          scrollbar-width: thin;
+          scrollbar-color: #e11d48 transparent;
+        }
+
+        /* Body specifically for full page scroll */
+        body {
+          scrollbar-width: thin;
+          scrollbar-color: #e11d48 transparent;
+        }
+        body::-webkit-scrollbar {
+          width: 5px;
+        }
+        body::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        body::-webkit-scrollbar-thumb {
+          background: #e11d48;
+          border-radius: 20px;
+        }
+      `}</style>
       <BackgroundDecorations />
       <Navbar />
       <Routes>
