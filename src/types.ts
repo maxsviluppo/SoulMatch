@@ -63,3 +63,21 @@ export interface Post {
   has_liked?: boolean;
   has_hearted?: boolean;
 }
+
+export interface SoulLink {
+  id: any;
+  sender_id: any;
+  receiver_id: any;
+  status: 'pending' | 'accepted' | 'rejected';
+  created_at: string;
+  // Joined fields
+  other_user?: {
+    id: any;
+    name: string;
+    surname?: string;
+    photos?: string[];
+    photo_url?: string;
+    city?: string;
+    is_online?: boolean;
+  };
+}

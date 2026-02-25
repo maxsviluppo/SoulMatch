@@ -36,10 +36,13 @@ import {
   X,
   LogOut,
   ShieldCheck,
-  Share2
+  Share2,
+  AlertTriangle,
+  Link2,
+  UserCheck
 } from 'lucide-react';
 import { cn, calculateAge, calculateMatchScore, fileToBase64, playTapSound } from './utils';
-import { UserProfile, ChatRequest, Post } from './types';
+import { UserProfile, ChatRequest, Post, SoulLink } from './types';
 import { supabase } from './supabase';
 
 // --- Components ---
@@ -626,6 +629,8 @@ const ProfileDetailPage = () => {
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
   const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
   const [messageText, setMessageText] = useState('');
+  const [soulLinkStatus, setSoulLinkStatus] = useState<'none' | 'pending_sent' | 'pending_received' | 'accepted' | 'rejected'>('none');
+  const [soulLinkId, setSoulLinkId] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const fetchInteractionState = async (currentUserId: string) => {
@@ -690,11 +695,81 @@ const ProfileDetailPage = () => {
       else setChatStatus('none');
 
       fetchInteractionState(currentUserId);
+
+      // Fetch SoulLink status
+      const { data: slData } = await supabase
+        .from('soul_links')
+        .select('id, sender_id, receiver_id, status')
+        .or(`and(sender_id.eq.${currentUserId},receiver_id.eq.${id}),and(sender_id.eq.${id},receiver_id.eq.${currentUserId})`)
+        .single();
+
+      if (slData) {
+        setSoulLinkId(slData.id);
+        if (slData.status === 'accepted') {
+          setSoulLinkStatus('accepted');
+        } else if (slData.status === 'pending') {
+          setSoulLinkStatus(slData.sender_id === currentUserId ? 'pending_sent' : 'pending_received');
+        } else {
+          setSoulLinkStatus('rejected');
+        }
+      } else {
+        setSoulLinkStatus('none');
+        setSoulLinkId(null);
+      }
     };
 
     fetchProfile();
     fetchStatus();
   }, [id]);
+
+  const handleSendSoulLink = async () => {
+    if (!currentUser?.id) {
+      setToast({ message: 'Devi essere iscritto!', type: 'error' });
+      return;
+    }
+    if (currentUser.id === id) return;
+
+    const { data, error } = await supabase
+      .from('soul_links')
+      .insert([{ sender_id: currentUser.id, receiver_id: id }])
+      .select()
+      .single();
+
+    if (!error && data) {
+      setSoulLinkId(data.id);
+      setSoulLinkStatus('pending_sent');
+      setToast({ message: '✨ SoulLink inviato! Attendi la risposta.', type: 'success' });
+    } else {
+      setToast({ message: 'Errore nell\'invio del SoulLink.', type: 'error' });
+    }
+  };
+
+  const handleAcceptSoulLink = async () => {
+    if (!soulLinkId) return;
+    const { error } = await supabase
+      .from('soul_links')
+      .update({ status: 'accepted' })
+      .eq('id', soulLinkId);
+
+    if (!error) {
+      setSoulLinkStatus('accepted');
+      setToast({ message: '🎉 SoulLink accettato! Siete ora connessi.', type: 'success' });
+    }
+  };
+
+  const handleRemoveSoulLink = async () => {
+    if (!soulLinkId) return;
+    const { error } = await supabase
+      .from('soul_links')
+      .delete()
+      .eq('id', soulLinkId);
+
+    if (!error) {
+      setSoulLinkStatus('none');
+      setSoulLinkId(null);
+      setToast({ message: 'SoulLink rimosso.', type: 'info' });
+    }
+  };
 
   const handleInteract = async (type: 'like' | 'heart') => {
     if (!currentUser?.id) {
@@ -898,36 +973,72 @@ const ProfileDetailPage = () => {
         </div>
       </div>
 
-      {/* ── ACTION STRIP ── */}
-      <div className="mx-4 mt-3 bg-white rounded-[28px] shadow-sm border border-stone-100 grid grid-cols-3 divide-x divide-stone-100 overflow-hidden">
+      {/* ── ACTION STRIP (4 cols) ── */}
+      <div className="mx-4 mt-3 bg-white rounded-[28px] shadow-sm border border-stone-100 grid grid-cols-4 divide-x divide-stone-100 overflow-hidden">
         {/* Like */}
         <button onClick={() => handleInteract('like')} className="flex flex-col items-center py-4 gap-1 group">
           <div className={cn(
-            "w-11 h-11 rounded-[16px] flex items-center justify-center transition-all",
+            "w-10 h-10 rounded-[14px] flex items-center justify-center transition-all",
             userInteractions.includes('like') ? "bg-emerald-100 text-emerald-600" : "bg-stone-50 text-stone-400 group-hover:bg-emerald-50 group-hover:text-emerald-500"
           )}>
             <ThumbsUp className={cn("w-5 h-5", userInteractions.includes('like') && "fill-current")} />
           </div>
-          <span className="text-xl font-black text-stone-900">{profile.likes_count || 0}</span>
+          <span className="text-lg font-black text-stone-900">{profile.likes_count || 0}</span>
           <span className={cn("text-[9px] font-bold uppercase tracking-widest", userInteractions.includes('like') ? "text-emerald-600" : "text-stone-400")}>Like</span>
         </button>
 
-        {/* Heart – centre, bigger */}
+        {/* Heart */}
         <button onClick={() => handleInteract('heart')} className="flex flex-col items-center py-3 gap-1 group">
           <div className={cn(
-            "w-14 h-14 rounded-full flex items-center justify-center transition-all shadow-md",
+            "w-12 h-12 rounded-full flex items-center justify-center transition-all shadow-md",
             userInteractions.includes('heart') ? "bg-rose-600 text-white scale-105" : "bg-rose-50 text-rose-500 group-hover:scale-105"
           )}>
-            <Heart className={cn("w-7 h-7", userInteractions.includes('heart') && "fill-current")} />
+            <Heart className={cn("w-6 h-6", userInteractions.includes('heart') && "fill-current")} />
           </div>
-          <span className="text-xl font-black text-stone-900">{profile.hearts_count || 0}</span>
+          <span className="text-lg font-black text-stone-900">{profile.hearts_count || 0}</span>
           <span className={cn("text-[9px] font-bold uppercase tracking-widest", userInteractions.includes('heart') ? "text-rose-600" : "text-stone-400")}>Cuori</span>
+        </button>
+
+        {/* SoulLink */}
+        <button
+          onClick={
+            soulLinkStatus === 'none' ? handleSendSoulLink :
+              soulLinkStatus === 'pending_received' ? handleAcceptSoulLink :
+                soulLinkStatus === 'accepted' ? handleRemoveSoulLink :
+                  () => { }
+          }
+          className="flex flex-col items-center py-4 gap-1 group"
+        >
+          <div className={cn(
+            "w-10 h-10 rounded-[14px] flex items-center justify-center transition-all relative",
+            soulLinkStatus === 'accepted' ? "bg-violet-100 text-violet-600" :
+              soulLinkStatus === 'pending_sent' ? "bg-amber-100 text-amber-600" :
+                soulLinkStatus === 'pending_received' ? "bg-emerald-100 text-emerald-600" :
+                  "bg-stone-50 text-stone-400 group-hover:bg-violet-50 group-hover:text-violet-500"
+          )}>
+            <Link2 className="w-5 h-5" />
+            {soulLinkStatus === 'pending_received' && (
+              <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white animate-pulse" />
+            )}
+          </div>
+          <span className="text-lg font-black text-stone-900">&nbsp;</span>
+          <span className={cn("text-[9px] font-bold uppercase tracking-widest",
+            soulLinkStatus === 'accepted' ? "text-violet-600" :
+              soulLinkStatus === 'pending_sent' ? "text-amber-600" :
+                soulLinkStatus === 'pending_received' ? "text-emerald-600" :
+                  "text-stone-400"
+          )}>
+            {soulLinkStatus === 'accepted' ? 'Connessi' :
+              soulLinkStatus === 'pending_sent' ? 'Attesa' :
+                soulLinkStatus === 'pending_received' ? 'Accetta' :
+                  'SoulLink'}
+          </span>
         </button>
 
         {/* Chat */}
         <button onClick={handleInstantChat} className="flex flex-col items-center py-4 gap-1 group relative">
           <div className={cn(
-            "w-11 h-11 rounded-[16px] flex items-center justify-center transition-all relative",
+            "w-10 h-10 rounded-[14px] flex items-center justify-center transition-all relative",
             chatStatus === 'approved' ? "bg-emerald-100 text-emerald-600" :
               chatStatus === 'pending' ? "bg-amber-100 text-amber-600" :
                 "bg-stone-50 text-stone-400 group-hover:bg-blue-50 group-hover:text-blue-500"
@@ -938,7 +1049,7 @@ const ProfileDetailPage = () => {
               profile.is_online ? "bg-emerald-500" : "bg-rose-400"
             )} />
           </div>
-          <span className="text-xl font-black text-stone-900">&nbsp;</span>
+          <span className="text-lg font-black text-stone-900">&nbsp;</span>
           <span className={cn("text-[9px] font-bold uppercase tracking-widest",
             chatStatus === 'approved' ? "text-emerald-600" :
               chatStatus === 'pending' ? "text-amber-600" : "text-stone-400")}>
@@ -1530,6 +1641,16 @@ const BachecaPage = () => {
             )}>SoulMatch</span>
           </button>
 
+          {/* SoulLink button */}
+          <Link to="/soul-links"
+            className="flex flex-col items-center gap-1 text-stone-400 hover:text-violet-600 active:scale-90 transition-all"
+          >
+            <div className="relative">
+              <Link2 className="w-6 h-6" />
+            </div>
+            <span className="text-[9px] font-black uppercase tracking-widest">SoulLink</span>
+          </Link>
+
           <Link to="/profile"
             className="flex flex-col items-center gap-1 text-stone-400 hover:text-rose-600 active:scale-90 transition-all"
           >
@@ -1713,6 +1834,463 @@ const SoulMatchConfirmBanner = ({ onConfirm }: { onConfirm: () => void }) => {
         </div>
       </div>
     </motion.div>
+  );
+};
+
+// ── SoulLinks Page ──────────────────────────────────────────────────────
+const SoulLinksPage = () => {
+  const navigate = useNavigate();
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [friends, setFriends] = useState<SoulLink[]>([]);
+  const [pendingIn, setPendingIn] = useState<SoulLink[]>([]);
+  const [friendsPosts, setFriendsPosts] = useState<Post[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
+  const [activeTab, setActiveTab] = useState<'feed' | 'amici' | 'richieste'>('feed');
+
+  const fetchSoulLinks = async (userId: string) => {
+    // Fetch all soul_links where user is involved
+    const { data: sentData } = await supabase
+      .from('soul_links')
+      .select(`
+        id, sender_id, receiver_id, status, created_at,
+        receiver:users!receiver_id(id, name, surname, photos, photo_url, city, is_online)
+      `)
+      .eq('sender_id', userId);
+
+    const { data: receivedData } = await supabase
+      .from('soul_links')
+      .select(`
+        id, sender_id, receiver_id, status, created_at,
+        sender:users!sender_id(id, name, surname, photos, photo_url, city, is_online)
+      `)
+      .eq('receiver_id', userId);
+
+    const acceptedFriends: SoulLink[] = [];
+    const incoming: SoulLink[] = [];
+
+    (sentData || []).forEach((sl: any) => {
+      if (sl.status === 'accepted') {
+        acceptedFriends.push({ ...sl, other_user: sl.receiver });
+      }
+    });
+
+    (receivedData || []).forEach((sl: any) => {
+      if (sl.status === 'accepted') {
+        acceptedFriends.push({ ...sl, other_user: sl.sender });
+      } else if (sl.status === 'pending') {
+        incoming.push({ ...sl, other_user: sl.sender });
+      }
+    });
+
+    setFriends(acceptedFriends);
+    setPendingIn(incoming);
+
+    // Fetch posts of friends
+    if (acceptedFriends.length > 0) {
+      const friendIds = acceptedFriends.map(f => f.other_user!.id);
+      const { data: postsData } = await supabase
+        .from('posts')
+        .select(`
+          *,
+          user:users(name, photos, photo_url)
+        `)
+        .in('user_id', friendIds)
+        .order('created_at', { ascending: false })
+        .limit(30);
+
+      if (postsData) {
+        setFriendsPosts(postsData.map((p: any) => ({
+          ...p,
+          author_name: p.user?.name,
+          author_photo: p.user?.photos?.[0] || p.user?.photo_url,
+        })));
+      }
+    } else {
+      setFriendsPosts([]);
+    }
+
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('soulmatch_user');
+      if (saved) {
+        const user = JSON.parse(saved);
+        setCurrentUser(user);
+        fetchSoulLinks(user.id);
+      } else {
+        navigate('/register');
+      }
+    } catch (e) {
+      navigate('/register');
+    }
+  }, []);
+
+  const handleAccept = async (slId: string) => {
+    const { error } = await supabase
+      .from('soul_links')
+      .update({ status: 'accepted' })
+      .eq('id', slId);
+
+    if (!error) {
+      setToast({ message: '🎉 SoulLink accettato! Siete ora connessi.', type: 'success' });
+      if (currentUser?.id) fetchSoulLinks(currentUser.id);
+    }
+  };
+
+  const handleReject = async (slId: string) => {
+    const { error } = await supabase
+      .from('soul_links')
+      .delete()
+      .eq('id', slId);
+
+    if (!error) {
+      setToast({ message: 'Richiesta rifiutata.', type: 'info' });
+      if (currentUser?.id) fetchSoulLinks(currentUser.id);
+    }
+  };
+
+  const handleRemoveFriend = async (slId: string) => {
+    const { error } = await supabase
+      .from('soul_links')
+      .delete()
+      .eq('id', slId);
+
+    if (!error) {
+      setToast({ message: 'SoulLink rimosso.', type: 'info' });
+      if (currentUser?.id) fetchSoulLinks(currentUser.id);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-[#F8F4EF] pt-16 pb-28 relative overflow-x-hidden">
+      <AnimatePresence>
+        {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      </AnimatePresence>
+
+      {/* ── HEADER ── */}
+      <div className="sticky top-16 z-30 bg-white/90 backdrop-blur-xl border-b border-stone-100 px-5 py-4 shadow-sm">
+        <div className="max-w-md mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-violet-100 rounded-[16px] flex items-center justify-center">
+              <Link2 className="w-5 h-5 text-violet-600" />
+            </div>
+            <div>
+              <h1 className="text-base font-serif font-black text-stone-900">I miei SoulLink</h1>
+              <p className="text-[9px] font-bold uppercase tracking-widest text-stone-400">
+                {loading ? '...' : `${friends.length} connessioni`}
+              </p>
+            </div>
+          </div>
+          {pendingIn.length > 0 && (
+            <button onClick={() => setActiveTab('richieste')} className="flex items-center gap-1.5 bg-emerald-500 text-white text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full animate-pulse">
+              <span>{pendingIn.length}</span>
+              <span>Nuove</span>
+            </button>
+          )}
+        </div>
+
+        {/* Tabs */}
+        <div className="max-w-md mx-auto mt-3 flex gap-1 bg-stone-100 rounded-[14px] p-1">
+          {(['feed', 'amici', 'richieste'] as const).map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={cn(
+                'flex-1 py-2 rounded-[10px] text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1',
+                activeTab === tab ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-400'
+              )}
+            >
+              {tab === 'feed' && <LayoutGrid className="w-3 h-3" />}
+              {tab === 'amici' && <UserCheck className="w-3 h-3" />}
+              {tab === 'richieste' && <Bell className="w-3 h-3" />}
+              {tab}
+              {tab === 'richieste' && pendingIn.length > 0 && (
+                <span className="w-4 h-4 bg-emerald-500 text-white rounded-full text-[8px] flex items-center justify-center">{pendingIn.length}</span>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="max-w-md mx-auto px-4 pt-4 space-y-4">
+
+        {/* ── TAB: FEED ── */}
+        {activeTab === 'feed' && (
+          <>
+            {/* Friends avatar strip */}
+            {friends.length > 0 && (
+              <div className="bg-white rounded-[24px] border border-stone-100 p-4 shadow-sm">
+                <p className="text-[9px] font-black uppercase tracking-widest text-stone-400 mb-3">I tuoi SoulLink — tap per visitare</p>
+                <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-1">
+                  {friends.map(f => (
+                    <button
+                      key={f.id}
+                      onClick={() => navigate(`/profile-detail/${f.other_user?.id}`)}
+                      className="flex flex-col items-center gap-1.5 shrink-0 group"
+                    >
+                      <div className="relative">
+                        <div className="w-14 h-14 rounded-[18px] overflow-hidden border-2 border-violet-200 shadow-sm group-hover:border-violet-400 transition-all ring-2 ring-violet-50">
+                          <img
+                            src={f.other_user?.photos?.[0] || f.other_user?.photo_url || `https://picsum.photos/seed/${f.other_user?.name}/200`}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        {f.other_user?.is_online && (
+                          <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-400 border-2 border-white rounded-full" />
+                        )}
+                      </div>
+                      <span className="text-[9px] font-black text-stone-600 truncate max-w-[52px]">{f.other_user?.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Friends posts feed */}
+            {loading ? (
+              <div className="space-y-4">
+                {[1, 2, 3].map(i => <div key={i} className="h-64 bg-stone-200 animate-pulse rounded-[28px]" />)}
+              </div>
+            ) : friends.length === 0 ? (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-center py-20 bg-white rounded-[32px] border border-stone-100 space-y-5"
+              >
+                <div className="relative w-20 h-20 mx-auto">
+                  <div className="w-20 h-20 bg-violet-50 rounded-[24px] flex items-center justify-center">
+                    <Link2 className="w-10 h-10 text-violet-300" />
+                  </div>
+                  <div className="absolute -bottom-1 -right-1 w-8 h-8 bg-rose-100 rounded-full flex items-center justify-center">
+                    <Heart className="w-4 h-4 text-rose-400 fill-current" />
+                  </div>
+                </div>
+                <div>
+                  <h2 className="text-lg font-serif font-black text-stone-900 mb-2">Nessun SoulLink ancora</h2>
+                  <p className="text-stone-400 text-xs px-8 leading-relaxed">
+                    Visita i profili in bacheca e invia un <strong className="text-violet-600">SoulLink</strong> — come una richiesta di amicizia speciale!
+                  </p>
+                </div>
+                <button
+                  onClick={() => navigate('/bacheca')}
+                  className="inline-flex items-center gap-2 bg-violet-600 text-white px-6 py-3 rounded-[16px] text-xs font-black uppercase tracking-widest shadow-lg shadow-violet-200 active:scale-95 transition-all"
+                >
+                  <Users className="w-4 h-4" />
+                  Scopri persone
+                </button>
+              </motion.div>
+            ) : friendsPosts.length === 0 ? (
+              <div className="text-center py-12 bg-white rounded-[28px] border border-stone-100">
+                <ImageIcon className="w-8 h-8 text-stone-200 mx-auto mb-3" />
+                <p className="text-stone-400 text-sm font-medium">I tuoi SoulLink non hanno ancora pubblicato nulla.</p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {friendsPosts.map(post => (
+                  <motion.div
+                    key={post.id}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="bg-white rounded-[32px] overflow-hidden shadow-sm border border-stone-50"
+                  >
+                    {/* Post header */}
+                    <div className="p-4 flex items-center gap-3">
+                      <button onClick={() => navigate(`/profile-detail/${post.user_id}`)}>
+                        <div className="w-10 h-10 rounded-[14px] overflow-hidden border-2 border-violet-100">
+                          <img src={post.author_photo || `https://picsum.photos/seed/${post.author_name}/100`} className="w-full h-full object-cover" />
+                        </div>
+                      </button>
+                      <div>
+                        <h4 className="text-sm font-black text-stone-900">{post.author_name}</h4>
+                        <p className="text-[10px] text-stone-400 font-bold uppercase tracking-widest">
+                          {new Date(post.created_at).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}
+                        </p>
+                      </div>
+                      <div className="ml-auto w-6 h-6 bg-violet-100 rounded-full flex items-center justify-center">
+                        <Link2 className="w-3 h-3 text-violet-500" />
+                      </div>
+                    </div>
+
+                    {/* Photos */}
+                    {post.photos?.length > 0 && (
+                      <div className="w-full aspect-square overflow-hidden">
+                        <img src={post.photos[0]} className="w-full h-full object-cover" />
+                      </div>
+                    )}
+
+                    {/* Caption + reactions */}
+                    <div className="p-4 space-y-3">
+                      {post.description && (
+                        <p className="text-sm text-stone-700 leading-relaxed">{post.description}</p>
+                      )}
+                      <div className="flex items-center gap-4 text-stone-400 text-xs font-black">
+                        <span className="flex items-center gap-1.5">
+                          <ThumbsUp className="w-4 h-4" />{post.likes_count}
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                          <Heart className="w-4 h-4 fill-current text-rose-300" />{post.hearts_count}
+                        </span>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ── TAB: AMICI ── */}
+        {activeTab === 'amici' && (
+          <div className="space-y-3">
+            {loading ? (
+              [1, 2, 3].map(i => <div key={i} className="h-20 bg-stone-200 animate-pulse rounded-[20px]" />)
+            ) : friends.length === 0 ? (
+              <div className="text-center py-16 bg-white rounded-[28px] border border-stone-100">
+                <UserCheck className="w-8 h-8 text-stone-200 mx-auto mb-3" />
+                <p className="text-stone-400 text-sm">Nessun SoulLink confermato</p>
+              </div>
+            ) : friends.map(f => (
+              <motion.div
+                key={f.id}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="bg-white rounded-[22px] border border-stone-100 p-4 flex items-center gap-4 shadow-sm"
+              >
+                <button onClick={() => navigate(`/profile-detail/${f.other_user?.id}`)} className="flex items-center gap-3 flex-1 min-w-0">
+                  <div className="relative shrink-0">
+                    <div className="w-14 h-14 rounded-[18px] overflow-hidden border-2 border-violet-100">
+                      <img
+                        src={f.other_user?.photos?.[0] || f.other_user?.photo_url || `https://picsum.photos/seed/${f.other_user?.name}/200`}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    {f.other_user?.is_online && (
+                      <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-400 border-2 border-white rounded-full" />
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-black text-stone-900 truncate">{f.other_user?.name} {f.other_user?.surname}</h3>
+                    {f.other_user?.city && (
+                      <p className="text-[10px] text-stone-400 font-semibold flex items-center gap-1">
+                        <MapPin className="w-3 h-3" />{f.other_user.city}
+                      </p>
+                    )}
+                    <div className="flex items-center gap-1 mt-1">
+                      <div className="w-2 h-2 bg-violet-400 rounded-full" />
+                      <span className="text-[9px] font-black text-violet-600 uppercase tracking-widest">SoulLink</span>
+                    </div>
+                  </div>
+                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => navigate(`/profile-detail/${f.other_user?.id}`)}
+                    className="w-9 h-9 bg-violet-50 text-violet-600 rounded-[12px] flex items-center justify-center hover:bg-violet-100 transition-all"
+                    title="Visita profilo"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => handleRemoveFriend(f.id)}
+                    className="w-9 h-9 bg-stone-50 text-stone-400 rounded-[12px] flex items-center justify-center hover:bg-rose-50 hover:text-rose-500 transition-all"
+                    title="Rimuovi SoulLink"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        )}
+
+        {/* ── TAB: RICHIESTE ── */}
+        {activeTab === 'richieste' && (
+          <div className="space-y-3">
+            {loading ? (
+              [1, 2].map(i => <div key={i} className="h-24 bg-stone-200 animate-pulse rounded-[20px]" />)
+            ) : pendingIn.length === 0 ? (
+              <div className="text-center py-16 bg-white rounded-[28px] border border-stone-100">
+                <Bell className="w-8 h-8 text-stone-200 mx-auto mb-3" />
+                <p className="text-stone-400 text-sm">Nessuna richiesta in arrivo</p>
+              </div>
+            ) : pendingIn.map((req, idx) => (
+              <motion.div
+                key={req.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.06 }}
+                className="bg-white rounded-[22px] border border-emerald-100 p-4 shadow-sm"
+              >
+                <div className="flex items-center gap-3">
+                  <button onClick={() => navigate(`/profile-detail/${req.other_user?.id}`)}>
+                    <div className="w-14 h-14 rounded-[18px] overflow-hidden border-2 border-emerald-200 shadow-sm">
+                      <img
+                        src={req.other_user?.photos?.[0] || req.other_user?.photo_url || `https://picsum.photos/seed/${req.other_user?.name}/200`}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  </button>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-black text-stone-900 truncate">{req.other_user?.name}</h3>
+                    {req.other_user?.city && (
+                      <p className="text-[10px] text-stone-400 flex items-center gap-1">
+                        <MapPin className="w-3 h-3" />{req.other_user.city}
+                      </p>
+                    )}
+                    <p className="text-[9px] text-emerald-600 font-black uppercase tracking-widest mt-1 flex items-center gap-1">
+                      <Sparkles className="w-2.5 h-2.5" />
+                      Vuole essere il tuo SoulLink!
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-2 mt-3">
+                  <button
+                    onClick={() => handleAccept(req.id)}
+                    className="flex-1 py-3 bg-emerald-500 text-white rounded-[14px] text-[10px] font-black uppercase tracking-widest shadow-md shadow-emerald-200 active:scale-95 transition-all flex items-center justify-center gap-1.5"
+                  >
+                    <CheckCircle className="w-4 h-4" />
+                    Accetta
+                  </button>
+                  <button
+                    onClick={() => handleReject(req.id)}
+                    className="flex-1 py-3 bg-stone-100 text-stone-500 rounded-[14px] text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-1.5"
+                  >
+                    <X className="w-4 h-4" />
+                    Rifiuta
+                  </button>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── BOTTOM NAV ── */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/90 backdrop-blur-xl border-t border-stone-100 shadow-2xl px-6 pb-6 pt-3">
+        <div className="max-w-sm mx-auto flex items-center justify-around">
+          <Link to="/" className="flex flex-col items-center gap-1 text-stone-400 hover:text-rose-600 active:scale-90 transition-all">
+            <Home className="w-6 h-6" />
+            <span className="text-[9px] font-black uppercase tracking-widest">Home</span>
+          </Link>
+          <Link to="/bacheca" className="flex flex-col items-center gap-1 text-stone-400 hover:text-rose-600 active:scale-90 transition-all">
+            <Users className="w-6 h-6" />
+            <span className="text-[9px] font-black uppercase tracking-widest">Bacheca</span>
+          </Link>
+          <div className="flex flex-col items-center gap-1">
+            <div className="w-14 h-14 -mt-6 rounded-[22px] bg-violet-600 flex items-center justify-center shadow-xl shadow-violet-400/40">
+              <Link2 className="w-6 h-6 text-white" />
+            </div>
+            <span className="text-[9px] font-black uppercase tracking-widest text-violet-600">SoulLink</span>
+          </div>
+          <Link to="/profile" className="flex flex-col items-center gap-1 text-stone-400 hover:text-rose-600 active:scale-90 transition-all">
+            <User className="w-6 h-6" />
+            <span className="text-[9px] font-black uppercase tracking-widest">Profilo</span>
+          </Link>
+        </div>
+      </div>
+    </div>
   );
 };
 
@@ -2097,7 +2675,11 @@ const RegisterPage = () => {
       }
 
       console.log("Supabase Success:", data);
-      localStorage.setItem('soulmatch_user', JSON.stringify(data));
+      try {
+        localStorage.setItem('soulmatch_user', JSON.stringify(data));
+      } catch (err) {
+        console.error("LocalStorage error:", err);
+      }
       localStorage.removeItem('soulmatch_reg_draft');
       window.dispatchEvent(new Event('user-auth-change'));
 
@@ -3022,6 +3604,8 @@ const EditProfilePage = () => {
     }
   }, [navigate]);
 
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
   const handleSave = async () => {
     if (!user) return;
     setSaving(true);
@@ -3034,11 +3618,49 @@ const EditProfilePage = () => {
 
       if (error) throw error;
 
-      localStorage.setItem('soulmatch_user', JSON.stringify(data));
+      try {
+        localStorage.setItem('soulmatch_user', JSON.stringify(data));
+      } catch (err) {
+        console.error("LocalStorage error:", err);
+      }
       setToast({ message: 'Profilo aggiornato con successo!', type: 'success' });
       setTimeout(() => navigate('/profile'), 1500);
     } catch (e: any) {
       setToast({ message: 'Errore: ' + e.message, type: 'error' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteProfile = async () => {
+    if (!user) return;
+    try {
+      setSaving(true);
+
+      // Delete user data from all related tables via secure RPC function
+      console.log("Deleting user data for:", user.id);
+
+      // Esegui la funzione RPC che distrugge l'intero account lato server
+      // (Bypassa RLS e include auth.users per una rimozione completa)
+      const { error } = await supabase.rpc('delete_user_account');
+
+      if (error) {
+        throw new Error("Impossibile eliminare l'account in modo definitivo tramite funzione database. Assicurati di aver incollato lo script delete_user_function.sql nell'editor SQL. Dettaglio: " + error.message);
+      }
+
+      // 5. Sign out locally
+      await supabase.auth.signOut();
+
+      localStorage.removeItem('soulmatch_user');
+      setToast({ message: 'Profilo eliminato con successo. Arrivederci!', type: 'info' });
+
+      setTimeout(() => {
+        window.dispatchEvent(new Event('user-auth-change'));
+        navigate('/');
+      }, 2000);
+    } catch (err: any) {
+      console.error("Delete error:", err);
+      setToast({ message: 'Errore durante l\'eliminazione: ' + err.message, type: 'error' });
     } finally {
       setSaving(false);
     }
@@ -3274,9 +3896,47 @@ const EditProfilePage = () => {
         </div>
 
         {/* Footer Info */}
-        <p className="text-center text-[10px] text-stone-400 font-bold uppercase tracking-widest pb-10">
+        <p className="text-center text-[10px] text-stone-400 font-bold uppercase tracking-widest pb-6">
           Il tuo profilo è protetto e i dati sensibili sono crittografati.
         </p>
+
+        {/* Delete Profile Section */}
+        <div className="pb-20 px-4">
+          {!showDeleteConfirm ? (
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="w-full py-4 rounded-3xl border-2 border-rose-500/20 text-rose-500 text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-rose-500/10 transition-all"
+            >
+              <Trash2 className="w-4 h-4" />
+              Elimina Profilo
+            </button>
+          ) : (
+            <div className="bg-rose-500/10 border-2 border-rose-500 p-6 rounded-[32px] space-y-4 animate-in fade-in zoom-in duration-300">
+              <div className="flex items-center gap-3 text-rose-500">
+                <AlertTriangle className="w-6 h-6" />
+                <h3 className="font-black uppercase tracking-widest text-sm">Sei sicuro?</h3>
+              </div>
+              <p className="text-stone-400 text-[10px] font-bold uppercase tracking-wider leading-relaxed">
+                Questa azione è irreversibile. Tutti i tuoi messaggi, foto, post e interazioni verranno eliminati per sempre dal server.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={handleDeleteProfile}
+                  disabled={saving}
+                  className="flex-1 py-4 bg-rose-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-rose-500/20"
+                >
+                  {saving ? 'ELIMINAZIONE...' : 'SÌ, ELIMINA TUTTO'}
+                </button>
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="flex-1 py-4 bg-stone-800 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest"
+                >
+                  ANNULLA
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -3684,32 +4344,57 @@ const ProfilePage = () => {
       {/* ── BOTTOM NAV BAR (fixed, iOS style) ── */}
       <div className="fixed bottom-0 left-0 right-0 z-40">
         {/* backdrop blur pill */}
-        <div className="bg-white/90 backdrop-blur-xl border-t border-stone-100 shadow-2xl px-6 pb-6 pt-3">
+        <div className="bg-white/90 backdrop-blur-xl border-t border-stone-100 shadow-2xl px-4 pb-6 pt-3">
           <div className="max-w-sm mx-auto flex items-center justify-around">
+
+            {/* Home */}
             <button
               onClick={() => navigate('/')}
               className="flex flex-col items-center gap-1 text-stone-400 hover:text-rose-600 active:scale-90 transition-all"
             >
-              <Home className="w-6 h-6" />
-              <span className="text-[9px] font-black uppercase tracking-widest">Home</span>
+              <Home className="w-5 h-5" />
+              <span className="text-[8px] font-black uppercase tracking-widest">Home</span>
             </button>
 
-            {/* Centre button – big tap area */}
+            {/* Bacheca */}
+            <button
+              onClick={() => navigate('/bacheca')}
+              className="flex flex-col items-center gap-1 text-stone-400 hover:text-rose-600 active:scale-90 transition-all"
+            >
+              <Users className="w-5 h-5" />
+              <span className="text-[8px] font-black uppercase tracking-widest">Bacheca</span>
+            </button>
+
+            {/* Centre button – Modifica (elevated) */}
             <button
               onClick={() => navigate('/edit-profile')}
-              className="w-14 h-14 -mt-6 rounded-[22px] bg-rose-600 flex items-center justify-center shadow-xl shadow-rose-400/40 text-white active:scale-90 transition-all"
+              className="flex flex-col items-center gap-1"
               title="Modifica profilo"
             >
-              <Settings2 className="w-6 h-6" />
+              <div className="w-[52px] h-[52px] -mt-5 rounded-[18px] bg-rose-600 flex items-center justify-center shadow-xl shadow-rose-400/40 text-white active:scale-90 transition-all">
+                <Settings2 className="w-5 h-5" />
+              </div>
+              <span className="text-[8px] font-black uppercase tracking-widest text-rose-600 mt-0.5">Modifica</span>
             </button>
 
+            {/* SoulLink */}
+            <button
+              onClick={() => navigate('/soul-links')}
+              className="flex flex-col items-center gap-1 text-stone-400 hover:text-violet-600 active:scale-90 transition-all"
+            >
+              <Link2 className="w-5 h-5" />
+              <span className="text-[8px] font-black uppercase tracking-widest">SoulLink</span>
+            </button>
+
+            {/* Esci */}
             <button
               onClick={() => setShowLogoutConfirm(true)}
               className="flex flex-col items-center gap-1 text-stone-400 hover:text-rose-600 active:scale-90 transition-all"
             >
-              <LogOut className="w-6 h-6" />
-              <span className="text-[9px] font-black uppercase tracking-widest">Esci</span>
+              <LogOut className="w-5 h-5" />
+              <span className="text-[8px] font-black uppercase tracking-widest">Esci</span>
             </button>
+
           </div>
         </div>
       </div>
@@ -4148,6 +4833,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/bacheca" element={<BachecaPage />} />
+        <Route path="/soul-links" element={<SoulLinksPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/edit-profile" element={<EditProfilePage />} />
