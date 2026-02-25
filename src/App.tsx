@@ -140,6 +140,19 @@ const BackgroundDecorations = () => {
   );
 };
 
+const ProfileAvatar = ({ user, className, iconSize = "w-6 h-6" }: { user: any, className?: string, iconSize?: string }) => {
+  const photo = user?.photos?.[0] || user?.photo_url;
+  return (
+    <div className={cn("bg-stone-50 flex items-center justify-center overflow-hidden shrink-0", className)}>
+      {photo ? (
+        <img src={photo} alt={user?.name || ""} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+      ) : (
+        <User className={cn(iconSize, "text-rose-600 fill-current")} />
+      )}
+    </div>
+  );
+};
+
 const Navbar = () => {
   const [user, setUser] = useState<UserProfile | null>(null);
 
@@ -168,20 +181,39 @@ const Navbar = () => {
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 px-6 py-4 flex justify-between items-center bg-white/80 backdrop-blur-md border-b border-stone-100">
-      <Link to="/" className="flex items-center gap-2 group">
-        <div className="w-10 h-10 bg-rose-600 rounded-xl flex items-center justify-center group-hover:rotate-12 transition-transform">
+      <Link to="/" className="flex items-center gap-3 group">
+        <div className="w-11 h-11 bg-rose-600 rounded-xl flex items-center justify-center group-hover:rotate-12 transition-transform shrink-0 shadow-lg shadow-rose-200">
           <Heart className="text-white w-6 h-6 fill-current" />
         </div>
-        <span className="text-2xl font-serif font-bold tracking-tight text-stone-900">SoulMatch</span>
+        <div className="flex flex-col">
+          <span className="text-2xl font-serif font-black tracking-tight text-stone-900 leading-none">SoulMatch</span>
+          <span className="text-[10px] font-montserrat font-bold text-rose-600 uppercase tracking-[0.15em] mt-1 line-clamp-1">
+            {user ? user.name : "Compagnia Ideale"}
+          </span>
+        </div>
       </Link>
       <div className="flex gap-4 items-center">
         {user ? (
-          <Link to="/profile" className="w-10 h-10 bg-red-600 rounded-full flex items-center justify-center text-white border border-red-700 shadow-xl shadow-red-100/50 transition-all hover:scale-110 active:scale-95 ring-2 ring-white/50">
-            <User className="w-5 h-5 fill-current" />
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link to="/profile" className="w-11 h-11 rounded-full flex items-center justify-center border border-stone-100 bg-white shadow-sm transition-all hover:bg-stone-50 active:scale-95 overflow-hidden ring-2 ring-stone-50">
+              <ProfileAvatar user={user} className="w-full h-full" iconSize="w-6 h-6" />
+            </Link>
+
+            <button
+              onClick={() => {
+                localStorage.removeItem('soulmatch_user');
+                window.dispatchEvent(new Event('user-auth-change'));
+                window.location.href = '/';
+              }}
+              className="w-11 h-11 bg-white text-stone-400 rounded-2xl flex items-center justify-center hover:bg-rose-50 hover:text-rose-600 transition-all border border-stone-100 active:scale-90 shadow-sm"
+              title="Esci"
+            >
+              <LogOut className="w-5 h-5" />
+            </button>
+          </div>
         ) : (
-          <Link to="/register" className="w-10 h-10 bg-stone-100 rounded-full flex items-center justify-center text-stone-400 border border-stone-200 shadow-sm transition-all hover:bg-stone-200 hover:text-stone-500 active:scale-95">
-            <User className="w-5 h-5" />
+          <Link to="/register" className="w-11 h-11 bg-white rounded-full flex items-center justify-center border border-stone-100 shadow-sm transition-all hover:bg-rose-50 active:scale-95">
+            <ProfileAvatar user={null} className="w-full h-full bg-transparent" iconSize="w-6 h-6" />
           </Link>
         )}
       </div>
@@ -235,12 +267,7 @@ const ProfileCard: React.FC<{ profile: UserProfile; onInteract?: () => void }> =
         className="group relative overflow-hidden rounded-3xl bg-white border border-stone-200 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col h-full"
       >
         <div className="aspect-[3/4.5] overflow-hidden relative shrink-0">
-          <img
-            src={(profile.photos && profile.photos.length > 0) ? profile.photos[0] : (profile.photo_url || `https://picsum.photos/seed/${profile.name}/400/600`)}
-            alt=""
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-            referrerPolicy="no-referrer"
-          />
+          <ProfileAvatar user={profile} className="w-full h-full" iconSize="w-20 h-20" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 
           {/* Test Match Button on Photo */}
@@ -944,9 +971,21 @@ const ProfileDetailPage = () => {
 
 
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-stone-50"><Sparkles className="w-8 h-8 text-rose-600 animate-pulse" /></div>;
-  if (!profile) return <div className="min-h-screen flex items-center justify-center bg-stone-50">Profilo non trovato</div>;
+  if (!profile) return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-stone-50 p-6 text-center">
+      <div className="w-20 h-20 bg-stone-100 rounded-full flex items-center justify-center mb-6">
+        <Info className="w-10 h-10 text-stone-300" />
+      </div>
+      <h2 className="text-xl font-serif font-black text-stone-900 mb-2">Profilo non trovato</h2>
+      <p className="text-stone-500 text-sm mb-8 max-w-xs">Il profilo che stai cercando non esiste o è stato rimosso.</p>
+      <div className="flex flex-col gap-3 w-full max-w-xs">
+        <button onClick={() => navigate('/')} className="btn-primary py-4 flex items-center justify-center gap-2">
+          <Home className="w-4 h-4" /> Torna alla Home
+        </button>
+      </div>
+    </div>
+  );
 
-  const heroPhoto = (profile.photos && profile.photos.length > 0) ? profile.photos[0] : (profile.photo_url || `https://picsum.photos/seed/${profile.name}/400/600`);
   const matchScore = calculateMatchScore(currentUser, profile);
 
   return (
@@ -957,7 +996,7 @@ const ProfileDetailPage = () => {
 
       {/* ── HERO PHOTO ── */}
       <div className="relative w-full h-[55vh] min-h-[320px] overflow-hidden">
-        <img src={heroPhoto} alt={profile.name} className="w-full h-full object-cover object-top" referrerPolicy="no-referrer" />
+        <ProfileAvatar user={profile} className="w-full h-full" iconSize="w-32 h-32" />
         {/* Gradient: dark at bottom for text readability */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-[#F8F4EF]" />
 
@@ -1576,12 +1615,7 @@ const BachecaPage = () => {
                   <span className="w-2 h-2 bg-rose-600 rounded-full" />
                 )}
               </button>
-              {/* Show user's preference tags read-only */}
-              {userWantsGender.length > 0 && (
-                <span className="flex items-center gap-1.5 bg-violet-50 text-violet-700 border border-violet-100 px-3 py-1 rounded-full text-[10px] font-black shrink-0">
-                  🎯 {userWantsGender.join(' · ')}
-                </span>
-              )}
+
               {filterCity !== 'Tutte' && (
                 <span className="flex items-center gap-1.5 bg-rose-50 text-rose-600 border border-rose-100 px-3 py-1 rounded-full text-[10px] font-black shrink-0">
                   {filterCity}
@@ -2200,9 +2234,11 @@ const SoulLinksPage = () => {
                     {/* Post header */}
                     <div className="p-4 flex items-center gap-3">
                       <button onClick={() => navigate(`/profile-detail/${post.user_id}`)}>
-                        <div className="w-10 h-10 rounded-[14px] overflow-hidden border-2 border-violet-100">
-                          <img src={post.author_photo || `https://picsum.photos/seed/${post.author_name}/100`} className="w-full h-full object-cover" />
-                        </div>
+                        <ProfileAvatar
+                          user={{ name: post.author_name, photo_url: post.author_photo }}
+                          className="w-10 h-10 rounded-[14px] border-2 border-violet-100"
+                          iconSize="w-6 h-6"
+                        />
                       </button>
                       <div>
                         <h4 className="text-sm font-black text-stone-900">{post.author_name}</h4>
@@ -2262,12 +2298,11 @@ const SoulLinksPage = () => {
               >
                 <button onClick={() => navigate(`/profile-detail/${f.other_user?.id}`)} className="flex items-center gap-3 flex-1 min-w-0">
                   <div className="relative shrink-0">
-                    <div className="w-14 h-14 rounded-[18px] overflow-hidden border-2 border-violet-100">
-                      <img
-                        src={f.other_user?.photos?.[0] || f.other_user?.photo_url || `https://picsum.photos/seed/${f.other_user?.name}/200`}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
+                    <ProfileAvatar
+                      user={f.other_user}
+                      className="w-14 h-14 rounded-[18px] border-2 border-violet-100"
+                      iconSize="w-8 h-8"
+                    />
                     {f.other_user?.is_online && (
                       <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-400 border-2 border-white rounded-full" />
                     )}
@@ -2326,12 +2361,11 @@ const SoulLinksPage = () => {
               >
                 <div className="flex items-center gap-3">
                   <button onClick={() => navigate(`/profile-detail/${req.other_user?.id}`)}>
-                    <div className="w-14 h-14 rounded-[18px] overflow-hidden border-2 border-emerald-200 shadow-sm">
-                      <img
-                        src={req.other_user?.photos?.[0] || req.other_user?.photo_url || `https://picsum.photos/seed/${req.other_user?.name}/200`}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
+                    <ProfileAvatar
+                      user={req.other_user}
+                      className="w-14 h-14 rounded-[18px] border-2 border-emerald-200 shadow-sm"
+                      iconSize="w-8 h-8"
+                    />
                   </button>
                   <div className="flex-1 min-w-0">
                     <h3 className="text-sm font-black text-stone-900 truncate">{req.other_user?.name}</h3>
@@ -4464,6 +4498,13 @@ const ProfilePage = () => {
       <div className="flex flex-col gap-3 w-full max-w-xs">
         <button onClick={() => navigate('/register')} className="btn-primary py-4">Completa Registrazione</button>
         <button onClick={() => window.location.reload()} className="btn-secondary py-4">Riprova</button>
+        <button onClick={() => {
+          localStorage.removeItem('soulmatch_user');
+          window.dispatchEvent(new Event('user-auth-change'));
+          navigate('/');
+        }} className="mt-4 flex items-center justify-center gap-2 text-stone-400 font-bold hover:text-rose-600 transition-colors">
+          <LogOut className="w-4 h-4" /> Esci e ricomincia
+        </button>
       </div>
     </div>
   );
@@ -5106,6 +5147,28 @@ const DmcaPage = () => (
 
 export default function App() {
   useEffect(() => {
+    // 1. Silent verification of the user profile on app startup
+    const verifyUser = async () => {
+      const saved = localStorage.getItem('soulmatch_user');
+      if (saved) {
+        try {
+          const u = JSON.parse(saved);
+          if (u?.id) {
+            const { data, error } = await supabase.from('users').select('id').eq('id', u.id).single();
+            if (error || !data) {
+              console.warn("Sessione non valida o profilo rimosso. Pulizia locale...");
+              localStorage.removeItem('soulmatch_user');
+              window.dispatchEvent(new Event('user-auth-change'));
+            }
+          }
+        } catch (e) {
+          localStorage.removeItem('soulmatch_user');
+          window.dispatchEvent(new Event('user-auth-change'));
+        }
+      }
+    };
+    verifyUser();
+
     const handleGlobalClick = (e: MouseEvent) => {
       // Find if the click or its parents are a button or anchor
       const target = e.target as HTMLElement;
