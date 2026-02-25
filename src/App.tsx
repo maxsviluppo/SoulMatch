@@ -113,11 +113,29 @@ const BackgroundDecorations = () => {
 const Navbar = () => {
   const [user, setUser] = useState<UserProfile | null>(null);
 
-  const checkUser = () => {
+  const checkUser = async () => {
     try {
       const saved = localStorage.getItem('soulmatch_user');
-      if (saved) setUser(JSON.parse(saved));
-      else setUser(null);
+      if (saved) {
+        setUser(JSON.parse(saved));
+        return;
+      }
+
+      // Fallback: check Supabase session
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user?.id) {
+        const { data: profile } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+        if (profile) {
+          setUser(profile);
+          localStorage.setItem('soulmatch_user', JSON.stringify(profile));
+          return;
+        }
+      }
+      setUser(null);
     } catch (e) {
       setUser(null);
     }
@@ -353,9 +371,20 @@ const HomePage = () => {
   const [demoHearts, setDemoHearts] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
-    window.scrollTo(0, 0);
-    const saved = localStorage.getItem('soulmatch_user');
-    if (saved) setIsLoggedIn(true);
+    const checkAuth = async () => {
+      window.scrollTo(0, 0);
+      const saved = localStorage.getItem('soulmatch_user');
+      if (saved) {
+        setIsLoggedIn(true);
+        return;
+      }
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        setIsLoggedIn(true);
+      }
+    };
+    checkAuth();
   }, []);
 
   const handleShare = async () => {
@@ -1350,18 +1379,33 @@ const BachecaPage = () => {
   };
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem('soulmatch_user');
-      if (saved) {
-        const user = JSON.parse(saved);
-        setCurrentUser(user);
+    const init = async () => {
+      try {
+        const saved = localStorage.getItem('soulmatch_user');
+        if (!saved) { navigate('/register'); return; }
+        const localUser = JSON.parse(saved);
+        if (!localUser?.id) { navigate('/register'); return; }
+
+        // Carica sempre dal DB per avere preferenze aggiornate
+        const { data: freshUser } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', localUser.id)
+          .single();
+
+        if (freshUser) {
+          // Aggiorna anche localStorage con i dati freschi
+          localStorage.setItem('soulmatch_user', JSON.stringify(freshUser));
+          setCurrentUser(freshUser);
+        } else {
+          setCurrentUser(localUser);
+        }
         fetchProfiles();
-      } else {
+      } catch (e) {
         navigate('/register');
       }
-    } catch (e) {
-      navigate('/register');
-    }
+    };
+    init();
 
     // Save scroll position on unmount
     return () => {
@@ -1550,7 +1594,7 @@ const BachecaPage = () => {
               </button>
               {/* Show user's preference tags read-only */}
               {userWantsGender.length > 0 && (
-                <span className="flex items-center gap-1.5 bg-violet-50 text-violet-700 border border-violet-100 px-3 py-1 rounded-full text-[10px] font-black shrink-0">
+                <span className="flex items-center gap-1.5 bg-stone-100 text-stone-600 border border-stone-200 px-3 py-1 rounded-full text-[10px] font-black shrink-0">
                   🎯 {userWantsGender.join(' · ')}
                 </span>
               )}
@@ -1568,12 +1612,12 @@ const BachecaPage = () => {
               className="bg-white rounded-[24px] border border-stone-100 p-5 shadow-sm space-y-5"
             >
               {/* Genere - readonly info from profile */}
-              <div className="p-3 bg-violet-50 rounded-[16px] border border-violet-100">
-                <p className="text-[10px] font-black text-violet-700 uppercase tracking-widest mb-1">🎯 Genere cercato</p>
-                <p className="text-[11px] text-violet-600 font-semibold">
+              <div className="p-3 bg-stone-50 rounded-[16px] border border-stone-100">
+                <p className="text-[10px] font-black text-stone-500 uppercase tracking-widest mb-1">🎯 Genere cercato</p>
+                <p className="text-[11px] text-stone-700 font-semibold">
                   {userWantsGender.length > 0 ? userWantsGender.join(', ') : 'Nessuna preferenza impostata'}
                 </p>
-                <p className="text-[9px] text-violet-400 mt-1">Modifica in: Profilo → Modifica Profilo</p>
+                <p className="text-[9px] text-stone-400 mt-1">Modifica in: Profilo → Modifica Profilo</p>
               </div>
               {/* City */}
               <div className="space-y-2">
@@ -1670,8 +1714,8 @@ const BachecaPage = () => {
                     className={cn(
                       'w-9 h-9 rounded-[12px] flex items-center justify-center shadow-lg backdrop-blur-sm transition-all active:scale-90',
                       cardReactions[profile.id] === 'like'
-                        ? 'bg-blue-500 text-white'
-                        : 'bg-white/80 text-stone-400 hover:text-blue-500'
+                        ? 'bg-rose-600 text-white'
+                        : 'bg-white/80 text-stone-400 hover:text-rose-500'
                     )}
                     title="Like"
                   >
@@ -2512,6 +2556,12 @@ const RegisterPage = () => {
     conosciamoci_meglio: {},
   });
 
+  const handleClearDraft = () => {
+    localStorage.removeItem('soulmatch_reg_draft');
+    localStorage.removeItem('soulmatch_user');
+    window.location.reload();
+  };
+
   useEffect(() => {
     const initData = async () => {
       try {
@@ -2523,22 +2573,16 @@ const RegisterPage = () => {
           return;
         }
 
-        if (authenticatedUserRaw) {
-          const user = JSON.parse(authenticatedUserRaw);
-          if (user.id) {
-            // Fetch fresh data from Supabase
-            const { data, error } = await supabase
-              .from('users')
-              .select('*')
-              .eq('id', user.id)
-              .single();
+        const effectiveId = authenticatedUserRaw ? JSON.parse(authenticatedUserRaw).id : null;
+        if (effectiveId) {
+          const { data, error } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', effectiveId)
+            .single();
 
-            if (data && !error) {
-              setFormData(prev => ({ ...prev, ...data }));
-            } else if (typeof user.id === 'string' && user.id.length > 10) {
-              // Probably already a UUID, just use it
-              setFormData(prev => ({ ...prev, ...user }));
-            }
+          if (data && !error) {
+            setFormData(prev => ({ ...prev, ...data }));
           }
         }
       } catch (e) {
@@ -2547,6 +2591,7 @@ const RegisterPage = () => {
     };
     initData();
   }, []);
+
 
   useEffect(() => {
     localStorage.setItem('soulmatch_reg_draft', JSON.stringify(formData));
@@ -3778,14 +3823,31 @@ const EditProfilePage = () => {
       // Verifica sessione Supabase attiva
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        // Sessione scaduta → re-login
         navigate('/register');
         return;
       }
+
       const saved = localStorage.getItem('soulmatch_user');
       if (saved) {
-        const parsed = JSON.parse(saved);
-        setUser(parsed);
+        try {
+          setUser(JSON.parse(saved));
+          setLoading(false);
+          return;
+        } catch (e) {
+          console.error("Error parsing user from localStorage:", e);
+        }
+      }
+
+      // If no localStorage, fetch from DB
+      const { data: profile, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', session.user.id)
+        .single();
+
+      if (profile && !error) {
+        setUser(profile);
+        localStorage.setItem('soulmatch_user', JSON.stringify(profile));
         setLoading(false);
       } else {
         navigate('/register');
@@ -3808,9 +3870,22 @@ const EditProfilePage = () => {
         return;
       }
 
+      const toCleanArray = (val: any): string[] => {
+        if (!val) return [];
+        if (Array.isArray(val)) return [...new Set(val.filter(Boolean))];
+        return [val as string];
+      };
+
+      const cleanedUser = {
+        ...user,
+        id: session.user.id,
+        orientation: toCleanArray(user.orientation),
+        looking_for_gender: toCleanArray(user.looking_for_gender),
+      };
+
       const { data, error } = await supabase
         .from('users')
-        .upsert({ ...user, id: session.user.id })
+        .upsert(cleanedUser)
         .select()
         .single();
 
@@ -3818,6 +3893,7 @@ const EditProfilePage = () => {
 
       try {
         localStorage.setItem('soulmatch_user', JSON.stringify(data));
+
       } catch (err) {
         console.error("LocalStorage error:", err);
       }
@@ -3967,7 +4043,9 @@ const EditProfilePage = () => {
               <InputField label="Nome" value={user.name} disabled />
               <InputField label="Cognome" value={user.surname} disabled />
             </div>
-            <InputField label="Data di Nascita" value={user.dob} disabled type="date" />
+            <div className="max-w-[200px]">
+              <InputField label="Data di Nascita" value={user.dob} disabled type="date" />
+            </div>
             <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100 flex gap-3">
               <Info className="w-5 h-5 text-amber-500 shrink-0" />
               <p className="text-[10px] text-amber-700 leading-relaxed font-bold">
@@ -4203,6 +4281,36 @@ const ProfilePage = () => {
 
   const fetchData = async (userId: string) => {
     try {
+      // Determina se siamo in modalità locale (ID numerico) o Supabase (UUID)
+      const isLocalId = /^\d+$/.test(String(userId));
+
+      if (isLocalId) {
+        // Modalità locale: usa l'API REST Express
+        const res = await fetch(`/api/profiles/${userId}`);
+        if (res.ok) {
+          const profileData = await res.json();
+          const fullProfile = {
+            ...profileData,
+            likes_count: profileData.likes_count || 0,
+            hearts_count: profileData.hearts_count || 0,
+            photos: Array.isArray(profileData.photos) ? profileData.photos : [],
+          };
+          setUser(fullProfile);
+          localStorage.setItem('soulmatch_user', JSON.stringify(fullProfile));
+        } else {
+          console.warn("Local profile not found for ID:", userId);
+        }
+
+        // Chat requests locali
+        const reqRes = await fetch(`/api/chat-requests/${userId}`);
+        if (reqRes.ok) {
+          setChatRequests(await reqRes.json());
+        }
+        setLoading(false);
+        return;
+      }
+
+      // Modalità Supabase (UUID)
       const { data: profileData, error: profileErr } = await supabase
         .from('users')
         .select(`
@@ -4217,15 +4325,17 @@ const ProfilePage = () => {
       }
 
       if (profileData) {
-        setUser({
+        const fullProfile = {
           ...profileData,
           likes_count: (profileData.interactions as any[] || []).filter(i => i.type === 'like').length,
           hearts_count: (profileData.interactions as any[] || []).filter(i => i.type === 'heart').length
-        });
+        };
+        setUser(fullProfile);
+        localStorage.setItem('soulmatch_user', JSON.stringify(fullProfile));
       }
       else {
         console.warn("No profile found for ID:", userId);
-        // Do not redirect immediately if it's a connection/schema issue
+        // Non reindirizzare subito – mostra il profilo dalla cache se c'è
       }
 
       const { data: requestsData, error: requestsErr } = await supabase
@@ -4255,14 +4365,37 @@ const ProfilePage = () => {
   };
 
   useEffect(() => {
-    const saved = localStorage.getItem('soulmatch_user');
-    if (saved) {
+    const init = async () => {
+      const saved = localStorage.getItem('soulmatch_user');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (parsed?.id) {
+            // Mostra subito il profilo dalla cache – non c'è bisogno di aspettare la rete
+            setUser(parsed);
+            setLoading(false);
+            // Aggiorna in background (silenzioso, non blocca la UI)
+            fetchData(String(parsed.id)).catch(() => { });
+            return;
+          }
+        } catch (e) {
+          console.error("Error parsing saved user:", e);
+        }
+      }
+
+      // Se no localStorage, controlla sessione Supabase
       try {
-        const parsed = JSON.parse(saved);
-        if (parsed?.id) fetchData(parsed.id);
-        else navigate('/register');
-      } catch (e) { navigate('/register'); }
-    } else navigate('/register');
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user?.id) {
+          fetchData(session.user.id);
+        } else {
+          navigate('/register');
+        }
+      } catch (e) {
+        navigate('/register');
+      }
+    };
+    init();
   }, [navigate]);
 
   const handleRequestAction = async (requestId: string, status: 'approved' | 'rejected') => {
