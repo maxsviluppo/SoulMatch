@@ -36,9 +36,35 @@ db.exec(`
     photo_url TEXT,
     id_document_url TEXT,
     photos TEXT,
-    body_type TEXT
+    body_type TEXT,
+    height_cm INTEGER,
+    province TEXT,
+    conosciamoci_meglio TEXT
   );
+`);
 
+// Migrazione colonne mancanti SQLite
+const migrateColumns = () => {
+  const columns = [
+    { name: 'province', type: 'TEXT' },
+    { name: 'conosciamoci_meglio', type: 'TEXT' },
+    { name: 'height_cm', type: 'INTEGER' },
+    { name: 'body_type', type: 'TEXT' },
+    { name: 'photos', type: 'TEXT' },
+    { name: 'looking_for_other', type: 'TEXT' }
+  ];
+
+  for (const col of columns) {
+    try {
+      db.exec(`ALTER TABLE users ADD COLUMN ${col.name} ${col.type}`);
+    } catch (e) {
+      // Ignora errore se la colonna esiste già
+    }
+  }
+};
+migrateColumns();
+
+db.exec(`
   CREATE TABLE IF NOT EXISTS interactions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     from_user_id INTEGER NOT NULL,
@@ -98,6 +124,9 @@ try {
   db.prepare("ALTER TABLE users ADD COLUMN is_online INTEGER DEFAULT 0").run();
 } catch (e) { }
 try {
+  db.prepare("ALTER TABLE users ADD COLUMN height_cm INTEGER").run();
+} catch (e) { }
+try {
   db.prepare("ALTER TABLE users ADD COLUMN body_type TEXT").run();
 } catch (e) { }
 
@@ -114,12 +143,12 @@ if (checkSettings.count === 0) {
 
 // Seed Data
 const seedUsers = [
-  { name: 'Giulia', surname: 'Bianchi', dob: '1995-05-15', city: 'Roma', gender: 'Donna', orientation: 'Eterosessuale', looking_for_gender: 'Uomo', is_online: 1, body_type: 'Atletica', photo_url: 'https://picsum.photos/seed/giulia/400/600', photos: JSON.stringify(['https://picsum.photos/seed/giulia1/400/600', 'https://picsum.photos/seed/giulia2/400/600']) },
-  { name: 'Marco', surname: 'Rossi', dob: '1990-08-22', city: 'Milano', gender: 'Uomo', orientation: 'Eterosessuale', looking_for_gender: 'Donna', is_online: 0, body_type: 'Robusta', photo_url: 'https://picsum.photos/seed/marco/400/600', photos: JSON.stringify(['https://picsum.photos/seed/marco1/400/600']) },
-  { name: 'Elena', surname: 'Verdi', dob: '1998-12-01', city: 'Napoli', gender: 'Donna', orientation: 'Lesbica', looking_for_gender: 'Donna', is_online: 1, body_type: 'Snella', photo_url: 'https://picsum.photos/seed/elena/400/600', photos: JSON.stringify(['https://picsum.photos/seed/elena1/400/600']) },
-  { name: 'Luca', surname: 'Neri', dob: '1988-03-10', city: 'Torino', gender: 'Uomo', orientation: 'Gay', looking_for_gender: 'Uomo', is_online: 0, body_type: 'Atletica', photo_url: 'https://picsum.photos/seed/luca/400/600', photos: JSON.stringify(['https://picsum.photos/seed/luca1/400/600']) },
-  { name: 'Sofia', surname: 'Gialli', dob: '1992-07-18', city: 'Firenze', gender: 'Donna', orientation: 'Bisessuale', looking_for_gender: 'Tutti', is_online: 1, body_type: 'Curvy', photo_url: 'https://picsum.photos/seed/sofia/400/600', photos: JSON.stringify(['https://picsum.photos/seed/sofia1/400/600']) },
-  { name: 'Andrea', surname: 'Blu', dob: '1994-11-25', city: 'Bologna', gender: 'Altro', orientation: 'Pansessuale', looking_for_gender: 'Tutti', is_online: 1, body_type: 'Normale', photo_url: 'https://picsum.photos/seed/andrea/400/600', photos: JSON.stringify(['https://picsum.photos/seed/andrea1/400/600']) },
+  { name: 'Giulia', surname: 'Bianchi', dob: '1995-05-15', city: 'Roma', gender: 'Donna', orientation: JSON.stringify(['Eterosessuale']), looking_for_gender: JSON.stringify(['Uomo']), is_online: 1, body_type: 'Atletica', photo_url: 'https://picsum.photos/seed/giulia/400/600', photos: JSON.stringify(['https://picsum.photos/seed/giulia1/400/600', 'https://picsum.photos/seed/giulia2/400/600']) },
+  { name: 'Marco', surname: 'Rossi', dob: '1990-08-22', city: 'Milano', gender: 'Uomo', orientation: JSON.stringify(['Eterosessuale']), looking_for_gender: JSON.stringify(['Donna']), is_online: 0, body_type: 'Robusta', photo_url: 'https://picsum.photos/seed/marco/400/600', photos: JSON.stringify(['https://picsum.photos/seed/marco1/400/600']) },
+  { name: 'Elena', surname: 'Verdi', dob: '1998-12-01', city: 'Napoli', gender: 'Donna', orientation: JSON.stringify(['Lesbica']), looking_for_gender: JSON.stringify(['Donna']), is_online: 1, body_type: 'Snella', photo_url: 'https://picsum.photos/seed/elena/400/600', photos: JSON.stringify(['https://picsum.photos/seed/elena1/400/600']) },
+  { name: 'Luca', surname: 'Neri', dob: '1988-03-10', city: 'Torino', gender: 'Uomo', orientation: JSON.stringify(['Gay']), looking_for_gender: JSON.stringify(['Uomo']), is_online: 0, body_type: 'Atletica', photo_url: 'https://picsum.photos/seed/luca/400/600', photos: JSON.stringify(['https://picsum.photos/seed/luca1/400/600']) },
+  { name: 'Sofia', surname: 'Gialli', dob: '1992-07-18', city: 'Firenze', gender: 'Donna', orientation: JSON.stringify(['Bisessuale', 'Fluido']), looking_for_gender: JSON.stringify(['Tutti']), is_online: 1, body_type: 'Curvy', photo_url: 'https://picsum.photos/seed/sofia/400/600', photos: JSON.stringify(['https://picsum.photos/seed/sofia1/400/600']) },
+  { name: 'Andrea', surname: 'Blu', dob: '1994-11-25', city: 'Bologna', gender: 'Altro', orientation: JSON.stringify(['Pansessuale', 'Queer']), looking_for_gender: JSON.stringify(['Tutti']), is_online: 1, body_type: 'Normale', photo_url: 'https://picsum.photos/seed/andrea/400/600', photos: JSON.stringify(['https://picsum.photos/seed/andrea1/400/600']) },
 ];
 
 const checkUsers = db.prepare("SELECT count(*) as count FROM users").get() as { count: number };
@@ -152,6 +181,41 @@ async function startServer() {
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
+  const serializeArray = (val: any): string => {
+    if (!val) return '[]';
+    if (Array.isArray(val)) return JSON.stringify(val);
+    try {
+      const p = JSON.parse(val);
+      return Array.isArray(p) ? JSON.stringify(p) : JSON.stringify([String(p)]);
+    } catch {
+      return JSON.stringify([String(val)]);
+    }
+  };
+
+  // Safe array parser: handles plain strings ('Eterosessuale'), JSON arrays ('["Gay","Bisessuale"]'), and Arrays
+  const parseArrayField = (val: any): string[] => {
+    if (!val) return [];
+    if (Array.isArray(val)) return val;
+    const s = String(val).trim();
+    if (s.startsWith('[')) {
+      try { return JSON.parse(s); } catch { /* fall through */ }
+    }
+    return s ? [s] : [];  // wrap plain string in array
+  };
+
+  const parseUser = (u: any) => ({
+    ...u,
+    is_paid: u.is_paid === 1 || u.is_paid === true,
+    is_online: u.is_online === 1 || u.is_online === true,
+    photos: (() => { try { return JSON.parse(u.photos || '[]'); } catch { return []; } })(),
+    orientation: parseArrayField(u.orientation),
+    looking_for_gender: parseArrayField(u.looking_for_gender),
+    conosciamoci_meglio: (() => {
+      if (!u.conosciamoci_meglio) return {};
+      try { return JSON.parse(u.conosciamoci_meglio); } catch { return {}; }
+    })(),
+  });
+
   // API Routes
   app.get("/api/profiles", (req, res) => {
     const profiles = db.prepare(`
@@ -161,13 +225,7 @@ async function startServer() {
       FROM users u
     `).all();
 
-    const parsedProfiles = profiles.map((p: any) => ({
-      ...p,
-      photos: p.photos ? JSON.parse(p.photos) : [],
-      conosciamoci_meglio: p.conosciamoci_meglio ? JSON.parse(p.conosciamoci_meglio) : undefined,
-      likes_count: p.likes_count || 0,
-      hearts_count: p.hearts_count || 0
-    }));
+    const parsedProfiles = profiles.map((p: any) => ({ ...parseUser(p), likes_count: p.likes_count || 0, hearts_count: p.hearts_count || 0 }));
     res.json(parsedProfiles);
   });
 
@@ -183,13 +241,7 @@ async function startServer() {
 
     if (!profile) return res.status(404).json({ error: "Not found" });
 
-    res.json({
-      ...profile,
-      photos: profile.photos ? JSON.parse(profile.photos) : [],
-      conosciamoci_meglio: profile.conosciamoci_meglio ? JSON.parse(profile.conosciamoci_meglio) : undefined,
-      likes_count: profile.likes_count || 0,
-      hearts_count: profile.hearts_count || 0
-    });
+    res.json({ ...parseUser(profile), likes_count: profile.likes_count || 0, hearts_count: profile.hearts_count || 0 });
   });
 
   app.post("/api/interactions", (req, res) => {
@@ -235,9 +287,9 @@ async function startServer() {
         userData.hobbies,
         userData.desires,
         userData.gender,
-        userData.orientation,
+        serializeArray(userData.orientation),
         userData.is_paid ? 1 : 0,
-        userData.looking_for_gender,
+        serializeArray(userData.looking_for_gender),
         userData.looking_for_job,
         userData.looking_for_hobbies,
         userData.looking_for_city,
@@ -254,12 +306,7 @@ async function startServer() {
       );
 
       const user = db.prepare("SELECT * FROM users WHERE id = ?").get(result.lastInsertRowid) as any;
-      res.json({
-        ...user,
-        is_paid: user.is_paid === 1,
-        photos: JSON.parse(user.photos || '[]'),
-        conosciamoci_meglio: user.conosciamoci_meglio ? JSON.parse(user.conosciamoci_meglio) : {}
-      });
+      res.json(parseUser(user));
     } catch (err) {
       console.error("Registration error details:", err);
       res.status(500).json({ error: "Errore interno durante l'iscrizione. Verifica i dati inseriti." });
@@ -268,40 +315,52 @@ async function startServer() {
 
   app.put("/api/profiles/:id", (req, res) => {
     const { id } = req.params;
-    const userData = req.body;
+    const d = req.body;
     try {
       const stmt = db.prepare(`
-        UPDATE users SET 
-          name = ?, surname = ?, dob = ?, city = ?, province = ?, job = ?, description = ?, 
-          hobbies = ?, desires = ?, gender = ?, orientation = ?, is_paid = ?,
-          looking_for_gender = ?, looking_for_job = ?, looking_for_hobbies = ?, looking_for_city = ?,
-          looking_for_age_min = ?, looking_for_age_max = ?, looking_for_height = ?, looking_for_body_type = ?,
-          looking_for_other = ?, photos = ?, body_type = ?, conosciamoci_meglio = ?
+        UPDATE users SET
+          name = ?, surname = ?, dob = ?, city = ?, province = ?,
+          job = ?, description = ?, hobbies = ?, desires = ?,
+          gender = ?, orientation = ?, is_paid = ?,
+          looking_for_gender = ?, looking_for_job = ?, looking_for_hobbies = ?,
+          looking_for_city = ?, looking_for_age_min = ?, looking_for_age_max = ?,
+          looking_for_height = ?, looking_for_body_type = ?, looking_for_other = ?,
+          photos = ?, body_type = ?, height_cm = ?,
+          conosciamoci_meglio = ?
         WHERE id = ?
       `);
 
       stmt.run(
-        userData.name, userData.surname, userData.dob, userData.city, userData.province,
-        userData.job, userData.description, userData.hobbies, userData.desires,
-        userData.gender, userData.orientation, userData.is_paid ? 1 : 0,
-        userData.looking_for_gender, userData.looking_for_job, userData.looking_for_hobbies,
-        userData.looking_for_city, userData.looking_for_age_min, userData.looking_for_age_max,
-        userData.looking_for_height, userData.looking_for_body_type, userData.looking_for_other,
-        JSON.stringify(userData.photos || []), userData.body_type,
-        JSON.stringify(userData.conosciamoci_meglio || {}),
+        d.name, d.surname, d.dob, d.city, d.province || null,
+        d.job, d.description, d.hobbies, d.desires,
+        d.gender, serializeArray(d.orientation), d.is_paid ? 1 : 0,
+        serializeArray(d.looking_for_gender), d.looking_for_job, d.looking_for_hobbies,
+        d.looking_for_city, d.looking_for_age_min, d.looking_for_age_max,
+        d.looking_for_height, d.looking_for_body_type, d.looking_for_other,
+        JSON.stringify(d.photos || []), d.body_type, d.height_cm || null,
+        d.conosciamoci_meglio ? JSON.stringify(d.conosciamoci_meglio) : null,
         id
       );
 
       const user = db.prepare("SELECT * FROM users WHERE id = ?").get(id) as any;
-      res.json({
-        ...user,
-        is_paid: user.is_paid === 1,
-        photos: JSON.parse(user.photos || '[]'),
-        conosciamoci_meglio: user.conosciamoci_meglio ? JSON.parse(user.conosciamoci_meglio) : {}
-      });
+      if (!user) return res.status(404).json({ error: "Utente non trovato" });
+      res.json(parseUser(user));
     } catch (err) {
       console.error("Update error:", err);
       res.status(500).json({ error: "Errore durante l'aggiornamento" });
+    }
+  });
+
+  app.delete("/api/profiles/:id", (req, res) => {
+    const { id } = req.params;
+    try {
+      db.prepare("DELETE FROM users WHERE id = ?").run(id);
+      db.prepare("DELETE FROM interactions WHERE from_user_id = ? OR to_user_id = ?").run(id, id);
+      db.prepare("DELETE FROM chat_requests WHERE from_user_id = ? OR to_user_id = ?").run(id, id);
+      db.prepare("DELETE FROM posts WHERE user_id = ?").run(id);
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ error: "Errore durante l'eliminazione" });
     }
   });
 
@@ -455,7 +514,7 @@ async function startServer() {
   }
 
   const PORT = process.env.PORT || 3006;
-  app.listen(PORT, "0.0.0.0", () => {
+  app.listen(Number(PORT), "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
   });
 }

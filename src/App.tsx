@@ -45,6 +45,36 @@ import { cn, calculateAge, calculateMatchScore, fileToBase64, playTapSound } fro
 import { UserProfile, ChatRequest, Post, SoulLink } from './types';
 import { supabase } from './supabase';
 
+// ──────────────────────────────────────────────────────────────────────────────
+// GLOBAL HELPER: normalize user profile — ensures array fields are always arrays
+// Handles: plain string "Gay", JSON string '["Gay","Bisessuale"]', arrays
+// ──────────────────────────────────────────────────────────────────────────────
+const parseArrField = (val: any): string[] => {
+  if (!val) return [];
+  if (Array.isArray(val)) return val;
+  const s = String(val).trim();
+  if (s.startsWith('[')) {
+    try { return JSON.parse(s); } catch { /* fall through */ }
+  }
+  return s ? [s] : [];
+};
+
+const normalizeUser = (u: any): any => ({
+  ...u,
+  orientation: parseArrField(u?.orientation),
+  looking_for_gender: parseArrField(u?.looking_for_gender),
+  photos: (() => {
+    if (!u?.photos) return [];
+    if (Array.isArray(u.photos)) return u.photos;
+    try { return JSON.parse(u.photos); } catch { return []; }
+  })(),
+  conosciamoci_meglio: (() => {
+    if (!u?.conosciamoci_meglio) return {};
+    if (typeof u.conosciamoci_meglio === 'object') return u.conosciamoci_meglio;
+    try { return JSON.parse(u.conosciamoci_meglio); } catch { return {}; }
+  })(),
+});
+
 // --- Components ---
 
 const Toast = ({ message, type, onClose }: { message: string, type: 'success' | 'error' | 'info', onClose: () => void }) => {
@@ -113,29 +143,11 @@ const BackgroundDecorations = () => {
 const Navbar = () => {
   const [user, setUser] = useState<UserProfile | null>(null);
 
-  const checkUser = async () => {
+  const checkUser = () => {
     try {
       const saved = localStorage.getItem('soulmatch_user');
-      if (saved) {
-        setUser(JSON.parse(saved));
-        return;
-      }
-
-      // Fallback: check Supabase session
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user?.id) {
-        const { data: profile } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
-        if (profile) {
-          setUser(profile);
-          localStorage.setItem('soulmatch_user', JSON.stringify(profile));
-          return;
-        }
-      }
-      setUser(null);
+      if (saved) setUser(JSON.parse(saved));
+      else setUser(null);
     } catch (e) {
       setUser(null);
     }
@@ -371,20 +383,9 @@ const HomePage = () => {
   const [demoHearts, setDemoHearts] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
-    const checkAuth = async () => {
-      window.scrollTo(0, 0);
-      const saved = localStorage.getItem('soulmatch_user');
-      if (saved) {
-        setIsLoggedIn(true);
-        return;
-      }
-
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        setIsLoggedIn(true);
-      }
-    };
-    checkAuth();
+    window.scrollTo(0, 0);
+    const saved = localStorage.getItem('soulmatch_user');
+    if (saved) setIsLoggedIn(true);
   }, []);
 
   const handleShare = async () => {
@@ -416,25 +417,6 @@ const HomePage = () => {
       >
         {/* Hero text */}
         <div className="space-y-4">
-          <motion.button
-            onClick={handleShare}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            whileHover={{ scale: 1.05, backgroundColor: '#be123c' }}
-            whileTap={{ scale: 0.95 }}
-            className="inline-flex flex-col items-center gap-1.5 px-6 py-3 bg-rose-600 text-white rounded-[22px] shadow-xl shadow-rose-200 transition-all mb-4 border border-rose-500/20 group"
-          >
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 animate-pulse" />
-              <span className="text-[12px] font-black uppercase tracking-[0.15em]">Community in crescita</span>
-            </div>
-            <div className="flex items-center gap-2 opacity-90 border-t border-white/20 pt-2 w-full justify-center">
-              <div className="flex items-center gap-2 bg-white/10 px-4 py-1 rounded-full group-hover:bg-white/20 transition-colors">
-                <Share2 className="w-4 h-4" />
-                <span className="text-[10px] font-black uppercase tracking-widest text-white">Condividi App</span>
-              </div>
-            </div>
-          </motion.button>
 
           <h1 className="text-5xl font-serif font-black leading-[1.1] tracking-tight text-stone-900 drop-shadow-sm">
             Trova la tua <br /><span className="text-rose-600 italic">compagnia</span> ideale.
@@ -513,22 +495,39 @@ const HomePage = () => {
               bg: "bg-blue-50",
               iconColor: "text-blue-600",
             },
-          ].map((f, i) => (
+            {
+              icon: Share2,
+              title: "Condividi App",
+              desc: "Invia SoulMatch ai tuoi amici e invitali!",
+              color: "rose",
+              bg: "bg-rose-600",
+              iconColor: "text-white",
+              isSpecial: true,
+              onClick: handleShare
+            },
+          ].map((f: any, i) => (
             <motion.div
               key={i}
               initial={{ opacity: 0, x: -20 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.08 }}
-              className="bg-white border border-stone-100 rounded-[20px] p-4 flex items-center gap-4 shadow-sm"
+              onClick={f.onClick}
+              className={cn(
+                "border rounded-[20px] p-4 flex items-center gap-4 shadow-sm transition-all",
+                f.isSpecial
+                  ? "bg-rose-600 border-rose-500 shadow-rose-200 shadow-lg active:scale-95 cursor-pointer"
+                  : "bg-white border-stone-100"
+              )}
             >
-              <div className={cn('w-12 h-12 rounded-[16px] flex items-center justify-center shrink-0', f.bg)}>
-                <f.icon className={cn('w-6 h-6', f.iconColor)} />
+              <div className={cn('w-12 h-12 rounded-[16px] flex items-center justify-center shrink-0', f.isSpecial ? "bg-white/20" : f.bg)}>
+                <f.icon className={cn('w-6 h-6', f.isSpecial ? "text-white" : f.iconColor)} />
               </div>
               <div className="text-left">
-                <h3 className="text-sm font-black text-stone-900">{f.title}</h3>
-                <p className="text-[11px] text-stone-400 font-medium leading-snug mt-0.5">{f.desc}</p>
+                <h3 className={cn("text-sm font-black", f.isSpecial ? "text-white" : "text-stone-900")}>{f.title}</h3>
+                <p className={cn("text-[11px] font-medium leading-snug mt-0.5", f.isSpecial ? "text-rose-100" : "text-stone-400")}>{f.desc}</p>
               </div>
+              {f.isSpecial && <ArrowRight className="w-4 h-4 text-white ml-auto" />}
             </motion.div>
           ))}
         </div>
@@ -1379,33 +1378,18 @@ const BachecaPage = () => {
   };
 
   useEffect(() => {
-    const init = async () => {
-      try {
-        const saved = localStorage.getItem('soulmatch_user');
-        if (!saved) { navigate('/register'); return; }
-        const localUser = JSON.parse(saved);
-        if (!localUser?.id) { navigate('/register'); return; }
-
-        // Carica sempre dal DB per avere preferenze aggiornate
-        const { data: freshUser } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', localUser.id)
-          .single();
-
-        if (freshUser) {
-          // Aggiorna anche localStorage con i dati freschi
-          localStorage.setItem('soulmatch_user', JSON.stringify(freshUser));
-          setCurrentUser(freshUser);
-        } else {
-          setCurrentUser(localUser);
-        }
+    try {
+      const saved = localStorage.getItem('soulmatch_user');
+      if (saved) {
+        const user = JSON.parse(saved);
+        setCurrentUser(user);
         fetchProfiles();
-      } catch (e) {
+      } else {
         navigate('/register');
       }
-    };
-    init();
+    } catch (e) {
+      navigate('/register');
+    }
 
     // Save scroll position on unmount
     return () => {
@@ -1594,7 +1578,7 @@ const BachecaPage = () => {
               </button>
               {/* Show user's preference tags read-only */}
               {userWantsGender.length > 0 && (
-                <span className="flex items-center gap-1.5 bg-stone-100 text-stone-600 border border-stone-200 px-3 py-1 rounded-full text-[10px] font-black shrink-0">
+                <span className="flex items-center gap-1.5 bg-violet-50 text-violet-700 border border-violet-100 px-3 py-1 rounded-full text-[10px] font-black shrink-0">
                   🎯 {userWantsGender.join(' · ')}
                 </span>
               )}
@@ -1612,12 +1596,12 @@ const BachecaPage = () => {
               className="bg-white rounded-[24px] border border-stone-100 p-5 shadow-sm space-y-5"
             >
               {/* Genere - readonly info from profile */}
-              <div className="p-3 bg-stone-50 rounded-[16px] border border-stone-100">
-                <p className="text-[10px] font-black text-stone-500 uppercase tracking-widest mb-1">🎯 Genere cercato</p>
-                <p className="text-[11px] text-stone-700 font-semibold">
+              <div className="p-3 bg-violet-50 rounded-[16px] border border-violet-100">
+                <p className="text-[10px] font-black text-violet-700 uppercase tracking-widest mb-1">🎯 Genere cercato</p>
+                <p className="text-[11px] text-violet-600 font-semibold">
                   {userWantsGender.length > 0 ? userWantsGender.join(', ') : 'Nessuna preferenza impostata'}
                 </p>
-                <p className="text-[9px] text-stone-400 mt-1">Modifica in: Profilo → Modifica Profilo</p>
+                <p className="text-[9px] text-violet-400 mt-1">Modifica in: Profilo → Modifica Profilo</p>
               </div>
               {/* City */}
               <div className="space-y-2">
@@ -1714,8 +1698,8 @@ const BachecaPage = () => {
                     className={cn(
                       'w-9 h-9 rounded-[12px] flex items-center justify-center shadow-lg backdrop-blur-sm transition-all active:scale-90',
                       cardReactions[profile.id] === 'like'
-                        ? 'bg-rose-600 text-white'
-                        : 'bg-white/80 text-stone-400 hover:text-rose-500'
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-white/80 text-stone-400 hover:text-blue-500'
                     )}
                     title="Like"
                   >
@@ -2556,12 +2540,6 @@ const RegisterPage = () => {
     conosciamoci_meglio: {},
   });
 
-  const handleClearDraft = () => {
-    localStorage.removeItem('soulmatch_reg_draft');
-    localStorage.removeItem('soulmatch_user');
-    window.location.reload();
-  };
-
   useEffect(() => {
     const initData = async () => {
       try {
@@ -2569,20 +2547,26 @@ const RegisterPage = () => {
         const savedDraft = localStorage.getItem('soulmatch_reg_draft');
 
         if (savedDraft) {
-          setFormData(JSON.parse(savedDraft));
+          setFormData(normalizeUser(JSON.parse(savedDraft)));
           return;
         }
 
-        const effectiveId = authenticatedUserRaw ? JSON.parse(authenticatedUserRaw).id : null;
-        if (effectiveId) {
-          const { data, error } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', effectiveId)
-            .single();
+        if (authenticatedUserRaw) {
+          const user = JSON.parse(authenticatedUserRaw);
+          if (user.id) {
+            // Fetch fresh data from Supabase
+            const { data, error } = await supabase
+              .from('users')
+              .select('*')
+              .eq('id', user.id)
+              .single();
 
-          if (data && !error) {
-            setFormData(prev => ({ ...prev, ...data }));
+            if (data && !error) {
+              setFormData(prev => ({ ...prev, ...normalizeUser(data) }));
+            } else if (typeof user.id === 'string' && user.id.length > 10) {
+              // Probably already a UUID, just use it
+              setFormData(prev => ({ ...prev, ...normalizeUser(user) }));
+            }
           }
         }
       } catch (e) {
@@ -2591,7 +2575,6 @@ const RegisterPage = () => {
     };
     initData();
   }, []);
-
 
   useEffect(() => {
     localStorage.setItem('soulmatch_reg_draft', JSON.stringify(formData));
@@ -2782,8 +2765,10 @@ const RegisterPage = () => {
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    const { name, value, type } = e.target as any;
+    // Manual text fields: auto-capitalize the first letter
+    const finalValue = (type === 'text' || e.target.tagName === 'TEXTAREA') ? capFirst(value) : value;
+    setFormData(prev => ({ ...prev, [name]: finalValue }));
   };
 
   const handleSubmit = async () => {
@@ -2987,19 +2972,22 @@ const RegisterPage = () => {
                       placeholder="Rossi"
                     />
                   </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-stone-700 ml-1">Nascita</label>
-                    <input
-                      name="dob"
-                      type="date"
-                      value={formData.dob}
-                      onChange={handleInputChange}
-                      disabled={isEditing && !!formData.dob}
-                      className={cn(
-                        "w-full p-3.5 rounded-xl bg-stone-50 border border-stone-200 text-sm focus:ring-2 focus:ring-rose-500 outline-none",
-                        isEditing && formData.dob ? "opacity-60 cursor-not-allowed bg-stone-100" : ""
-                      )}
-                    />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-stone-700 ml-1">Nascita</label>
+                      <input
+                        name="dob"
+                        type="date"
+                        value={formData.dob}
+                        onChange={handleInputChange}
+                        disabled={isEditing && !!formData.dob}
+                        className={cn(
+                          "w-full p-3.5 rounded-xl bg-stone-50 border border-stone-200 text-sm focus:ring-2 focus:ring-rose-500 outline-none",
+                          isEditing && formData.dob ? "opacity-60 cursor-not-allowed bg-stone-100" : ""
+                        )}
+                      />
+                    </div>
+                    <div /> {/* Spacer to keep it half width */}
                   </div>
                   <div className="grid grid-cols-5 gap-3">
                     <div className="space-y-1.5 col-span-3">
@@ -3811,6 +3799,73 @@ const FeedComponent = ({ userId, isOwner }: { userId: any, isOwner?: boolean }) 
   );
 };
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// EDIT PROFILE — shared sub-components at MODULE scope
+// (inside-component = remounted on every render = focus lost after each keystroke)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const capFirst = (s: string) => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+
+const EPInputField = ({ label, value, onChange, disabled = false, type = 'text', placeholder = '', className = '' }: any) => (
+  <div className="space-y-1.5">
+    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-stone-400 ml-1">{label}</label>
+    <input
+      type={type}
+      value={value ?? ''}
+      onChange={(e) => !disabled && onChange(type === 'text' ? capFirst(e.target.value) : e.target.value)}
+      disabled={disabled}
+      placeholder={placeholder}
+      autoCapitalize="sentences"
+      autoCorrect="off"
+      autoComplete="off"
+      className={cn(
+        'w-full px-4 py-3 rounded-2xl text-sm font-medium transition-all outline-none border',
+        disabled
+          ? 'bg-stone-50 border-stone-100 text-stone-400 cursor-not-allowed'
+          : 'bg-white border-stone-100 focus:border-rose-300 focus:ring-4 focus:ring-rose-500/5 text-stone-900',
+        className
+      )}
+    />
+  </div>
+);
+
+const EPTextAreaField = ({ label, value, onChange, placeholder = '' }: any) => (
+  <div className="space-y-1.5">
+    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-stone-400 ml-1">{label}</label>
+    <textarea
+      value={value ?? ''}
+      onChange={(e) => onChange(capFirst(e.target.value))}
+      placeholder={placeholder}
+      rows={3}
+      autoCapitalize="sentences"
+      autoCorrect="off"
+      className="w-full px-4 py-3 rounded-2xl bg-white border border-stone-100 focus:border-rose-300 focus:ring-4 focus:ring-rose-500/5 text-sm font-medium outline-none transition-all resize-none"
+    />
+  </div>
+);
+
+const EPSelectGroup = ({ label, options, currentValue, onSelect, columns = 2 }: any) => (
+  <div className="space-y-2">
+    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-stone-400 ml-1">{label}</label>
+    <div className={cn('grid gap-2', columns === 3 ? 'grid-cols-3' : columns === 2 ? 'grid-cols-2' : 'grid-cols-1')}>
+      {options.map((opt: string) => (
+        <button
+          key={opt}
+          onClick={() => onSelect(opt)}
+          className={cn(
+            'py-2.5 rounded-2xl text-[10px] font-black tracking-widest uppercase transition-all border',
+            currentValue === opt
+              ? 'bg-stone-900 border-stone-900 text-white shadow-md'
+              : 'bg-white border-stone-100 text-stone-400 hover:border-stone-200'
+          )}
+        >
+          {opt}
+        </button>
+      ))}
+    </div>
+  </div>
+);
+
 const EditProfilePage = () => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -3820,38 +3875,33 @@ const EditProfilePage = () => {
 
   useEffect(() => {
     const init = async () => {
-      // Verifica sessione Supabase attiva
+      // 1. Check local storage first
+      const saved = localStorage.getItem('soulmatch_user');
+      if (saved) {
+        const parsed = normalizeUser(JSON.parse(saved));
+        const isLocalId = /^\d+$/.test(String(parsed.id));
+
+        if (isLocalId) {
+          // Local mode: don't strictly require Supabase session
+          setUser(parsed);
+          setLoading(false);
+          return;
+        }
+      }
+
+      // 2. Supabase session check
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         navigate('/register');
         return;
       }
 
-      const saved = localStorage.getItem('soulmatch_user');
       if (saved) {
-        try {
-          setUser(JSON.parse(saved));
-          setLoading(false);
-          return;
-        } catch (e) {
-          console.error("Error parsing user from localStorage:", e);
-        }
-      }
-
-      // If no localStorage, fetch from DB
-      const { data: profile, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', session.user.id)
-        .single();
-
-      if (profile && !error) {
-        setUser(profile);
-        localStorage.setItem('soulmatch_user', JSON.stringify(profile));
-        setLoading(false);
+        setUser(normalizeUser(JSON.parse(saved)));
       } else {
         navigate('/register');
       }
+      setLoading(false);
     };
     init();
   }, [navigate]);
@@ -3862,41 +3912,52 @@ const EditProfilePage = () => {
     if (!user) return;
     setSaving(true);
     try {
-      // Verifica sessione attiva prima di salvare
       const { data: { session } } = await supabase.auth.getSession();
+      const isLocalUser = /^\d+$/.test(String(user.id));
+
+      // Clean up data for database (remove computed fields)
+      const submissionData = { ...user };
+      delete (submissionData as any).likes_count;
+      delete (submissionData as any).hearts_count;
+      delete (submissionData as any).is_online; // handled by server or not in DB
+
+      if (isLocalUser) {
+        // MODALITÀ LOCALE
+        const res = await fetch(`/api/profiles/${user.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(submissionData),
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || 'Errore durante l\'aggiornamento locale');
+        }
+
+        const updated = await res.json();
+        const normalizedUpdated = normalizeUser(updated);
+        localStorage.setItem('soulmatch_user', JSON.stringify(normalizedUpdated));
+        setToast({ message: 'Profilo locale aggiornato!', type: 'success' });
+        setTimeout(() => navigate('/profile'), 1500);
+        return;
+      }
+
+      // MODALITÀ SUPABASE
       if (!session) {
         setToast({ message: 'Sessione scaduta. Effettua nuovamente il login.', type: 'error' });
         setTimeout(() => navigate('/register'), 2000);
         return;
       }
 
-      const toCleanArray = (val: any): string[] => {
-        if (!val) return [];
-        if (Array.isArray(val)) return [...new Set(val.filter(Boolean))];
-        return [val as string];
-      };
-
-      const cleanedUser = {
-        ...user,
-        id: session.user.id,
-        orientation: toCleanArray(user.orientation),
-        looking_for_gender: toCleanArray(user.looking_for_gender),
-      };
-
       const { data, error } = await supabase
         .from('users')
-        .upsert(cleanedUser)
+        .upsert({ ...submissionData, id: session.user.id })
         .select()
         .single();
 
       if (error) throw error;
 
-      try {
-        localStorage.setItem('soulmatch_user', JSON.stringify(data));
-
-      } catch (err) {
-        console.error("LocalStorage error:", err);
-      }
+      localStorage.setItem('soulmatch_user', JSON.stringify(normalizeUser(data)));
       setToast({ message: 'Profilo aggiornato con successo!', type: 'success' });
       setTimeout(() => navigate('/profile'), 1500);
     } catch (e: any) {
@@ -3910,20 +3971,20 @@ const EditProfilePage = () => {
     if (!user) return;
     try {
       setSaving(true);
+      const isLocalUser = /^\d+$/.test(String(user.id));
 
-      // Delete user data from all related tables via secure RPC function
-      console.log("Deleting user data for:", user.id);
-
-      // Esegui la funzione RPC che distrugge l'intero account lato server
-      // (Bypassa RLS e include auth.users per una rimozione completa)
-      const { error } = await supabase.rpc('delete_user_account');
-
-      if (error) {
-        throw new Error("Impossibile eliminare l'account in modo definitivo tramite funzione database. Assicurati di aver incollato lo script delete_user_function.sql nell'editor SQL. Dettaglio: " + error.message);
+      if (isLocalUser) {
+        // CANCELLAZIONE LOCALE
+        const res = await fetch(`/api/profiles/${user.id}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error("Errore durante l'eliminazione locale.");
+      } else {
+        // CANCELLAZIONE SUPABASE
+        const { error } = await supabase.rpc('delete_user_account');
+        if (error) {
+          throw new Error("Impossibile eliminare l'account in modo definitivo tramite funzione database. Assicurati di aver incollato lo script delete_user_function.sql nell'editor SQL. Dettaglio: " + error.message);
+        }
+        await supabase.auth.signOut();
       }
-
-      // 5. Sign out locally
-      await supabase.auth.signOut();
 
       localStorage.removeItem('soulmatch_user');
       setToast({ message: 'Profilo eliminato con successo. Arrivederci!', type: 'info' });
@@ -3955,59 +4016,7 @@ const EditProfilePage = () => {
 
   if (loading || !user) return <div className="min-h-screen flex items-center justify-center bg-stone-50"><Sparkles className="animate-spin text-rose-500" /></div>;
 
-  const InputField = ({ label, value, onChange, disabled = false, type = "text", placeholder = "" }: any) => (
-    <div className="space-y-2">
-      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-stone-400 ml-1">{label}</label>
-      <input
-        type={type}
-        value={value || ''}
-        onChange={(e) => !disabled && onChange(e.target.value)}
-        disabled={disabled}
-        placeholder={placeholder}
-        className={cn(
-          "w-full p-4 rounded-3xl text-sm font-medium transition-all outline-none border",
-          disabled
-            ? "bg-stone-50 border-stone-100 text-stone-400 cursor-not-allowed"
-            : "bg-white border-stone-100 focus:border-rose-200 focus:ring-4 focus:ring-rose-500/5 text-stone-900"
-        )}
-      />
-    </div>
-  );
-
-  const TextAreaField = ({ label, value, onChange, placeholder = "" }: any) => (
-    <div className="space-y-2">
-      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-stone-400 ml-1">{label}</label>
-      <textarea
-        value={value || ''}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        rows={4}
-        className="w-full p-5 rounded-[32px] bg-white border border-stone-100 focus:border-rose-200 focus:ring-4 focus:ring-rose-500/5 text-sm font-medium outline-none transition-all resize-none"
-      />
-    </div>
-  );
-
-  const SelectGroup = ({ label, options, currentValue, onSelect, columns = 2 }: any) => (
-    <div className="space-y-3">
-      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-stone-400 ml-1">{label}</label>
-      <div className={cn("grid gap-2", columns === 3 ? "grid-cols-3" : columns === 2 ? "grid-cols-2" : "grid-cols-1")}>
-        {options.map((opt: string) => (
-          <button
-            key={opt}
-            onClick={() => onSelect(opt)}
-            className={cn(
-              "py-3 rounded-2xl text-[10px] font-black tracking-widest uppercase transition-all border",
-              currentValue === opt
-                ? "bg-stone-900 border-stone-900 text-white shadow-md"
-                : "bg-white border-stone-100 text-stone-400 hover:border-stone-200"
-            )}
-          >
-            {opt}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
+  // remove old inline component definitions — now at module scope
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#FFFDF5] via-white to-[#FDF9F0] pt-24 pb-32 px-6">
@@ -4040,11 +4049,9 @@ const EditProfilePage = () => {
               <h2 className="text-sm font-black uppercase tracking-widest text-stone-900">Anagrafica</h2>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <InputField label="Nome" value={user.name} disabled />
-              <InputField label="Cognome" value={user.surname} disabled />
-            </div>
-            <div className="max-w-[200px]">
-              <InputField label="Data di Nascita" value={user.dob} disabled type="date" />
+              <EPInputField label="Nome" value={user.name} disabled />
+              <EPInputField label="Cognome" value={user.surname} disabled />
+              <EPInputField label="Data di Nascita" value={user.dob} disabled type="date" />
             </div>
             <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100 flex gap-3">
               <Info className="w-5 h-5 text-amber-500 shrink-0" />
@@ -4060,7 +4067,7 @@ const EditProfilePage = () => {
               <div className="w-1 h-6 bg-rose-600 rounded-full" />
               <h2 className="text-sm font-black uppercase tracking-widest text-stone-900">Identità</h2>
             </div>
-            <SelectGroup
+            <EPSelectGroup
               label="Il mio Genere"
               options={['Uomo', 'Donna', 'Non-binario', 'Transgender (M→F)', 'Transgender (F→M)', 'Genderfluid', 'Genderqueer', 'Agender', 'Bigender', 'Pangender', 'Demi-genere', 'Intersessuale', 'Neutrois', 'Queer', 'Altro']}
               currentValue={user.gender}
@@ -4105,22 +4112,22 @@ const EditProfilePage = () => {
               <h2 className="text-sm font-black uppercase tracking-widest text-stone-900">Info Profilo</h2>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <InputField label="Città" value={user.city} onChange={(v: string) => updateField('city', v)} placeholder="es. Milano" />
-              <InputField label="Provincia" value={user.province} onChange={(v: string) => updateField('province', v)} placeholder="es. MI" />
+              <EPInputField label="Città" value={user.city} onChange={(v: string) => updateField('city', v)} placeholder="es. Milano" />
+              <EPInputField label="Provincia" value={user.province} onChange={(v: string) => updateField('province', v)} placeholder="es. MI" />
             </div>
-            <InputField label="Professione" value={user.job} onChange={(v: string) => updateField('job', v)} placeholder="es. Designer, Medico..." />
-            <TextAreaField label="Bio / Descrizione" value={user.description} onChange={(v: string) => updateField('description', v)} placeholder="Racconta qualcosa di te..." />
-            <InputField label="Hobby" value={user.hobbies} onChange={(v: string) => updateField('hobbies', v)} placeholder="Cosa ti piace fare?" />
-            <InputField label="Cosa cerchi / Desideri" value={user.desires} onChange={(v: string) => updateField('desires', v)} placeholder="es. Relazione seria, Amicizia..." />
+            <EPInputField label="Professione" value={user.job} onChange={(v: string) => updateField('job', v)} placeholder="es. Designer, Medico..." />
+            <EPTextAreaField label="Bio / Descrizione" value={user.description} onChange={(v: string) => updateField('description', v)} placeholder="Racconta qualcosa di te..." />
+            <EPInputField label="Hobby" value={user.hobbies} onChange={(v: string) => updateField('hobbies', v)} placeholder="Cosa ti piace fare?" />
+            <EPInputField label="Cosa cerchi / Desideri" value={user.desires} onChange={(v: string) => updateField('desires', v)} placeholder="es. Relazione seria, Amicizia..." />
 
-            <SelectGroup
+            <EPSelectGroup
               label="La mia Corporatura"
               options={['Snella', 'Atletica', 'Normale', 'Curvy', 'Robusta']}
               currentValue={user.body_type}
               onSelect={(v: string) => updateField('body_type', v)}
               columns={3}
             />
-            <InputField label="Altezza (cm)" type="number" value={user.height_cm} onChange={(v: string) => updateField('height_cm', parseInt(v))} placeholder="es. 175" />
+            <EPInputField label="Altezza (cm)" type="number" value={user.height_cm} onChange={(v: string) => updateField('height_cm', parseInt(v))} placeholder="es. 175" />
           </section>
 
           {/* Section: Conosciamoci Meglio */}
@@ -4203,11 +4210,11 @@ const EditProfilePage = () => {
 
 
             <div className="grid grid-cols-2 gap-4">
-              <InputField label="Età Minima" type="number" value={user.looking_for_age_min} onChange={(v: string) => updateField('looking_for_age_min', parseInt(v))} />
-              <InputField label="Età Massima" type="number" value={user.looking_for_age_max} onChange={(v: string) => updateField('looking_for_age_max', parseInt(v))} />
+              <EPInputField label="Età Minima" type="number" value={user.looking_for_age_min} onChange={(v: string) => updateField('looking_for_age_min', parseInt(v))} />
+              <EPInputField label="Età Massima" type="number" value={user.looking_for_age_max} onChange={(v: string) => updateField('looking_for_age_max', parseInt(v))} />
             </div>
 
-            <SelectGroup
+            <EPSelectGroup
               label="Statura Partner"
               options={['Tutte', 'Snella', 'Atletica', 'Normale', 'Curvy', 'Robusta']}
               currentValue={user.looking_for_body_type}
@@ -4215,8 +4222,8 @@ const EditProfilePage = () => {
               columns={3}
             />
 
-            <InputField label="Città desiderata" value={user.looking_for_city} onChange={(v: string) => updateField('looking_for_city', v)} placeholder="es. Roma o Indifferente" />
-            <TextAreaField label="Altre preferenze" value={user.looking_for_other} onChange={(v: string) => updateField('looking_for_other', v)} placeholder="es. Solo non fumatori, amanti dei gatti..." />
+            <EPInputField label="Città desiderata" value={user.looking_for_city} onChange={(v: string) => updateField('looking_for_city', v)} placeholder="es. Roma o Indifferente" />
+            <EPTextAreaField label="Altre preferenze" value={user.looking_for_other} onChange={(v: string) => updateField('looking_for_other', v)} placeholder="es. Solo non fumatori, amanti dei gatti..." />
           </section>
         </div>
 
@@ -4281,36 +4288,6 @@ const ProfilePage = () => {
 
   const fetchData = async (userId: string) => {
     try {
-      // Determina se siamo in modalità locale (ID numerico) o Supabase (UUID)
-      const isLocalId = /^\d+$/.test(String(userId));
-
-      if (isLocalId) {
-        // Modalità locale: usa l'API REST Express
-        const res = await fetch(`/api/profiles/${userId}`);
-        if (res.ok) {
-          const profileData = await res.json();
-          const fullProfile = {
-            ...profileData,
-            likes_count: profileData.likes_count || 0,
-            hearts_count: profileData.hearts_count || 0,
-            photos: Array.isArray(profileData.photos) ? profileData.photos : [],
-          };
-          setUser(fullProfile);
-          localStorage.setItem('soulmatch_user', JSON.stringify(fullProfile));
-        } else {
-          console.warn("Local profile not found for ID:", userId);
-        }
-
-        // Chat requests locali
-        const reqRes = await fetch(`/api/chat-requests/${userId}`);
-        if (reqRes.ok) {
-          setChatRequests(await reqRes.json());
-        }
-        setLoading(false);
-        return;
-      }
-
-      // Modalità Supabase (UUID)
       const { data: profileData, error: profileErr } = await supabase
         .from('users')
         .select(`
@@ -4325,17 +4302,15 @@ const ProfilePage = () => {
       }
 
       if (profileData) {
-        const fullProfile = {
+        setUser({
           ...profileData,
           likes_count: (profileData.interactions as any[] || []).filter(i => i.type === 'like').length,
           hearts_count: (profileData.interactions as any[] || []).filter(i => i.type === 'heart').length
-        };
-        setUser(fullProfile);
-        localStorage.setItem('soulmatch_user', JSON.stringify(fullProfile));
+        });
       }
       else {
         console.warn("No profile found for ID:", userId);
-        // Non reindirizzare subito – mostra il profilo dalla cache se c'è
+        // Do not redirect immediately if it's a connection/schema issue
       }
 
       const { data: requestsData, error: requestsErr } = await supabase
@@ -4365,37 +4340,14 @@ const ProfilePage = () => {
   };
 
   useEffect(() => {
-    const init = async () => {
-      const saved = localStorage.getItem('soulmatch_user');
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          if (parsed?.id) {
-            // Mostra subito il profilo dalla cache – non c'è bisogno di aspettare la rete
-            setUser(parsed);
-            setLoading(false);
-            // Aggiorna in background (silenzioso, non blocca la UI)
-            fetchData(String(parsed.id)).catch(() => { });
-            return;
-          }
-        } catch (e) {
-          console.error("Error parsing saved user:", e);
-        }
-      }
-
-      // Se no localStorage, controlla sessione Supabase
+    const saved = localStorage.getItem('soulmatch_user');
+    if (saved) {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user?.id) {
-          fetchData(session.user.id);
-        } else {
-          navigate('/register');
-        }
-      } catch (e) {
-        navigate('/register');
-      }
-    };
-    init();
+        const parsed = JSON.parse(saved);
+        if (parsed?.id) fetchData(parsed.id);
+        else navigate('/register');
+      } catch (e) { navigate('/register'); }
+    } else navigate('/register');
   }, [navigate]);
 
   const handleRequestAction = async (requestId: string, status: 'approved' | 'rejected') => {
