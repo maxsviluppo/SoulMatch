@@ -33,6 +33,9 @@ export interface UserProfile {
   conosciamoci_meglio?: Record<string, string>;
   body_type?: string;
   height_cm?: number;
+  is_validated?: boolean;
+  is_blocked?: boolean;
+  doc_rejected?: boolean;
 }
 
 export interface ChatRequest {

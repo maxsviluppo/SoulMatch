@@ -1,0 +1,104 @@
+// --- Admin Page ---
+const AdminPage = () => {
+  const [sliderImages, setSliderImages] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [newUrl, setNewUrl] = useState('');
+  const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
+
+  const fetchSliderImages = async () => {
+    try {
+      const res = await fetch('/api/settings/home_slider');
+      if (res.ok) {
+        setSliderImages(await res.json());
+      }
+    } catch (e) { }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchSliderImages();
+  }, []);
+
+  const handleUpdateSlider = async (newImages: string[]) => {
+    try {
+      const res = await fetch('/api/settings/home_slider', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ value: newImages })
+      });
+      if (res.ok) {
+        setSliderImages(newImages);
+        setToast({ message: "Slider aggiornato con successo!", type: 'success' });
+      }
+    } catch (e) {
+      setToast({ message: "Errore durante l'aggiornamento.", type: 'error' });
+    }
+  };
+
+  const addImage = () => {
+    if (!newUrl) return;
+    const updated = [...sliderImages, newUrl];
+    handleUpdateSlider(updated);
+    setNewUrl('');
+  };
+
+  const removeImage = (index: number) => {
+    const updated = sliderImages.filter((_, i) => i !== index);
+    handleUpdateSlider(updated);
+  };
+
+  if (loading) return <div className="min-h-screen flex items-center justify-center">Caricamento Admin...</div>;
+
+  return (
+    <div className="min-h-screen pt-24 pb-12 px-6 bg-stone-50">
+      <AnimatePresence>
+        {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      </AnimatePresence>
+      <div className="max-w-2xl mx-auto space-y-8">
+        <div className="bg-white p-8 rounded-[40px] shadow-2xl border border-stone-100 italic">
+          <h1 className="text-3xl font-serif font-black text-stone-900 mb-2 flex items-center gap-3">
+            <Settings2 className="w-8 h-8 text-rose-600" />
+            Pannello Amministrativo
+          </h1>
+          <p className="text-stone-500 text-sm mb-8">Gestisci i contenuti globali dell'applicazione.</p>
+
+          <div className="space-y-6">
+            <div className="p-6 bg-stone-50 rounded-3xl border border-stone-100">
+              <h2 className="text-lg font-bold text-stone-800 mb-4 flex items-center gap-2">
+                <ImageIcon className="w-5 h-5 text-rose-500" />
+                Gestione Slider Home
+              </h2>
+              <div className="grid grid-cols-3 gap-4 mb-6">
+                {sliderImages.map((img, i) => (
+                  <div key={i} className="aspect-video rounded-2xl overflow-hidden relative group border border-stone-200 shadow-sm transition-transform hover:scale-[1.02]">
+                    <img src={img} className="w-full h-full object-cover" />
+                    <button
+                      onClick={() => removeImage(i)}
+                      className="absolute top-2 right-2 w-8 h-8 bg-black/60 backdrop-blur-md text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <input
+                  value={newUrl}
+                  onChange={(e) => setNewUrl(e.target.value)}
+                  placeholder="URL nuova immagine..."
+                  className="flex-1 p-4 rounded-2xl bg-white border border-stone-200 text-sm outline-none focus:ring-2 focus:ring-rose-500 transition-all font-medium"
+                />
+                <button
+                  onClick={addImage}
+                  className="bg-rose-600 text-white px-6 py-4 rounded-2xl text-sm font-black uppercase tracking-wider hover:bg-rose-700 transition-all shadow-lg shadow-rose-200 active:scale-95"
+                >
+                  Aggiungi
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};

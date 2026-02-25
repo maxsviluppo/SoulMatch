@@ -39,7 +39,8 @@ import {
   Share2,
   AlertTriangle,
   Link2,
-  UserCheck
+  UserCheck,
+  XCircle
 } from 'lucide-react';
 import { cn, calculateAge, calculateMatchScore, fileToBase64, playTapSound } from './utils';
 import { UserProfile, ChatRequest, Post, SoulLink } from './types';
@@ -178,6 +179,11 @@ const Navbar = () => {
       window.removeEventListener('user-auth-change', checkUser);
     };
   }, []);
+
+  const location = useLocation();
+  if (location.pathname.startsWith('/admin')) {
+    return null;
+  }
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 px-6 py-4 flex justify-between items-center bg-white/80 backdrop-blur-md border-b border-stone-100">
@@ -406,13 +412,19 @@ const HomePage = () => {
   ]);
 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [demoLikes, setDemoLikes] = useState<Record<number, boolean>>({});
   const [demoHearts, setDemoHearts] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
     window.scrollTo(0, 0);
-    const saved = localStorage.getItem('soulmatch_user');
-    if (saved) setIsLoggedIn(true);
+    try {
+      const saved = localStorage.getItem('soulmatch_user');
+      if (saved) {
+        setIsLoggedIn(true);
+        setCurrentUser(JSON.parse(saved));
+      }
+    } catch (e) { }
   }, []);
 
   const handleShare = async () => {
@@ -457,6 +469,65 @@ const HomePage = () => {
             SoulMatch è il luogo sicuro dove incontrare persone reali. Ogni profilo è verificato manualmente per la tua sicurezza.
           </p>
         </div>
+
+        {/* Suspended User Notice — persistent floating banner */}
+        {isLoggedIn && currentUser?.doc_rejected && !currentUser?.is_validated && (() => {
+          const rejectedAt = (currentUser as any).doc_rejected_at ? new Date((currentUser as any).doc_rejected_at) : null;
+          const daysUsed = rejectedAt ? Math.floor((Date.now() - rejectedAt.getTime()) / (1000 * 60 * 60 * 24)) : 0;
+          const daysLeft = Math.max(0, 15 - daysUsed);
+          const expiryDate = rejectedAt ? new Date(rejectedAt.getTime() + 15 * 24 * 60 * 60 * 1000) : null;
+          const expiryStr = expiryDate ? expiryDate.toLocaleDateString('it-IT', { day: '2-digit', month: 'long' }) : '';
+
+          return (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mx-4 mb-2 rounded-3xl overflow-hidden shadow-lg relative z-20"
+            >
+              {/* Progress bar */}
+              <div className="absolute top-0 left-0 right-0 h-1 bg-rose-100">
+                <div
+                  className="h-full bg-rose-500 transition-all"
+                  style={{ width: `${Math.min(100, (daysUsed / 15) * 100)}%` }}
+                />
+              </div>
+
+              <div className="bg-white border border-rose-200 p-5 pt-6">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 bg-rose-100 rounded-2xl flex items-center justify-center shrink-0">
+                    <AlertTriangle className="w-5 h-5 text-rose-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <h4 className="font-black text-rose-900 text-base">Documento non valido</h4>
+                      <span className={cn(
+                        "text-[11px] font-black uppercase px-2.5 py-1 rounded-full border",
+                        daysLeft <= 3
+                          ? "bg-red-100 text-red-700 border-red-200"
+                          : daysLeft <= 7
+                            ? "bg-amber-100 text-amber-700 border-amber-200"
+                            : "bg-rose-100 text-rose-700 border-rose-200"
+                      )}>
+                        {daysLeft > 0 ? `${daysLeft} giorni rimasti` : 'Scaduto'}
+                      </span>
+                    </div>
+                    <p className="text-sm text-stone-600 mt-1 leading-relaxed">
+                      Il tuo documento è stato respinto. Il tuo account è in modalità di sola ricezione.
+                      {expiryStr && <> Scade il <strong className="text-rose-700">{expiryStr}</strong>.</>}
+                    </p>
+                    <Link
+                      to="/edit-profile"
+                      className="mt-3 inline-flex items-center gap-2 px-4 py-2.5 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white text-xs font-black rounded-xl uppercase tracking-widest transition-all shadow-sm shadow-rose-200"
+                    >
+                      <ArrowRight className="w-3.5 h-3.5" /> Carica Nuovo Documento
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          );
+        })()}
+
 
         {/* Single CTA */}
         <div className="px-4">
@@ -2431,10 +2502,66 @@ const SoulLinksPage = () => {
 
 // --- Admin Page ---
 const AdminPage = () => {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  // Data states
+  const [users, setUsers] = useState<any[]>([]);
   const [sliderImages, setSliderImages] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loadingData, setLoadingData] = useState(false);
   const [newUrl, setNewUrl] = useState('');
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
+  const [archiveSearch, setArchiveSearch] = useState('');
+  const [docSubTab, setDocSubTab] = useState<'pending' | 'archive'>('pending');
+  const [previewDoc, setPreviewDoc] = useState<{ url: string; name: string } | null>(null);
+
+  // Modals / Specific UI
+  const [activeTab, setActiveTab] = useState<'utenti' | 'documenti' | 'segnalazioni' | 'pagamenti' | 'impostazioni'>('utenti');
+
+  const handleShareDoc = async (url: string, name: string) => {
+    try {
+      if (navigator.share) {
+        try {
+          const res = await fetch(url);
+          const blob = await res.blob();
+          const ext = url.split('.').pop()?.split('?')[0] || 'jpg';
+          const file = new File([blob], `documento-${name.replace(/\\s+/g, '_')}.${ext}`, { type: blob.type || 'image/jpeg' });
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({ title: `Documento: ${name}`, files: [file] });
+            return;
+          }
+        } catch (err) {
+          /* ignore fetch/file creation errors and fallback to url sharing */
+        }
+        await navigator.share({ title: `Documento: ${name}`, url });
+      } else {
+        window.open(url, '_blank');
+      }
+    } catch (e) {
+      window.open(url, '_blank');
+    }
+  };
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (username === 'admin' && password === 'accessometti') {
+      setIsAuthenticated(true);
+      fetchUsers();
+      fetchSliderImages();
+    } else {
+      setToast({ message: "Credenziali errate", type: 'error' });
+    }
+  };
+
+  const fetchUsers = async () => {
+    setLoadingData(true);
+    try {
+      const { data, error } = await supabase.from('users').select('*').order('name', { ascending: true });
+      if (data) setUsers(data);
+    } catch (e) { }
+    setLoadingData(false);
+  };
 
   const fetchSliderImages = async () => {
     try {
@@ -2443,12 +2570,7 @@ const AdminPage = () => {
         setSliderImages(await res.json());
       }
     } catch (e) { }
-    setLoading(false);
   };
-
-  useEffect(() => {
-    fetchSliderImages();
-  }, []);
 
   const handleUpdateSlider = async (newImages: string[]) => {
     try {
@@ -2478,61 +2600,625 @@ const AdminPage = () => {
     handleUpdateSlider(updated);
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center">Caricamento Admin...</div>;
+  const handleValidateDoc = async (userId: string) => {
+    try {
+      const { error } = await supabase.from('users').update({
+        is_validated: true,
+        doc_rejected: false,
+        doc_rejected_at: null,
+        is_suspended: false,
+      }).eq('id', userId);
+      if (!error) {
+        setToast({ message: "Documento approvato! Utente verificato.", type: 'success' });
+        fetchUsers();
+      } else throw error;
+    } catch (e) {
+      setToast({ message: "Errore durante l'approvazione.", type: 'error' });
+    }
+  };
 
-  return (
-    <div className="min-h-screen pt-24 pb-12 px-6 bg-stone-50">
-      <AnimatePresence>
-        {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-      </AnimatePresence>
-      <div className="max-w-2xl mx-auto space-y-8">
-        <div className="bg-white p-8 rounded-[40px] shadow-2xl border border-stone-100 italic">
-          <h1 className="text-3xl font-serif font-black text-stone-900 mb-2 flex items-center gap-3">
-            <Settings2 className="w-8 h-8 text-rose-600" />
-            Pannello Amministrativo
-          </h1>
-          <p className="text-stone-500 text-sm mb-8">Gestisci i contenuti globali dell'applicazione.</p>
+  const handleRejectDoc = async (userId: string) => {
+    try {
+      const { error } = await supabase.from('users').update({
+        is_validated: false,
+        doc_rejected: true,
+        doc_rejected_at: new Date().toISOString(),
+        is_suspended: true,   // limita a solo ricezione
+      }).eq('id', userId);
+      if (!error) {
+        setToast({ message: "Documento respinto. Utente sospeso parzialmente per 15 giorni.", type: 'info' });
+        fetchUsers();
+      } else throw error;
+    } catch (e) { setToast({ message: "Errore.", type: 'error' }); }
+  };
 
-          <div className="space-y-6">
-            <div className="p-6 bg-stone-50 rounded-3xl border border-stone-100">
-              <h2 className="text-lg font-bold text-stone-800 mb-4 flex items-center gap-2">
-                <ImageIcon className="w-5 h-5 text-rose-500" />
-                Gestione Slider Home
-              </h2>
-              <div className="grid grid-cols-3 gap-4 mb-6">
-                {sliderImages.map((img, i) => (
-                  <div key={i} className="aspect-video rounded-2xl overflow-hidden relative group border border-stone-200 shadow-sm transition-transform hover:scale-[1.02]">
-                    <img src={img} className="w-full h-full object-cover" />
-                    <button
-                      onClick={() => removeImage(i)}
-                      className="absolute top-2 right-2 w-8 h-8 bg-black/60 backdrop-blur-md text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
-              </div>
-              <div className="flex gap-2">
-                <input
-                  value={newUrl}
-                  onChange={(e) => setNewUrl(e.target.value)}
-                  placeholder="URL nuova immagine..."
-                  className="flex-1 p-4 rounded-2xl bg-white border border-stone-200 text-sm outline-none focus:ring-2 focus:ring-rose-500 transition-all font-medium"
-                />
-                <button
-                  onClick={addImage}
-                  className="bg-rose-600 text-white px-6 py-4 rounded-2xl text-sm font-black uppercase tracking-wider hover:bg-rose-700 transition-all shadow-lg shadow-rose-200 active:scale-95"
-                >
-                  Aggiungi
-                </button>
+  const handleBlockUserToggle = async (userId: string, isBlocked: boolean) => {
+    try {
+      const { error } = await supabase.from('users').update({ is_blocked: !isBlocked }).eq('id', userId);
+      if (!error) {
+        setToast({ message: !isBlocked ? "Utente bloccato." : "Utente sbloccato.", type: 'success' });
+        fetchUsers();
+      } else {
+        throw error;
+      }
+    } catch (e) {
+      setToast({ message: "Errore.", type: 'error' });
+    }
+  };
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-stone-50 flex flex-col" style={{ paddingTop: '72px' }}>
+        {/* Admin Login Navbar */}
+        <nav className="fixed top-0 left-0 right-0 z-50 px-6 py-4 flex justify-between items-center bg-white/90 backdrop-blur-md border-b border-stone-100 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 bg-rose-600 rounded-xl flex items-center justify-center shadow-lg shadow-rose-200 shrink-0">
+              <Heart className="text-white w-6 h-6 fill-current" />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-2xl font-serif font-black tracking-tight text-stone-900 leading-none">SoulMatch</span>
+              <span className="text-[10px] font-bold text-rose-600 uppercase tracking-[0.15em] mt-0.5">Admin</span>
+            </div>
+          </div>
+          <Link
+            to="/"
+            className="w-11 h-11 bg-white text-stone-400 rounded-2xl flex items-center justify-center hover:bg-rose-50 hover:text-rose-600 transition-all border border-stone-100 active:scale-90 shadow-sm"
+            title="Torna all'app"
+          >
+            <LogOut className="w-5 h-5" />
+          </Link>
+        </nav>
+
+        <div className="flex-1 flex items-center justify-center px-6">
+          <AnimatePresence>
+            {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+          </AnimatePresence>
+          <div className="bg-white p-8 rounded-3xl shadow-xl w-full max-w-sm border border-stone-100 relative z-10 my-8">
+            <div className="flex justify-center mb-6">
+              <div className="w-16 h-16 bg-rose-600 rounded-2xl flex items-center justify-center shadow-lg shadow-rose-900/40">
+                <ShieldCheck className="w-8 h-8 text-white" />
               </div>
             </div>
+            <h1 className="text-2xl font-serif font-black text-center text-stone-900 mb-6">Amministrazione</h1>
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest mb-1">Username</label>
+                <input
+                  type="text"
+                  value={username} onChange={e => setUsername(e.target.value)}
+                  className="w-full p-4 rounded-xl bg-stone-50 border border-stone-200 outline-none focus:ring-2 focus:ring-rose-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest mb-1">Password</label>
+                <input
+                  type="password"
+                  value={password} onChange={e => setPassword(e.target.value)}
+                  className="w-full p-4 rounded-xl bg-stone-50 border border-stone-200 outline-none focus:ring-2 focus:ring-rose-500"
+                />
+              </div>
+              <button type="submit" className="w-full bg-stone-900 text-white p-4 rounded-xl font-black uppercase hover:bg-rose-600 hover:shadow-lg hover:shadow-rose-600/30 transition-all">Accedi</button>
+            </form>
           </div>
         </div>
       </div>
+    );
+  }
+  return (
+    <div className="min-h-screen bg-stone-50 flex" style={{ paddingTop: '72px' }}>
+      <AnimatePresence>
+        {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      </AnimatePresence>
+
+      {/* Document Preview Modal */}
+      <AnimatePresence>
+        {previewDoc && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200] bg-black/90 flex flex-col"
+            onClick={() => setPreviewDoc(null)}
+          >
+            {/* Toolbar */}
+            <div className="flex items-center justify-between px-5 py-4 shrink-0" onClick={e => e.stopPropagation()}>
+              <p className="text-white font-black truncate max-w-[60%]">{previewDoc.name}</p>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleShareDoc(previewDoc.url, previewDoc.name)}
+                  className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-2xl font-bold text-sm transition-all"
+                >
+                  <Share2 className="w-4 h-4" /> Condividi / Apri
+                </button>
+                <button
+                  onClick={() => window.open(previewDoc.url, '_blank')}
+                  className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-2xl font-bold text-sm transition-all"
+                >
+                  <Eye className="w-4 h-4" /> Apri
+                </button>
+                <button
+                  onClick={() => setPreviewDoc(null)}
+                  className="w-10 h-10 bg-white/10 hover:bg-white/20 border border-white/20 rounded-2xl flex items-center justify-center text-white transition-all"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+            {/* Content */}
+            <div className="flex-1 flex items-center justify-center p-4 overflow-auto" onClick={() => setPreviewDoc(null)}>
+              {previewDoc.url.toLowerCase().includes('.pdf') ? (
+                <div className="text-center" onClick={e => e.stopPropagation()}>
+                  <div className="w-24 h-24 bg-white/10 rounded-3xl flex items-center justify-center mx-auto mb-4">
+                    <span className="text-4xl">📄</span>
+                  </div>
+                  <p className="text-white/70 mb-4">Anteprima PDF non disponibile nel browser.</p>
+                  <button
+                    onClick={() => window.open(previewDoc.url, '_blank')}
+                    className="px-6 py-3 bg-rose-600 hover:bg-rose-700 text-white font-black rounded-2xl transition-all"
+                  >
+                    Apri PDF
+                  </button>
+                </div>
+              ) : (
+                <img
+                  src={previewDoc.url}
+                  alt={previewDoc.name}
+                  className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl"
+                  onClick={e => e.stopPropagation()}
+                />
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Admin fixed top navbar */}
+      <nav className="fixed top-0 left-0 right-0 z-50 px-6 py-4 flex justify-between items-center bg-white/90 backdrop-blur-md border-b border-stone-100 shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 bg-rose-600 rounded-xl flex items-center justify-center shadow-lg shadow-rose-200 shrink-0">
+            <Heart className="text-white w-6 h-6 fill-current" />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-2xl font-serif font-black tracking-tight text-stone-900 leading-none">SoulMatch</span>
+            <span className="text-[10px] font-bold text-rose-600 uppercase tracking-[0.15em] mt-0.5">Admin</span>
+          </div>
+        </div>
+        <button
+          onClick={() => setIsAuthenticated(false)}
+          className="w-11 h-11 bg-white text-stone-400 rounded-2xl flex items-center justify-center hover:bg-rose-50 hover:text-rose-600 transition-all border border-stone-100 active:scale-90 shadow-sm"
+          title="Esci dal pannello"
+        >
+          <LogOut className="w-5 h-5" />
+        </button>
+      </nav>
+
+      {/* Sidebar — fixed, vertical always */}
+      <aside className="w-64 shrink-0 bg-white border-r border-stone-100 min-h-[calc(100vh-72px)] p-6 flex flex-col gap-6 sticky top-[72px] self-start hidden md:flex">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-8 h-8 bg-rose-600 rounded-xl flex items-center justify-center shadow shadow-rose-200">
+              <ShieldCheck className="w-4 h-4 text-white" />
+            </div>
+            <h2 className="text-lg font-serif font-black text-stone-900">Pannello Admin</h2>
+          </div>
+          <p className="text-[11px] text-stone-400 font-medium ml-10">SoulMatch Back-office</p>
+        </div>
+
+        <nav className="flex flex-col gap-1">
+          {([
+            { key: 'utenti', label: 'Utenti Iscritti', icon: Users },
+            { key: 'documenti', label: 'Documenti', icon: CheckCircle },
+            { key: 'segnalazioni', label: 'Segnalazioni', icon: AlertTriangle },
+            { key: 'pagamenti', label: 'Stripe & Pagamenti', icon: CreditCard },
+            { key: 'impostazioni', label: 'Slider Home', icon: Settings2 },
+          ] as const).map(({ key, label, icon: Icon }) => (
+            <button
+              key={key}
+              onClick={() => setActiveTab(key)}
+              className={cn(
+                "w-full text-left px-4 py-3 rounded-2xl font-bold transition-all flex items-center gap-3 text-sm",
+                activeTab === key
+                  ? "bg-rose-50 text-rose-700 shadow-sm"
+                  : "text-stone-500 hover:bg-stone-50 hover:text-stone-700"
+              )}
+            >
+              <Icon className="w-4 h-4 shrink-0" />
+              {label}
+            </button>
+          ))}
+        </nav>
+
+        <div className="mt-auto pt-4 border-t border-stone-100">
+          <button
+            onClick={() => setIsAuthenticated(false)}
+            className="w-full text-left px-4 py-3 rounded-2xl font-bold transition-all flex items-center gap-3 text-sm text-stone-400 hover:bg-rose-50 hover:text-rose-600"
+          >
+            <LogOut className="w-4 h-4 shrink-0" />
+            Esci dal pannello
+          </button>
+        </div>
+      </aside>
+
+      {/* Mobile Tab Bar */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-stone-100 z-40 flex">
+        {([
+          { key: 'utenti', icon: Users },
+          { key: 'documenti', icon: CheckCircle },
+          { key: 'segnalazioni', icon: AlertTriangle },
+          { key: 'pagamenti', icon: CreditCard },
+          { key: 'impostazioni', icon: Settings2 },
+        ] as const).map(({ key, icon: Icon }) => (
+          <button
+            key={key}
+            onClick={() => setActiveTab(key)}
+            className={cn(
+              "flex-1 py-3 flex flex-col items-center gap-0.5 transition-colors text-xs font-bold",
+              activeTab === key ? "text-rose-600" : "text-stone-400"
+            )}
+          >
+            <Icon className="w-5 h-5" />
+          </button>
+        ))}
+      </div>
+
+      {/* Main Content */}
+      <main className="flex-1 min-w-0 p-4 md:p-8 pb-24 md:pb-8">
+        {loadingData ? (
+          <div className="flex items-center justify-center py-32">
+            <div className="w-8 h-8 border-4 border-rose-200 border-t-rose-600 rounded-full animate-spin" />
+          </div>
+        ) : (
+          <>
+            {/* ---- UTENTI ---- */}
+            {activeTab === 'utenti' && (
+              <div>
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-2xl font-serif font-black text-stone-900">
+                    Iscritti <span className="text-rose-600">({users.length})</span>
+                  </h3>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {users.map((u: any) => (
+                    <div key={u.id} className="bg-white rounded-3xl border border-stone-100 shadow-sm p-5 flex flex-col gap-4">
+                      {/* Header */}
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-2xl bg-stone-100 overflow-hidden shrink-0 flex items-center justify-center">
+                          {u.photo_url
+                            ? <img src={u.photo_url} className="w-full h-full object-cover" />
+                            : <User className="w-6 h-6 text-stone-400" />
+                          }
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-black text-stone-900 truncate">{u.name} {u.surname}</p>
+                          <p className="text-xs text-stone-400 truncate">{u.email || '—'}</p>
+                        </div>
+                      </div>
+                      {/* Info badges */}
+                      <div className="flex flex-wrap gap-2">
+                        <span className="text-[11px] px-2.5 py-1 bg-stone-100 text-stone-600 rounded-full font-bold">{u.city || '—'}</span>
+                        <span className="text-[11px] px-2.5 py-1 bg-stone-100 text-stone-600 rounded-full font-bold">{u.gender || '—'}</span>
+                        {u.is_paid
+                          ? <span className="text-[11px] px-2.5 py-1 bg-amber-100 text-amber-700 rounded-full font-bold">VIP</span>
+                          : <span className="text-[11px] px-2.5 py-1 bg-stone-100 text-stone-400 rounded-full font-bold">Standard</span>
+                        }
+                        {u.is_blocked
+                          ? <span className="text-[11px] px-2.5 py-1 bg-red-100 text-red-700 rounded-full font-bold">Bloccato</span>
+                          : <span className="text-[11px] px-2.5 py-1 bg-emerald-100 text-emerald-700 rounded-full font-bold">Attivo</span>
+                        }
+                      </div>
+                      {/* Action */}
+                      <button
+                        onClick={() => handleBlockUserToggle(u.id, u.is_blocked)}
+                        className={cn(
+                          "w-full py-2.5 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 transition-all border",
+                          u.is_blocked
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-100 hover:bg-emerald-100"
+                            : "bg-rose-50 text-rose-700 border-rose-100 hover:bg-rose-100"
+                        )}
+                      >
+                        {u.is_blocked
+                          ? <><UserCheck className="w-4 h-4" /> Sblocca</>
+                          : <><AlertTriangle className="w-4 h-4" /> Sospendi</>
+                        }
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'documenti' && (() => {
+              const pendingDocs = users.filter((u: any) => u.id_document_url && !u.is_validated && !u.doc_rejected);
+              const archivedDocs = users.filter((u: any) => u.id_document_url && (u.is_validated || u.doc_rejected));
+              const q = archiveSearch.toLowerCase();
+              const filteredArchive = archivedDocs.filter((u: any) =>
+                !q || u.name?.toLowerCase().includes(q) || u.surname?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q)
+              );
+
+              return (
+                <div>
+                  {/* Sub-tab switcher */}
+                  <div className="flex items-center gap-1 mb-6 bg-stone-100 p-1 rounded-2xl w-fit">
+                    <button
+                      onClick={() => setDocSubTab('pending')}
+                      className={cn("px-5 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2", docSubTab === 'pending' ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700")}
+                    >
+                      <CheckCircle className="w-4 h-4" />
+                      In attesa
+                      {pendingDocs.length > 0 && <span className="w-5 h-5 bg-rose-600 text-white rounded-full text-[10px] font-black flex items-center justify-center">{pendingDocs.length}</span>}
+                    </button>
+                    <button
+                      onClick={() => setDocSubTab('archive')}
+                      className={cn("px-5 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2", docSubTab === 'archive' ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700")}
+                    >
+                      <ShieldCheck className="w-4 h-4" />
+                      Archivio
+                      {archivedDocs.length > 0 && <span className="w-5 h-5 bg-stone-400 text-white rounded-full text-[10px] font-black flex items-center justify-center">{archivedDocs.length}</span>}
+                    </button>
+                  </div>
+
+                  {/* ----- PENDING QUEUE ----- */}
+                  {docSubTab === 'pending' && (
+                    <div>
+                      <p className="text-stone-500 text-sm mb-6">Verifica che i dati del documento corrispondano a quelli del profilo. Approva o richiedi nuovo invio.</p>
+                      {pendingDocs.length === 0 ? (
+                        <div className="py-24 text-center bg-white rounded-3xl border border-stone-100">
+                          <ShieldCheck className="w-16 h-16 mx-auto mb-4 text-emerald-400" />
+                          <p className="font-bold text-stone-400 text-lg">Nessun documento in attesa.</p>
+                          <p className="text-stone-300 text-sm mt-1">Ottimo lavoro, tutto aggiornato!</p>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                          {pendingDocs.map((u: any) => (
+                            <div key={u.id} className="bg-white rounded-3xl border border-stone-100 shadow-sm overflow-hidden">
+                              {/* Document image — click to preview */}
+                              <div
+                                className="w-full h-48 bg-stone-100 relative group cursor-zoom-in"
+                                onClick={() => setPreviewDoc({ url: u.id_document_url, name: `${u.name} ${u.surname}` })}
+                              >
+                                <img src={u.id_document_url} alt="Documento ID" className="w-full h-full object-cover group-hover:brightness-90 transition-all" />
+                                {/* Hover overlay */}
+                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100">
+                                  <div className="bg-white/90 text-stone-900 px-3 py-1.5 rounded-full text-xs font-black flex items-center gap-1.5 shadow-lg">
+                                    <Eye className="w-3.5 h-3.5" /> Anteprima
+                                  </div>
+                                  <button
+                                    onClick={e => { e.stopPropagation(); handleShareDoc(u.id_document_url, `${u.name} ${u.surname}`); }}
+                                    className="bg-white/90 text-stone-900 px-3 py-1.5 rounded-full text-xs font-black flex items-center gap-1.5 shadow-lg hover:bg-white transition-colors"
+                                  >
+                                    <Share2 className="w-3.5 h-3.5" /> Condividi
+                                  </button>
+                                </div>
+                                <div className="absolute top-3 right-3 px-3 py-1 bg-amber-500 text-white text-[11px] font-black uppercase rounded-full shadow-sm">
+                                  Da verificare
+                                </div>
+                              </div>
+
+                              <div className="p-5 flex flex-col gap-4">
+                                {/* User data from profile for cross-check */}
+                                <div>
+                                  <p className="text-[11px] font-bold text-stone-400 uppercase tracking-widest mb-3">Dati profilo da verificare</p>
+                                  <div className="grid grid-cols-2 gap-2">
+                                    <div className="bg-stone-50 rounded-xl px-3 py-2">
+                                      <p className="text-[10px] text-stone-400 font-bold uppercase tracking-wide">Nome</p>
+                                      <p className="font-black text-stone-800 text-sm">{u.name || '—'}</p>
+                                    </div>
+                                    <div className="bg-stone-50 rounded-xl px-3 py-2">
+                                      <p className="text-[10px] text-stone-400 font-bold uppercase tracking-wide">Cognome</p>
+                                      <p className="font-black text-stone-800 text-sm">{u.surname || '—'}</p>
+                                    </div>
+                                    <div className="bg-stone-50 rounded-xl px-3 py-2">
+                                      <p className="text-[10px] text-stone-400 font-bold uppercase tracking-wide">Età</p>
+                                      <p className="font-black text-stone-800 text-sm">{calculateAge(u.dob)} anni</p>
+                                    </div>
+                                    <div className="bg-stone-50 rounded-xl px-3 py-2">
+                                      <p className="text-[10px] text-stone-400 font-bold uppercase tracking-wide">Città</p>
+                                      <p className="font-black text-stone-800 text-sm">{u.city || '—'}</p>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Actions */}
+                                <div className="flex gap-3">
+                                  <button
+                                    onClick={() => handleValidateDoc(u.id)}
+                                    className="flex-1 py-3 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white rounded-2xl font-black flex items-center justify-center gap-2 text-sm transition-all shadow-sm shadow-emerald-200"
+                                  >
+                                    <CheckCircle className="w-5 h-5" /> Approva
+                                  </button>
+                                  <button
+                                    onClick={() => handleRejectDoc(u.id)}
+                                    className="flex-1 py-3 bg-amber-50 hover:bg-amber-100 active:scale-95 text-amber-700 border border-amber-200 rounded-2xl font-black flex items-center justify-center gap-2 text-sm transition-all"
+                                  >
+                                    <XCircle className="w-5 h-5" /> Richiedi Nuovo
+                                  </button>
+                                </div>
+                                {/* Block button — immediate full block */}
+                                <button
+                                  onClick={() => handleBlockUserToggle(u.id, u.is_blocked)}
+                                  className={cn(
+                                    "w-full py-2.5 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition-all border active:scale-95",
+                                    u.is_blocked
+                                      ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+                                      : "bg-stone-900 text-white border-stone-900 hover:bg-stone-700"
+                                  )}
+                                >
+                                  {u.is_blocked
+                                    ? <><UserCheck className="w-4 h-4" /> Sblocca Utente</>
+                                    : <><AlertTriangle className="w-4 h-4" /> Blocca Utente</>}
+                                </button>
+                                <p className="text-[11px] text-stone-400 text-center leading-relaxed -mt-1">
+                                  "Richiedi Nuovo" sospende parzialmente per <strong>15 gg</strong>. "Blocca" esclude l'utente immediatamente.
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* ----- ARCHIVE ----- */}
+                  {docSubTab === 'archive' && (
+                    <div>
+                      {/* Search bar */}
+                      <div className="relative mb-6">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+                        <input
+                          type="text"
+                          value={archiveSearch}
+                          onChange={e => setArchiveSearch(e.target.value)}
+                          placeholder="Cerca per nome, cognome o email…"
+                          className="w-full pl-11 pr-4 py-3 rounded-2xl bg-white border border-stone-100 shadow-sm text-sm outline-none focus:ring-2 focus:ring-rose-400 transition"
+                        />
+                        {archiveSearch && (
+                          <button onClick={() => setArchiveSearch('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600">
+                            <X className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+
+                      {filteredArchive.length === 0 ? (
+                        <div className="py-24 text-center bg-white rounded-3xl border border-stone-100">
+                          <ShieldCheck className="w-16 h-16 mx-auto mb-4 text-stone-200" />
+                          <p className="font-bold text-stone-400">{archiveSearch ? 'Nessun risultato trovato.' : 'Archivio vuoto.'}</p>
+                        </div>
+                      ) : (
+                        <div className="bg-white rounded-3xl border border-stone-100 shadow-sm overflow-hidden">
+                          {filteredArchive.map((u: any, idx: number) => {
+                            const daysLeft = u.doc_rejected_at
+                              ? 15 - Math.floor((Date.now() - new Date(u.doc_rejected_at).getTime()) / (1000 * 60 * 60 * 24))
+                              : null;
+                            return (
+                              <div key={u.id} className={cn("flex items-center gap-4 p-4 hover:bg-stone-50 transition-colors", idx !== filteredArchive.length - 1 && "border-b border-stone-50")}>
+                                {/* Doc thumbnail */}
+                                <div className="w-16 h-12 rounded-xl overflow-hidden shrink-0 border border-stone-100 bg-stone-100">
+                                  {u.id_document_url
+                                    ? <img src={u.id_document_url} className="w-full h-full object-cover" />
+                                    : <div className="w-full h-full flex items-center justify-center"><User className="w-5 h-5 text-stone-300" /></div>
+                                  }
+                                </div>
+                                {/* Info */}
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-black text-stone-900 truncate">{u.name} {u.surname}</p>
+                                  <p className="text-xs text-stone-400 truncate">{u.email} · {u.city}</p>
+                                  {u.doc_rejected && daysLeft !== null && daysLeft > 0 && (
+                                    <p className="text-[11px] text-amber-600 font-bold mt-0.5">⏱ {daysLeft} giorni al blocco</p>
+                                  )}
+                                  {u.doc_rejected && daysLeft !== null && daysLeft <= 0 && (
+                                    <p className="text-[11px] text-red-600 font-bold mt-0.5">🔴 Scaduto — da bloccare</p>
+                                  )}
+                                </div>
+                                {/* Status + action */}
+                                <div className="shrink-0 flex flex-col items-end gap-2">
+                                  {u.is_validated ? (
+                                    <span className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-full text-[11px] font-black border border-emerald-100">
+                                      <CheckCircle className="w-3.5 h-3.5" /> Approvato
+                                    </span>
+                                  ) : (
+                                    <span className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 text-rose-700 rounded-full text-[11px] font-black border border-rose-100">
+                                      <XCircle className="w-3.5 h-3.5" /> Respinto
+                                    </span>
+                                  )}
+                                  {/* Block toggle for rejected users */}
+                                  {u.doc_rejected && (
+                                    <button
+                                      onClick={() => handleBlockUserToggle(u.id, u.is_blocked)}
+                                      className={cn(
+                                        "flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-black border transition-all active:scale-95",
+                                        u.is_blocked
+                                          ? "bg-emerald-50 text-emerald-700 border-emerald-100 hover:bg-emerald-100"
+                                          : "bg-stone-900 text-white border-stone-900 hover:bg-stone-700"
+                                      )}
+                                    >
+                                      {u.is_blocked
+                                        ? <><UserCheck className="w-3 h-3" /> Sblocca</>
+                                        : <><AlertTriangle className="w-3 h-3" /> Blocca</>}
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+
+            {activeTab === 'segnalazioni' && (
+              <div className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm">
+                <h3 className="text-2xl font-black mb-6">Gestione Segnalazioni</h3>
+                <div className="flex flex-col items-center justify-center py-24 text-stone-400">
+                  <AlertTriangle className="w-16 h-16 mb-4 opacity-50" />
+                  <p className="font-medium text-lg">Al momento la lista delle segnalazioni è vuota.</p>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'pagamenti' && (
+              <div className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm">
+                <div className="flex items-center justify-between mb-8">
+                  <h3 className="text-2xl font-black">Piano Premium - Stripe</h3>
+                  <div className="px-4 py-2 bg-[#635BFF] text-white rounded-xl font-bold text-xs tracking-wide uppercase">Test Mode</div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                  <div className="border border-stone-100 bg-stone-50 p-6 rounded-2xl">
+                    <p className="text-xs font-bold text-stone-500 mb-2 uppercase tracking-widest">Utenti VIP</p>
+                    <p className="text-4xl font-black text-stone-900">{users.filter((u: any) => u.is_paid).length}</p>
+                  </div>
+                  <div className="border border-stone-100 bg-stone-50 p-6 rounded-2xl">
+                    <p className="text-xs font-bold text-stone-500 mb-2 uppercase tracking-widest">MRR Stimato</p>
+                    <p className="text-4xl font-black text-stone-900">€{(users.filter((u: any) => u.is_paid).length * 9.99).toFixed(2)}</p>
+                  </div>
+                  <div className="border border-stone-100 bg-emerald-50 p-6 rounded-2xl">
+                    <p className="text-xs font-bold text-emerald-600 mb-2 uppercase tracking-widest">Status Webhook</p>
+                    <p className="text-lg font-bold text-emerald-700 flex items-center gap-2 mt-2"><CheckCircle className="w-5 h-5" /> In Sincronia</p>
+                  </div>
+                </div>
+                <div>
+                  <h4 className="font-bold text-lg mb-4">Registro Transazioni</h4>
+                  <div className="p-8 border-2 border-dashed border-stone-200 rounded-2xl text-center">
+                    <p className="text-stone-500 text-sm font-medium">L'integrazione di Stripe con Supabase deve essere prima settata lato server. Appariranno qui non appena i webhook Stripe invieranno eventi di pagamento al DB.</p>
+                    <button className="mt-4 px-6 py-2 bg-[#635BFF] text-white rounded-lg font-bold text-sm shadow-lg hover:bg-[#524BDB] transition-all">Apri Dashboard Stripe →</button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'impostazioni' && (
+              <div className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm">
+                <h3 className="text-2xl font-black mb-4 flex items-center gap-2">
+                  <ImageIcon className="w-6 h-6 text-rose-500" /> Slider HomePage
+                </h3>
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                  {sliderImages.map((img, i) => (
+                    <div key={i} className="aspect-video rounded-2xl overflow-hidden relative group border border-stone-200 shadow-sm transition-transform hover:scale-[1.02]">
+                      <img src={img} className="w-full h-full object-cover" />
+                      <button onClick={() => removeImage(i)} className="absolute top-2 right-2 w-8 h-8 bg-black/60 backdrop-blur-md text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">×</button>
+                    </div>
+                  ))}
+                  {sliderImages.length === 0 && <p className="col-span-full py-8 text-stone-400 text-center border-2 border-dashed border-stone-200 rounded-2xl">Nessun URL caricato.</p>}
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    value={newUrl} onChange={(e) => setNewUrl(e.target.value)}
+                    placeholder="URL immagine"
+                    className="flex-1 p-3 rounded-xl bg-stone-50 border border-stone-200 text-sm outline-none focus:ring-2 focus:ring-rose-500"
+                  />
+                  <button onClick={addImage} className="bg-stone-900 text-white px-6 py-3 rounded-xl font-black uppercase hover:bg-stone-800 transition-all">Aggiungi</button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </main>
     </div>
   );
-};
+}
 
 const RegisterPage = () => {
   const navigate = useNavigate();
@@ -3513,10 +4199,10 @@ const FeedComponent = ({ userId, isOwner }: { userId: any, isOwner?: boolean }) 
       const { data: postsData, error } = await supabase
         .from('posts')
         .select(`
-          *,
-          user:users (name, photos, photo_url),
-          post_interactions!post_interactions_post_id_fkey(type)
-        `)
+                    *,
+                    user:users (name, photos, photo_url),
+                    post_interactions!post_interactions_post_id_fkey(type)
+                    `)
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
 
@@ -4325,9 +5011,9 @@ const ProfilePage = () => {
       const { data: profileData, error: profileErr } = await supabase
         .from('users')
         .select(`
-          *,
-          interactions!to_user_id(type)
-        `)
+                      *,
+                      interactions!to_user_id(type)
+                      `)
         .eq('id', userId)
         .single();
 
@@ -4350,9 +5036,9 @@ const ProfilePage = () => {
       const { data: requestsData, error: requestsErr } = await supabase
         .from('chat_requests')
         .select(`
-          *,
-          from_user:users!from_user_id(name, surname, photo_url, photos)
-        `)
+                      *,
+                      from_user:users!from_user_id(name, surname, photo_url, photos)
+                      `)
         .eq('to_user_id', userId);
 
       if (requestsErr) console.error("Requests fetch error:", requestsErr);
@@ -4913,9 +5599,16 @@ const AppFooter = () => {
             </div>
           </div>
 
+          {/* Admin link */}
+          <div className="flex justify-center mt-2">
+            <Link to="/admin" className="p-2 bg-stone-800 rounded-full hover:bg-rose-600 text-stone-400 hover:text-white transition-colors group" title="Pannello Amministrativo">
+              <ShieldCheck className="w-4 h-4" />
+            </Link>
+          </div>
+
           {/* Copyright */}
           <p className="text-stone-600 text-[9px] text-center font-medium">
-            © {new Date().getFullYear()} SoulMatch — Tutti i diritti riservati
+            © 2026 SoulMatch — Tutti i diritti riservati
             <br />
             <span className="text-stone-700">P.IVA 00000000000 · Made in Italy 🇮🇹</span>
           </p>
