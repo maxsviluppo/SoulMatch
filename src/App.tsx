@@ -1287,8 +1287,7 @@ const BachecaPage = () => {
   const navigate = useNavigate();
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filterGender, setFilterGender] = useState<string>('Tutti');
-  const [filterOrientation, setFilterOrientation] = useState<string>('Tutti');
+  // filterGender removed - matching is now automatic from user profile preferences
   const [filterCity, setFilterCity] = useState<string>('Tutte');
   const [filterBodyType, setFilterBodyType] = useState<string>('Tutte');
   const [filterAge, setFilterAge] = useState<[number, number]>([18, 99]);
@@ -1299,6 +1298,7 @@ const BachecaPage = () => {
 
   const SM_COOLDOWN_KEY = 'soulmatch_last_used';
   const COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24h
+
 
   const getSoulMatchCooldownRemaining = (): number => {
     const last = localStorage.getItem(SM_COOLDOWN_KEY);
@@ -1355,9 +1355,6 @@ const BachecaPage = () => {
       if (saved) {
         const user = JSON.parse(saved);
         setCurrentUser(user);
-        if (user.looking_for_gender) {
-          setFilterGender(user.looking_for_gender);
-        }
         fetchProfiles();
       } else {
         navigate('/register');
@@ -1392,57 +1389,82 @@ const BachecaPage = () => {
   }, [profiles]);
 
   const filteredProfiles = profiles.filter(p => {
-    // 1. Basic UI Filters
-    const genderMatch = filterGender === 'Tutti' || p.gender === filterGender;
-    const orientationMatch = filterOrientation === 'Tutti' || p.orientation === filterOrientation;
+    // Exclude self
+    if (currentUser && p.id === currentUser.id) return false;
+
+    // ─── 1. Secondary UI filters (city, age, body type) ───
     const cityMatch = filterCity === 'Tutte' || p.city === filterCity;
     const bodyTypeMatch = filterBodyType === 'Tutte' || p.body_type === filterBodyType;
     const age = p.dob ? calculateAge(p.dob) : null;
     const ageMatch = !age || (age >= filterAge[0] && age <= filterAge[1]);
+    if (!cityMatch || !ageMatch || !bodyTypeMatch) return false;
 
-    if (!genderMatch || !orientationMatch || !cityMatch || !ageMatch || !bodyTypeMatch) {
-      return false;
-    }
+    // ─── 2. Preference-based matching (gender + orientation together) ───
+    const toArr = (val: any): string[] => {
+      if (!val) return [];
+      if (Array.isArray(val)) return val;
+      return [val as string];
+    };
 
-    // 2. Strict Reciprocal Matching (if user is logged in)
-    if (currentUser) {
-      if (p.id === currentUser.id) return false;
+    const viewerWants = toArr(currentUser?.looking_for_gender);
+    const profileWants = toArr(p.looking_for_gender);
 
-      // Logic: I must match their preference AND they must match mine
-      const isOpposite = (g1: string = '', g2: string = '') =>
-        (g1 === 'Uomo' && g2 === 'Donna') || (g1 === 'Donna' && g2 === 'Uomo');
+    // Orientations that are open to all / multiple genders
+    const openOrientations = ['Bisessuale', 'Pansessuale', 'Fluido', 'Polisessuale', 'Queer', 'Curioso/a', 'Sapiosexual'];
+    const viewerOrientation = toArr(currentUser?.orientation);
+    const profileOrientation = toArr(p.orientation);
+    const viewerIsOpen = viewerOrientation.some(o => openOrientations.includes(o));
+    const profileIsOpen = profileOrientation.some(o => openOrientations.includes(o));
 
-      // Does the PROFILE (p) want the VIEWER (currentUser)?
-      let profileWantsViewer = true;
-      if (p.orientation === 'Eterosessuale' && p.gender && currentUser.gender) {
-        if (!isOpposite(p.gender, currentUser.gender)) profileWantsViewer = false;
-      }
-      if (p.orientation === 'Gay' && (currentUser.gender !== 'Uomo' || p.gender !== 'Uomo')) profileWantsViewer = false;
-      if (p.orientation === 'Lesbica' && (currentUser.gender !== 'Donna' || p.gender !== 'Donna')) profileWantsViewer = false;
+    // Viewer wants this profile's gender?
+    const viewerWantsProfile =
+      viewerIsOpen || // open orientation → sees all genders
+      viewerWants.length === 0 ||
+      (p.gender ? viewerWants.includes(p.gender) : true);
 
-      if (p.looking_for_gender && p.looking_for_gender !== 'Tutti' && currentUser.gender && p.looking_for_gender !== currentUser.gender) {
-        profileWantsViewer = false;
-      }
+    // Profile wants the viewer's gender?
+    const profileWantsViewer =
+      profileIsOpen || // open orientation → visible to all genders
+      profileWants.length === 0 ||
+      (currentUser?.gender ? profileWants.includes(currentUser.gender) : true);
 
-      // Does the VIEWER (currentUser) want the PROFILE (p)?
-      let viewerWantsProfile = true;
-      if (currentUser.orientation === 'Eterosessuale' && currentUser.gender && p.gender) {
-        if (!isOpposite(currentUser.gender, p.gender)) viewerWantsProfile = false;
-      }
-      if (currentUser.orientation === 'Gay' && (p.gender !== 'Uomo' || currentUser.gender !== 'Uomo')) viewerWantsProfile = false;
-      if (currentUser.orientation === 'Lesbica' && (p.gender !== 'Donna' || currentUser.gender !== 'Donna')) viewerWantsProfile = false;
-
-      if (currentUser.looking_for_gender && currentUser.looking_for_gender !== 'Tutti' && p.gender && currentUser.looking_for_gender !== p.gender) {
-        viewerWantsProfile = false;
-      }
-
-      // If matching logic fails due to missing critical data, we default to SHOWING it
-      // unless we are 100% sure it should be hidden.
-      return profileWantsViewer && viewerWantsProfile;
-    }
+    if (!viewerWantsProfile || !profileWantsViewer) return false;
 
     return true;
   });
+
+  const userWantsGender: string[] = (() => {
+    const lfg = currentUser?.looking_for_gender;
+    if (!lfg) return [];
+    if (Array.isArray(lfg)) return lfg;
+    return [lfg as unknown as string];
+  })();
+
+  // Quick reaction on profile cards (one per user)
+  const [cardReactions, setCardReactions] = useState<Record<string, 'like' | 'heart' | null>>({});
+
+  const handleQuickReaction = async (profileId: string, type: 'like' | 'heart', e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!currentUser?.id) return;
+    const existing = cardReactions[profileId];
+    if (existing === type) return; // already reacted with this type
+    setCardReactions(prev => ({ ...prev, [profileId]: type }));
+    playTapSound();
+    try {
+      const { error } = await supabase
+        .from('interactions')
+        .upsert({
+          from_user_id: currentUser.id,
+          to_user_id: profileId,
+          type: type
+        }, { onConflict: 'from_user_id,to_user_id' });
+      if (error) throw error;
+    } catch (err) {
+      console.error('Quick reaction error:', err);
+    }
+  };
+
 
   const [heroIndex, setHeroIndex] = useState(0);
   const heroProfiles = filteredProfiles.slice(0, Math.min(5, filteredProfiles.length));
@@ -1509,10 +1531,9 @@ const BachecaPage = () => {
 
       <div className="max-w-md mx-auto px-4 space-y-5 mt-4">
 
-        {/* Filter bar — always collapsed behind a single button row */}
+        {/* Filter bar */}
         <div className="space-y-3">
           <div className="flex items-center gap-2">
-            {/* Active gender chip */}
             <div className="flex-1 flex gap-2 overflow-x-auto scrollbar-hide">
               <button
                 onClick={() => setShowAdvanced(!showAdvanced)}
@@ -1523,14 +1544,14 @@ const BachecaPage = () => {
               >
                 <Filter className="w-3.5 h-3.5" />
                 Filtri
-                {(filterGender !== 'Tutti' || filterCity !== 'Tutte' || filterAge[0] !== 18 || filterAge[1] !== 99) && (
+                {(filterCity !== 'Tutte' || filterAge[0] !== 18 || filterAge[1] !== 99) && (
                   <span className="w-2 h-2 bg-rose-600 rounded-full" />
                 )}
               </button>
-              {filterGender !== 'Tutti' && (
-                <span className="flex items-center gap-1.5 bg-rose-50 text-rose-600 border border-rose-100 px-3 py-1 rounded-full text-[10px] font-black shrink-0">
-                  {filterGender}
-                  <button onClick={() => setFilterGender('Tutti')} className="text-rose-400 hover:text-rose-600">×</button>
+              {/* Show user's preference tags read-only */}
+              {userWantsGender.length > 0 && (
+                <span className="flex items-center gap-1.5 bg-violet-50 text-violet-700 border border-violet-100 px-3 py-1 rounded-full text-[10px] font-black shrink-0">
+                  🎯 {userWantsGender.join(' · ')}
                 </span>
               )}
               {filterCity !== 'Tutte' && (
@@ -1546,19 +1567,13 @@ const BachecaPage = () => {
             <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
               className="bg-white rounded-[24px] border border-stone-100 p-5 shadow-sm space-y-5"
             >
-              {/* Gender */}
-              <div className="space-y-2">
-                <label className="text-[9px] font-black text-stone-400 uppercase tracking-widest flex items-center gap-1">
-                  <Users className="w-3 h-3" /> Genere
-                </label>
-                <div className="flex flex-wrap gap-1.5">
-                  {['Tutti', ...genderOptions].map(g => (
-                    <button key={g} onClick={() => setFilterGender(g)}
-                      className={cn('px-3 py-1 rounded-full text-[10px] font-semibold border transition-all',
-                        filterGender === g ? 'bg-rose-600 text-white border-rose-600' : 'bg-stone-50 text-stone-500 border-stone-100')}
-                    >{g}</button>
-                  ))}
-                </div>
+              {/* Genere - readonly info from profile */}
+              <div className="p-3 bg-violet-50 rounded-[16px] border border-violet-100">
+                <p className="text-[10px] font-black text-violet-700 uppercase tracking-widest mb-1">🎯 Genere cercato</p>
+                <p className="text-[11px] text-violet-600 font-semibold">
+                  {userWantsGender.length > 0 ? userWantsGender.join(', ') : 'Nessuna preferenza impostata'}
+                </p>
+                <p className="text-[9px] text-violet-400 mt-1">Modifica in: Profilo → Modifica Profilo</p>
               </div>
               {/* City */}
               <div className="space-y-2">
@@ -1584,7 +1599,7 @@ const BachecaPage = () => {
               </div>
               {/* Reset */}
               <button
-                onClick={() => { setFilterGender('Tutti'); setFilterCity('Tutte'); setFilterAge([18, 99]); setShowAdvanced(false); }}
+                onClick={() => { setFilterCity('Tutte'); setFilterAge([18, 99]); setFilterBodyType('Tutte'); setShowAdvanced(false); }}
                 className="text-[10px] font-black text-stone-400 uppercase tracking-widest hover:text-rose-600 transition-colors"
               >Azzera filtri</button>
             </motion.div>
@@ -1607,28 +1622,63 @@ const BachecaPage = () => {
             <div className="w-14 h-14 bg-stone-50 rounded-full flex items-center justify-center mx-auto mb-4">
               <Search className="w-7 h-7 text-stone-200" />
             </div>
-            <h3 className="text-sm font-black text-stone-900 mb-1">Nessun profilo trovato</h3>
+            <h3 className="text-sm font-black text-stone-900 mb-1">Nessun profilo compatibile</h3>
             <p className="text-[11px] text-stone-400 mb-6 leading-relaxed">
-              Non ci sono profili che corrispondono ai tuoi filtri o alle tue preferenze di orientamento.
+              Non ci sono profili che corrispondono alle tue preferenze. Prova a modificare il tuo profilo.
             </p>
             <button
-              onClick={() => {
-                setFilterGender('Tutti');
-                setFilterCity('Tutte');
-                setFilterAge([18, 99]);
-                setFilterOrientation('Tutti');
-                setFilterBodyType('Tutte');
-                setShowAdvanced(false);
-              }}
+              onClick={() => { setFilterCity('Tutte'); setFilterAge([18, 99]); setFilterBodyType('Tutte'); setShowAdvanced(false); }}
               className="text-[10px] font-black uppercase tracking-widest bg-stone-900 text-white px-6 py-3 rounded-xl shadow-lg active:scale-95 transition-all"
             >
-              Azzera tutti i filtri
+              Azzera filtri secondari
             </button>
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-4">
             {filteredProfiles.map(profile => (
-              <ProfileCard key={profile.id} profile={profile} onInteract={fetchProfiles} />
+              <div key={profile.id} className="relative group">
+                <Link to={`/profile-detail/${profile.id}`}>
+                  <div className="aspect-[4/5] rounded-[20px] overflow-hidden bg-stone-200 relative shadow-sm">
+                    <img
+                      src={profile.photos?.[0] || profile.photo_url || `https://picsum.photos/seed/${profile.name}/400/500`}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      onContextMenu={e => e.preventDefault()}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                    <div className="absolute bottom-0 left-0 right-0 p-3">
+                      <p className="text-white text-xs font-black truncate">{profile.name}{profile.dob && calculateAge(profile.dob) > 0 ? `, ${calculateAge(profile.dob)}` : ''}</p>
+                      {profile.city && <p className="text-white/70 text-[9px] font-semibold truncate flex items-center gap-0.5"><MapPin className="w-2.5 h-2.5" />{profile.city}</p>}
+                    </div>
+                  </div>
+                </Link>
+                {/* Quick reaction buttons */}
+                <div className="absolute top-2 right-2 flex flex-col gap-1.5">
+                  <button
+                    onClick={e => handleQuickReaction(profile.id, 'heart', e)}
+                    className={cn(
+                      'w-9 h-9 rounded-[12px] flex items-center justify-center shadow-lg backdrop-blur-sm transition-all active:scale-90',
+                      cardReactions[profile.id] === 'heart'
+                        ? 'bg-rose-600 text-white'
+                        : 'bg-white/80 text-stone-400 hover:text-rose-500'
+                    )}
+                    title="Cuore"
+                  >
+                    <Heart className={cn('w-4 h-4', cardReactions[profile.id] === 'heart' && 'fill-current')} />
+                  </button>
+                  <button
+                    onClick={e => handleQuickReaction(profile.id, 'like', e)}
+                    className={cn(
+                      'w-9 h-9 rounded-[12px] flex items-center justify-center shadow-lg backdrop-blur-sm transition-all active:scale-90',
+                      cardReactions[profile.id] === 'like'
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-white/80 text-stone-400 hover:text-blue-500'
+                    )}
+                    title="Like"
+                  >
+                    <ThumbsUp className={cn('w-4 h-4', cardReactions[profile.id] === 'like' && 'fill-current')} />
+                  </button>
+                </div>
+              </div>
             ))}
           </div>
         )}
@@ -1824,7 +1874,7 @@ const BachecaPage = () => {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </div >
   );
 };
 
@@ -2892,56 +2942,80 @@ const RegisterPage = () => {
                       placeholder="Rossi"
                     />
                   </div>
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-stone-700 ml-1">Nascita</label>
-                  <input
-                    name="dob"
-                    type="date"
-                    value={formData.dob}
-                    onChange={handleInputChange}
-                    disabled={isEditing && !!formData.dob}
-                    className={cn(
-                      "w-full p-3.5 rounded-xl bg-stone-50 border border-stone-200 text-sm focus:ring-2 focus:ring-rose-500 outline-none",
-                      isEditing && formData.dob ? "opacity-60 cursor-not-allowed bg-stone-100" : ""
-                    )}
-                  />
-                </div>
-                <div className="grid grid-cols-5 gap-3">
-                  <div className="space-y-1.5 col-span-3">
-                    <label className="text-xs font-bold text-stone-700 ml-1">Città</label>
-                    <input name="city" value={formData.city} onChange={handleInputChange} className="w-full p-3.5 rounded-xl bg-stone-50 border border-stone-200 text-sm focus:ring-2 focus:ring-rose-500 outline-none" placeholder="Milano" />
-                  </div>
-                  <div className="space-y-1.5 col-span-2">
-                    <label className="text-xs font-bold text-stone-700 ml-1">Prov</label>
-                    <input name="province" value={formData.province || ''} onChange={handleInputChange} className="w-full p-3.5 rounded-xl bg-stone-50 border border-stone-200 text-sm focus:ring-2 focus:ring-rose-500 outline-none uppercase" placeholder="MI" maxLength={2} />
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-stone-700 ml-1">Identità di Genere</label>
-                  <select name="gender" value={formData.gender} onChange={handleInputChange} className="w-full p-3.5 rounded-xl bg-stone-50 border border-stone-200 text-sm focus:ring-2 focus:ring-rose-500 outline-none">
-                    <option value="Uomo">Uomo</option>
-                    <option value="Donna">Donna</option>
-                    <option value="Non-binario">Non-binario</option>
-                    <option value="Transgender">Transgender</option>
-                    <option value="Genderfluid">Genderfluid</option>
-                    <option value="Queer">Queer</option>
-                    <option value="Altro">Altro</option>
-                  </select>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-stone-700 ml-1">Orientamento Sessuale</label>
-                    <select name="orientation" value={formData.orientation} onChange={handleInputChange} className="w-full p-3.5 rounded-xl bg-stone-50 border border-stone-200 text-sm focus:ring-2 focus:ring-rose-500 outline-none">
-                      <option value="Eterosessuale">Eterosessuale</option>
-                      <option value="Gay">Gay</option>
-                      <option value="Lesbica">Lesbica</option>
-                      <option value="Bisessuale">Bisessuale</option>
-                      <option value="Pansessuale">Pansessuale</option>
+                    <label className="text-xs font-bold text-stone-700 ml-1">Nascita</label>
+                    <input
+                      name="dob"
+                      type="date"
+                      value={formData.dob}
+                      onChange={handleInputChange}
+                      disabled={isEditing && !!formData.dob}
+                      className={cn(
+                        "w-full p-3.5 rounded-xl bg-stone-50 border border-stone-200 text-sm focus:ring-2 focus:ring-rose-500 outline-none",
+                        isEditing && formData.dob ? "opacity-60 cursor-not-allowed bg-stone-100" : ""
+                      )}
+                    />
+                  </div>
+                  <div className="grid grid-cols-5 gap-3">
+                    <div className="space-y-1.5 col-span-3">
+                      <label className="text-xs font-bold text-stone-700 ml-1">Città</label>
+                      <input name="city" value={formData.city} onChange={handleInputChange} className="w-full p-3.5 rounded-xl bg-stone-50 border border-stone-200 text-sm focus:ring-2 focus:ring-rose-500 outline-none" placeholder="Milano" />
+                    </div>
+                    <div className="space-y-1.5 col-span-2">
+                      <label className="text-xs font-bold text-stone-700 ml-1">Prov</label>
+                      <input name="province" value={formData.province || ''} onChange={handleInputChange} className="w-full p-3.5 rounded-xl bg-stone-50 border border-stone-200 text-sm focus:ring-2 focus:ring-rose-500 outline-none uppercase" placeholder="MI" maxLength={2} />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-stone-700 ml-1">Identità di Genere</label>
+                    <select name="gender" value={formData.gender} onChange={handleInputChange} className="w-full p-3.5 rounded-xl bg-stone-50 border border-stone-200 text-sm focus:ring-2 focus:ring-rose-500 outline-none">
+                      <option value="Uomo">Uomo</option>
+                      <option value="Donna">Donna</option>
+                      <option value="Non-binario">Non-binario</option>
+                      <option value="Transgender (M→F)">Transgender (M→F)</option>
+                      <option value="Transgender (F→M)">Transgender (F→M)</option>
+                      <option value="Genderfluid">Genderfluid</option>
+                      <option value="Genderqueer">Genderqueer</option>
+                      <option value="Agender">Agender</option>
+                      <option value="Bigender">Bigender</option>
+                      <option value="Pangender">Pangender</option>
+                      <option value="Demi-genere">Demi-genere</option>
+                      <option value="Intersessuale">Intersessuale</option>
+                      <option value="Neutrois">Neutrois</option>
                       <option value="Queer">Queer</option>
                       <option value="Altro">Altro</option>
                     </select>
                   </div>
+
+                  {/* Orientamento — multi-selezione */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-stone-700 ml-1">Orientamento Sessuale <span className="text-stone-400 font-normal">(puoi scegliere più di uno)</span></label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {['Eterosessuale', 'Gay', 'Lesbica', 'Bisessuale', 'Pansessuale', 'Asessuale', 'Demisessuale', 'Sapiosexual', 'Polisessuale', 'Queer', 'Fluido', 'Aromantic', 'Curioso/a', 'Altro'].map(o => {
+                        const cur: string[] = Array.isArray(formData.orientation) ? formData.orientation : formData.orientation ? [formData.orientation as unknown as string] : [];
+                        const sel = cur.includes(o);
+                        return (
+                          <button key={o} type="button"
+                            onClick={() => setFormData(prev => {
+                              const c: string[] = Array.isArray(prev.orientation) ? prev.orientation : prev.orientation ? [prev.orientation as unknown as string] : [];
+                              const next = c.includes(o) ? c.filter(x => x !== o) : [...c, o];
+                              return { ...prev, orientation: next };
+                            })}
+                            className={cn('flex items-center gap-2 px-3 py-2.5 rounded-xl border text-xs font-bold transition-all text-left',
+                              sel ? 'bg-rose-600 border-rose-600 text-white' : 'bg-stone-50 border-stone-200 text-stone-500 hover:border-rose-300'
+                            )}
+                          >
+                            <span className={cn('w-4 h-4 rounded border-2 flex items-center justify-center shrink-0', sel ? 'bg-white border-white' : 'border-stone-300')}>
+                              {sel && <span className="text-rose-600 text-[10px] font-black">✓</span>}
+                            </span>
+                            {o}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-stone-700 ml-1">Corporatura</label>
                     <select name="body_type" value={formData.body_type} onChange={handleInputChange} className="w-full p-3.5 rounded-xl bg-stone-50 border border-stone-200 text-sm focus:ring-2 focus:ring-rose-500 outline-none">
@@ -2952,76 +3026,78 @@ const RegisterPage = () => {
                       <option value="Robusta">Robusta</option>
                     </select>
                   </div>
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-stone-700 ml-1">Lavoro</label>
-                  <input name="job" value={formData.job} onChange={handleInputChange} className="w-full p-3.5 rounded-xl bg-stone-50 border border-stone-200 text-sm focus:ring-2 focus:ring-rose-500 outline-none" placeholder="Es. Designer" />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-stone-700 ml-1">Descrizione</label>
-                  <textarea name="description" value={formData.description} onChange={handleInputChange} className="w-full p-3.5 rounded-xl bg-stone-50 border border-stone-200 text-sm focus:ring-2 focus:ring-rose-500 outline-none h-20" placeholder="Raccontaci di te..." />
-                </div>
 
-                <div className="space-y-3">
-                  <label className="text-xs font-bold text-stone-700 ml-1">Foto Profilo (Max 5)</label>
-                  <div className="grid grid-cols-5 gap-2">
-                    {formData.photos?.map((url, i) => (
-                      <div key={i} className="aspect-square rounded-lg overflow-hidden border border-stone-200 relative group">
-                        <img src={url} className="w-full h-full object-cover" />
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                          <label className="p-1.5 bg-white rounded-full text-stone-600 cursor-pointer hover:text-rose-600 shadow-sm">
-                            <RefreshCw className="w-3.5 h-3.5" />
-                            <input type="file" accept="image/*" className="hidden" onChange={(e) => replacePhoto(i, e)} />
-                          </label>
-                          <button
-                            type="button"
-                            onClick={() => removePhoto(i)}
-                            className="p-1.5 bg-white rounded-full text-stone-600 hover:text-rose-600 shadow-sm"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-stone-700 ml-1">Lavoro</label>
+                    <input name="job" value={formData.job} onChange={handleInputChange} className="w-full p-3.5 rounded-xl bg-stone-50 border border-stone-200 text-sm focus:ring-2 focus:ring-rose-500 outline-none" placeholder="Es. Designer" />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-stone-700 ml-1">Descrizione</label>
+                    <textarea name="description" value={formData.description} onChange={handleInputChange} className="w-full p-3.5 rounded-xl bg-stone-50 border border-stone-200 text-sm focus:ring-2 focus:ring-rose-500 outline-none h-20" placeholder="Raccontaci di te..." />
+                  </div>
+
+                  <div className="space-y-3">
+                    <label className="text-xs font-bold text-stone-700 ml-1">Foto Profilo (Max 5)</label>
+                    <div className="grid grid-cols-5 gap-2">
+                      {formData.photos?.map((url, i) => (
+                        <div key={i} className="aspect-square rounded-lg overflow-hidden border border-stone-200 relative group">
+                          <img src={url} className="w-full h-full object-cover" />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                            <label className="p-1.5 bg-white rounded-full text-stone-600 cursor-pointer hover:text-rose-600 shadow-sm">
+                              <RefreshCw className="w-3.5 h-3.5" />
+                              <input type="file" accept="image/*" className="hidden" onChange={(e) => replacePhoto(i, e)} />
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => removePhoto(i)}
+                              className="p-1.5 bg-white rounded-full text-stone-600 hover:text-rose-600 shadow-sm"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                          {i === 0 && <div className="absolute bottom-0 left-0 right-0 bg-rose-600 text-[8px] text-white text-center py-0.5 font-bold">Principale</div>}
                         </div>
-                        {i === 0 && <div className="absolute bottom-0 left-0 right-0 bg-rose-600 text-[8px] text-white text-center py-0.5 font-bold">Principale</div>}
-                      </div>
-                    ))}
-                    {(formData.photos?.length || 0) < 5 && (
-                      <label className="aspect-square rounded-lg border-2 border-dashed border-stone-200 flex items-center justify-center cursor-pointer hover:bg-stone-50">
-                        <UserPlus className="w-4 h-4 text-stone-400" />
-                        <input type="file" multiple accept="image/*" className="hidden" onChange={handlePhotoUpload} />
-                      </label>
-                    )}
+                      ))}
+                      {(formData.photos?.length || 0) < 5 && (
+                        <label className="aspect-square rounded-lg border-2 border-dashed border-stone-200 flex items-center justify-center cursor-pointer hover:bg-stone-50">
+                          <UserPlus className="w-4 h-4 text-stone-400" />
+                          <input type="file" multiple accept="image/*" className="hidden" onChange={handlePhotoUpload} />
+                        </label>
+                      )}
+                    </div>
                   </div>
-                </div>
 
-                <div className="space-y-2 p-4 bg-stone-50 rounded-2xl border border-stone-200">
-                  <div className="flex items-center gap-2 text-stone-900 text-xs font-bold mb-1">
-                    <CreditCard className="w-4 h-4" /> Documento d'Identità
+                  <div className="space-y-2 p-4 bg-stone-50 rounded-2xl border border-stone-200">
+                    <div className="flex items-center gap-2 text-stone-900 text-xs font-bold mb-1">
+                      <CreditCard className="w-4 h-4" /> Documento d'Identità
+                    </div>
+                    <p className="text-[10px] text-stone-500 leading-tight mb-2">
+                      Carica un documento per la sicurezza della community.
+                    </p>
+                    <label className={cn(
+                      "w-full p-3 rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors",
+                      formData.id_document_url ? "border-emerald-200 bg-emerald-50" : "border-stone-200 hover:bg-stone-100"
+                    )}>
+                      {formData.id_document_url ? (
+                        <>
+                          <CheckCircle className="w-5 h-5 text-emerald-500" />
+                          <span className="text-[10px] font-bold text-emerald-700">Caricato</span>
+                        </>
+                      ) : (
+                        <>
+                          <Info className="w-5 h-5 text-stone-400" />
+                          <span className="text-[10px] font-bold text-stone-600">Seleziona File</span>
+                        </>
+                      )}
+                      <input type="file" accept=".pdf,image/*" className="hidden" onChange={handleIdUpload} />
+                    </label>
                   </div>
-                  <p className="text-[10px] text-stone-500 leading-tight mb-2">
-                    Carica un documento per la sicurezza della community.
-                  </p>
-                  <label className={cn(
-                    "w-full p-3 rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors",
-                    formData.id_document_url ? "border-emerald-200 bg-emerald-50" : "border-stone-200 hover:bg-stone-100"
-                  )}>
-                    {formData.id_document_url ? (
-                      <>
-                        <CheckCircle className="w-5 h-5 text-emerald-500" />
-                        <span className="text-[10px] font-bold text-emerald-700">Caricato</span>
-                      </>
-                    ) : (
-                      <>
-                        <Info className="w-5 h-5 text-stone-400" />
-                        <span className="text-[10px] font-bold text-stone-600">Seleziona File</span>
-                      </>
-                    )}
-                    <input type="file" accept=".pdf,image/*" className="hidden" onChange={handleIdUpload} />
-                  </label>
-                </div>
 
-                <div className="flex gap-3 pt-2">
-                  <button onClick={() => setStep(1)} className="btn-secondary flex-1 py-4 text-sm">Indietro</button>
-                  <button onClick={handleNextToStep2} className="btn-primary flex-1 py-4 text-sm">Continua</button>
+                  <div className="flex gap-3 pt-2">
+                    <button onClick={() => setStep(1)} className="btn-secondary flex-1 py-4 text-sm">Indietro</button>
+                    <button onClick={handleNextToStep2} className="btn-primary flex-1 py-4 text-sm">Continua</button>
+                  </div>
                 </div>
               </motion.div>
             )}
@@ -3038,19 +3114,39 @@ const RegisterPage = () => {
                   <Info className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
                   <p className="text-[11px] text-rose-800 leading-tight">Dati per il matching intelligente.</p>
                 </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-stone-700 ml-1">Chi cerchi?</label>
-                  <select name="looking_for_gender" value={formData.looking_for_gender} onChange={handleInputChange} className="w-full p-3.5 rounded-xl bg-stone-50 border border-stone-200 text-sm focus:ring-2 focus:ring-rose-500 outline-none">
-                    <option value="Tutti">Tutti</option>
-                    <option value="Uomo">Uomo</option>
-                    <option value="Donna">Donna</option>
-                    <option value="Non-binario">Non-binario</option>
-                    <option value="Transgender">Transgender</option>
-                    <option value="Genderfluid">Genderfluid</option>
-                    <option value="Queer">Queer</option>
-                    <option value="Altro">Altro</option>
-                  </select>
+                <div className="space-y-3">
+                  <label className="text-xs font-bold text-stone-700 ml-1">Chi cerchi? <span className="text-stone-400 font-normal">(scelta multipla)</span></label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {['Uomo', 'Donna', 'Tutti', 'Non-binario', 'Transgender', 'Genderfluid', 'Queer', 'Altro'].map(g => {
+                      const cur = Array.isArray(formData.looking_for_gender) ? formData.looking_for_gender : (formData.looking_for_gender ? [formData.looking_for_gender as any] : []);
+                      const sel = cur.includes(g);
+                      return (
+                        <button key={g} type="button"
+                          onClick={() => setFormData(prev => {
+                            const c = Array.isArray(prev.looking_for_gender) ? prev.looking_for_gender : (prev.looking_for_gender ? [prev.looking_for_gender as any] : []);
+                            let next;
+                            if (g === 'Tutti') {
+                              next = sel ? [] : ['Tutti'];
+                            } else {
+                              const withoutTutti = c.filter(x => x !== 'Tutti');
+                              next = sel ? withoutTutti.filter(x => x !== g) : [...withoutTutti, g];
+                            }
+                            return { ...prev, looking_for_gender: next };
+                          })}
+                          className={cn('py-3 px-3 rounded-xl border text-[10px] font-bold uppercase tracking-wider transition-all text-left flex items-center gap-2',
+                            sel ? 'bg-rose-600 border-rose-600 text-white' : 'bg-stone-50 border-stone-200 text-stone-500'
+                          )}
+                        >
+                          <div className={cn("w-3.5 h-3.5 rounded-sm border flex items-center justify-center shrink-0", sel ? "bg-white border-white" : "bg-white border-stone-200")}>
+                            {sel && <div className="w-1.5 h-1.5 bg-rose-600 rounded-full" />}
+                          </div>
+                          {g}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
+
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-stone-700 ml-1">Età Min</label>
@@ -3301,7 +3397,7 @@ const RegisterPage = () => {
           </AnimatePresence>
         </div>
       </div>
-    </div>
+    </div >
   );
 };
 
@@ -3408,10 +3504,20 @@ const FeedComponent = ({ userId, isOwner }: { userId: any, isOwner?: boolean }) 
     if (newPostPhotos.length === 0 && !newPostDesc) return;
     setIsPosting(true);
     try {
+      // Usa la sessione auth attiva per garantire compatibilità RLS
+      const { data: { session } } = await supabase.auth.getSession();
+      const authUserId = session?.user?.id || userId;
+
+      if (!authUserId) {
+        alert("Devi essere autenticato per pubblicare.");
+        setIsPosting(false);
+        return;
+      }
+
       const { error } = await supabase
         .from('posts')
         .insert([{
-          user_id: userId,
+          user_id: authUserId,
           photos: newPostPhotos,
           description: newPostDesc
         }]);
@@ -3428,6 +3534,7 @@ const FeedComponent = ({ userId, isOwner }: { userId: any, isOwner?: boolean }) 
     }
     setIsPosting(false);
   };
+
 
   const toggleInteraction = async (postId: string, type: 'like' | 'heart') => {
     try {
@@ -3544,7 +3651,7 @@ const FeedComponent = ({ userId, isOwner }: { userId: any, isOwner?: boolean }) 
               </div>
 
               {post.photos.length > 0 && (
-                <div className="w-full aspect-square overflow-x-auto snap-x snap-mandatory flex scrollbar-hide relative group/slider">
+                <div className="w-full aspect-[9/16] overflow-x-auto snap-x snap-mandatory flex scrollbar-hide relative group/slider">
                   {post.photos.map((ph, i) => (
                     <div key={i} className="w-full h-full shrink-0 snap-center">
                       <img src={ph} className="w-full h-full object-cover" onContextMenu={(e) => e.preventDefault()} />
@@ -3667,14 +3774,24 @@ const EditProfilePage = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const saved = localStorage.getItem('soulmatch_user');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      setUser(parsed);
-      setLoading(false);
-    } else {
-      navigate('/register');
-    }
+    const init = async () => {
+      // Verifica sessione Supabase attiva
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        // Sessione scaduta → re-login
+        navigate('/register');
+        return;
+      }
+      const saved = localStorage.getItem('soulmatch_user');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        setUser(parsed);
+        setLoading(false);
+      } else {
+        navigate('/register');
+      }
+    };
+    init();
   }, [navigate]);
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -3683,9 +3800,17 @@ const EditProfilePage = () => {
     if (!user) return;
     setSaving(true);
     try {
+      // Verifica sessione attiva prima di salvare
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setToast({ message: 'Sessione scaduta. Effettua nuovamente il login.', type: 'error' });
+        setTimeout(() => navigate('/register'), 2000);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('users')
-        .upsert(user)
+        .upsert({ ...user, id: session.user.id })
         .select()
         .single();
 
@@ -3859,16 +3984,40 @@ const EditProfilePage = () => {
             </div>
             <SelectGroup
               label="Il mio Genere"
-              options={['Uomo', 'Donna', 'Non-binario', 'Altro']}
+              options={['Uomo', 'Donna', 'Non-binario', 'Transgender (M→F)', 'Transgender (F→M)', 'Genderfluid', 'Genderqueer', 'Agender', 'Bigender', 'Pangender', 'Demi-genere', 'Intersessuale', 'Neutrois', 'Queer', 'Altro']}
               currentValue={user.gender}
               onSelect={(v: string) => updateField('gender', v)}
+              columns={2}
             />
-            <SelectGroup
-              label="Orientamento"
-              options={['Eterosessuale', 'Gay', 'Lesbica', 'Bisessuale']}
-              currentValue={user.orientation}
-              onSelect={(v: string) => updateField('orientation', v)}
-            />
+            {/* Orientamento - multi-selezione */}
+            <div className="space-y-3">
+              <label className="text-[10px] font-black uppercase tracking-[0.2em] text-stone-400 ml-1">
+                Orientamento Sessuale <span className="normal-case text-stone-300 font-normal">(selezione multipla)</span>
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {['Eterosessuale', 'Gay', 'Lesbica', 'Bisessuale', 'Pansessuale', 'Asessuale', 'Demisessuale', 'Sapiosexual', 'Polisessuale', 'Queer', 'Fluido', 'Aromantic', 'Curioso/a', 'Altro'].map(o => {
+                  const cur: string[] = Array.isArray(user.orientation) ? user.orientation : user.orientation ? [user.orientation as unknown as string] : [];
+                  const sel = cur.includes(o);
+                  return (
+                    <button key={o} type="button"
+                      onClick={() => {
+                        const next = sel ? cur.filter(x => x !== o) : [...cur, o];
+                        updateField('orientation', next);
+                      }}
+                      className={cn(
+                        'flex items-center gap-2 px-3 py-3 rounded-2xl border text-[10px] font-black tracking-wide uppercase transition-all text-left',
+                        sel ? 'bg-stone-900 border-stone-900 text-white shadow-md' : 'bg-white border-stone-100 text-stone-400 hover:border-stone-300'
+                      )}
+                    >
+                      <span className={cn('w-4 h-4 rounded border-2 flex items-center justify-center shrink-0', sel ? 'bg-rose-500 border-rose-500' : 'border-stone-300')}>
+                        {sel && <span className="text-white text-[9px] font-black">✓</span>}
+                      </span>
+                      {o}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </section>
 
           {/* Section: Info Profilo */}
@@ -3942,13 +4091,38 @@ const EditProfilePage = () => {
               <h2 className="text-sm font-black uppercase tracking-widest text-stone-900">Chi cerchi</h2>
             </div>
 
-            <SelectGroup
-              label="Genere Preferito"
-              options={['Uomo', 'Donna', 'Tutti']}
-              currentValue={user.looking_for_gender}
-              onSelect={(v: string) => updateField('looking_for_gender', v)}
-              columns={3}
-            />
+            {/* Genere Preferito - Multi-selezione */}
+            <div className="space-y-4">
+              <label className="text-[10px] font-black uppercase tracking-[0.2em] text-stone-400 ml-1">
+                Chi cerchi <span className="normal-case text-stone-300 font-normal">(selezione multipla)</span>
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {['Uomo', 'Donna', 'Tutti', 'Non-binario', 'Transgender', 'Genderfluid', 'Queer', 'Altro'].map(g => {
+                  const cur = Array.isArray(user.looking_for_gender) ? user.looking_for_gender : (user.looking_for_gender ? [user.looking_for_gender as any] : []);
+                  const sel = cur.includes(g);
+                  return (
+                    <button key={g} type="button"
+                      onClick={() => {
+                        const next = g === 'Tutti'
+                          ? (sel ? [] : ['Tutti'])
+                          : (sel ? cur.filter(x => x !== g) : [...cur.filter(x => x !== 'Tutti'), g]);
+                        updateField('looking_for_gender', next);
+                      }}
+                      className={cn(
+                        'flex items-center gap-2 px-3 py-3 rounded-2xl border text-[10px] font-black tracking-wide uppercase transition-all text-left',
+                        sel ? 'bg-stone-900 border-stone-900 text-white shadow-md' : 'bg-white border-stone-100 text-stone-400 hover:border-stone-300'
+                      )}
+                    >
+                      <span className={cn('w-4 h-4 rounded border-2 flex items-center justify-center shrink-0', sel ? 'bg-rose-500 border-rose-500' : 'border-stone-300')}>
+                        {sel && <span className="text-white text-[9px] font-black">✓</span>}
+                      </span>
+                      {g}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
 
             <div className="grid grid-cols-2 gap-4">
               <InputField label="Età Minima" type="number" value={user.looking_for_age_min} onChange={(v: string) => updateField('looking_for_age_min', parseInt(v))} />

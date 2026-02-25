@@ -10,9 +10,9 @@ export interface UserProfile {
   hobbies: string;
   desires: string;
   gender: string;
-  orientation: string;
+  orientation: string[]; // multi-select array of orientations
   is_paid: boolean;
-  looking_for_gender: string;
+  looking_for_gender: string[]; // array of genders the user is looking for
   looking_for_job: string;
   looking_for_hobbies: string;
   looking_for_city: string;
