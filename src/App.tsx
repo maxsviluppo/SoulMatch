@@ -1387,7 +1387,7 @@ const BachecaPage = () => {
   const genderOptions = ['Uomo', 'Donna', 'Non-binario', 'Transgender', 'Genderfluid', 'Queer', 'Altro'];
   const orientationOptions = ['Eterosessuale', 'Gay', 'Lesbica', 'Bisessuale', 'Pansessuale', 'Queer', 'Altro'];
   const cityOptions = useMemo(() => {
-    const cities = profiles.map(p => p.city);
+    const cities = profiles.map(p => p.city).filter(Boolean);
     return ['Tutte', ...Array.from(new Set(cities))].sort();
   }, [profiles]);
 
@@ -1397,39 +1397,47 @@ const BachecaPage = () => {
     const orientationMatch = filterOrientation === 'Tutti' || p.orientation === filterOrientation;
     const cityMatch = filterCity === 'Tutte' || p.city === filterCity;
     const bodyTypeMatch = filterBodyType === 'Tutte' || p.body_type === filterBodyType;
-    const age = calculateAge(p.dob);
-    const ageMatch = age >= filterAge[0] && age <= filterAge[1];
+    const age = p.dob ? calculateAge(p.dob) : null;
+    const ageMatch = !age || (age >= filterAge[0] && age <= filterAge[1]);
 
-    if (!genderMatch || !orientationMatch || !cityMatch || !ageMatch || !bodyTypeMatch) return false;
+    if (!genderMatch || !orientationMatch || !cityMatch || !ageMatch || !bodyTypeMatch) {
+      return false;
+    }
 
     // 2. Strict Reciprocal Matching (if user is logged in)
     if (currentUser) {
       if (p.id === currentUser.id) return false;
 
       // Logic: I must match their preference AND they must match mine
-      const isOpposite = (g1: string, g2: string) => (g1 === 'Uomo' && g2 === 'Donna') || (g1 === 'Donna' && g2 === 'Uomo');
-      const isSame = (g1: string, g2: string) => (g1 === 'Uomo' && g2 === 'Uomo') || (g1 === 'Donna' && g2 === 'Donna');
+      const isOpposite = (g1: string = '', g2: string = '') =>
+        (g1 === 'Uomo' && g2 === 'Donna') || (g1 === 'Donna' && g2 === 'Uomo');
 
-      // Does the PROFILE want the VIEWER?
+      // Does the PROFILE (p) want the VIEWER (currentUser)?
       let profileWantsViewer = true;
-      if (p.orientation === 'Eterosessuale' && !isOpposite(p.gender, currentUser.gender)) profileWantsViewer = false;
+      if (p.orientation === 'Eterosessuale' && p.gender && currentUser.gender) {
+        if (!isOpposite(p.gender, currentUser.gender)) profileWantsViewer = false;
+      }
       if (p.orientation === 'Gay' && (currentUser.gender !== 'Uomo' || p.gender !== 'Uomo')) profileWantsViewer = false;
       if (p.orientation === 'Lesbica' && (currentUser.gender !== 'Donna' || p.gender !== 'Donna')) profileWantsViewer = false;
-      // If profile has specific gender preference, check it
-      if (p.looking_for_gender && p.looking_for_gender !== 'Tutti' && p.looking_for_gender !== currentUser.gender) {
+
+      if (p.looking_for_gender && p.looking_for_gender !== 'Tutti' && currentUser.gender && p.looking_for_gender !== currentUser.gender) {
         profileWantsViewer = false;
       }
 
-      // Does the VIEWER want the PROFILE?
+      // Does the VIEWER (currentUser) want the PROFILE (p)?
       let viewerWantsProfile = true;
-      if (currentUser.orientation === 'Eterosessuale' && !isOpposite(currentUser.gender, p.gender)) viewerWantsProfile = false;
+      if (currentUser.orientation === 'Eterosessuale' && currentUser.gender && p.gender) {
+        if (!isOpposite(currentUser.gender, p.gender)) viewerWantsProfile = false;
+      }
       if (currentUser.orientation === 'Gay' && (p.gender !== 'Uomo' || currentUser.gender !== 'Uomo')) viewerWantsProfile = false;
       if (currentUser.orientation === 'Lesbica' && (p.gender !== 'Donna' || currentUser.gender !== 'Donna')) viewerWantsProfile = false;
-      // Filter based on what the viewer is looking for (permanent filter)
-      if (currentUser.looking_for_gender && currentUser.looking_for_gender !== 'Tutti' && currentUser.looking_for_gender !== p.gender) {
+
+      if (currentUser.looking_for_gender && currentUser.looking_for_gender !== 'Tutti' && p.gender && currentUser.looking_for_gender !== p.gender) {
         viewerWantsProfile = false;
       }
 
+      // If matching logic fails due to missing critical data, we default to SHOWING it
+      // unless we are 100% sure it should be hidden.
       return profileWantsViewer && viewerWantsProfile;
     }
 
@@ -1595,12 +1603,27 @@ const BachecaPage = () => {
             {[1, 2, 3, 4, 5, 6].map(i => <div key={i} className="aspect-[3/4] bg-stone-200 animate-pulse rounded-[20px]" />)}
           </div>
         ) : filteredProfiles.length === 0 ? (
-          <div className="text-center py-16 bg-white rounded-[28px] border border-stone-100">
-            <div className="w-14 h-14 bg-stone-50 rounded-full flex items-center justify-center mx-auto mb-3">
+          <div className="text-center py-16 bg-white rounded-[28px] border border-stone-100 px-6">
+            <div className="w-14 h-14 bg-stone-50 rounded-full flex items-center justify-center mx-auto mb-4">
               <Search className="w-7 h-7 text-stone-200" />
             </div>
-            <p className="text-stone-400 text-sm font-semibold">Nessun profilo trovato</p>
-            <p className="text-stone-300 text-xs mt-1">Prova a cambiare i filtri</p>
+            <h3 className="text-sm font-black text-stone-900 mb-1">Nessun profilo trovato</h3>
+            <p className="text-[11px] text-stone-400 mb-6 leading-relaxed">
+              Non ci sono profili che corrispondono ai tuoi filtri o alle tue preferenze di orientamento.
+            </p>
+            <button
+              onClick={() => {
+                setFilterGender('Tutti');
+                setFilterCity('Tutte');
+                setFilterAge([18, 99]);
+                setFilterOrientation('Tutti');
+                setFilterBodyType('Tutte');
+                setShowAdvanced(false);
+              }}
+              className="text-[10px] font-black uppercase tracking-widest bg-stone-900 text-white px-6 py-3 rounded-xl shadow-lg active:scale-95 transition-all"
+            >
+              Azzera tutti i filtri
+            </button>
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-4">
@@ -2432,6 +2455,8 @@ const RegisterPage = () => {
     looking_for_other: '',
     photos: [],
     id_document_url: '',
+    gender: 'Uomo',
+    orientation: 'Eterosessuale',
     body_type: 'Normale',
     province: '',
     conosciamoci_meglio: {},
@@ -2477,7 +2502,7 @@ const RegisterPage = () => {
     localStorage.setItem('soulmatch_reg_draft', JSON.stringify(formData));
   }, [formData]);
 
-  const handleNextToStep1 = () => {
+  const handleNextToStep1 = async () => {
     console.log("handleNextToStep1 called, isLogin:", isLogin);
     if (isLogin) {
       handleLogin();
@@ -2487,6 +2512,54 @@ const RegisterPage = () => {
       setToast({ message: "Inserisci email e password per procedere.", type: 'info' });
       return;
     }
+
+    // Se stiamo creando un nuovo account, verifichiamo se l'email esiste già
+    // per evitare di far rifare tutto il form a chi è già registrato.
+    try {
+      const email = formData.email.trim();
+      const password = formData.password;
+
+      // Proviamo a fare il login. Se l'utente esiste e la password è corretta, 
+      // lo portiamo direttamente dentro.
+      const { data: authCheck, error: authCheckErr } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (!authCheckErr && authCheck.user) {
+        // L'utente esiste ed è entrato!
+        console.log("User already exists and login succeeded, skipping registration.");
+        const { data: profile } = await supabase.from('users').select('*').eq('id', authCheck.user.id).single();
+        if (profile) {
+          setToast({ message: "Bentornato! Sei già registrato. Ti stiamo portando alla tua bacheca.", type: 'success' });
+          localStorage.setItem('soulmatch_user', JSON.stringify(profile));
+          window.dispatchEvent(new Event('user-auth-change'));
+          setTimeout(() => navigate('/bacheca'), 1500);
+          return;
+        } else {
+          // Utente auth esiste ma senza profilo public.users completo
+          setToast({ message: "Account esistente trovato. Completa il tuo profilo.", type: 'info' });
+          setStep(2);
+          return;
+        }
+      }
+
+      // Se l'errore NON è "credenziali non valide" (quindi l'utente probabilmente non esiste)
+      // procediamo con la registrazione normale.
+      // Se l'errore è "credenziali non valide" (ma l'utente esiste!), avvisiamo l'utente.
+      if (authCheckErr && authCheckErr.message === 'Invalid login credentials') {
+        // Verifichiamo se l'email è almeno presente nel DB pubblico per essere sicuri
+        const { data: emailExists } = await supabase.from('users').select('id').eq('email', email).maybeSingle();
+        if (emailExists) {
+          setToast({ message: "Questa email è già registrata con una password diversa. Prova ad accedere.", type: 'error' });
+          setIsLogin(true);
+          return;
+        }
+      }
+    } catch (e) {
+      console.error("Errore durante il controllo utente esistente:", e);
+    }
+
     setStep(2);
   };
 
