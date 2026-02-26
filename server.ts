@@ -139,6 +139,15 @@ try {
   db.prepare("ALTER TABLE users ADD COLUMN conosciamoci_meglio TEXT").run();
 } catch (e) { }
 try {
+  db.prepare("ALTER TABLE users ADD COLUMN is_suspended INTEGER DEFAULT 0").run();
+} catch (e) { }
+try {
+  db.prepare("ALTER TABLE banner_messages ADD COLUMN name TEXT").run();
+  db.prepare("ALTER TABLE banner_messages ADD COLUMN photo_url TEXT").run();
+  db.prepare("ALTER TABLE banner_messages ADD COLUMN city TEXT").run();
+  db.prepare("ALTER TABLE banner_messages ADD COLUMN dob TEXT").run();
+} catch (e) { }
+try {
   db.prepare("ALTER TABLE chat_requests ADD COLUMN message TEXT").run();
 } catch (e) { }
 try {
@@ -510,20 +519,19 @@ async function startServer() {
     db.prepare("DELETE FROM banner_messages WHERE created_at < datetime('now', '-24 hours')").run();
 
     const messages = db.prepare(`
-      SELECT b.*, u.name, u.surname, u.photo_url, u.dob, u.city
+      SELECT b.* 
       FROM banner_messages b
-      JOIN users u ON b.user_id = u.id
       ORDER BY b.created_at DESC
     `).all();
     res.json(messages);
   });
 
   app.post("/api/banner-messages", (req, res) => {
-    const { user_id, message } = req.body;
+    const { user_id, message, name, photo_url, dob, city } = req.body;
     // cancella messaggi precedenti dello stesso utente
     db.prepare("DELETE FROM banner_messages WHERE user_id = ?").run(user_id);
-    const stmt = db.prepare("INSERT INTO banner_messages (user_id, message) VALUES (?, ?)");
-    stmt.run(user_id, message);
+    const stmt = db.prepare("INSERT INTO banner_messages (user_id, message, name, photo_url, dob, city) VALUES (?, ?, ?, ?, ?, ?)");
+    stmt.run(user_id, message, name, photo_url, dob, city);
     res.json({ success: true });
   });
 
@@ -539,12 +547,15 @@ async function startServer() {
   });
 
   app.get("/api/users/:userId/banner-data", (req, res) => {
-    const activeMsg = db.prepare("SELECT id, message, created_at FROM banner_messages WHERE user_id = ? AND created_at >= datetime('now', '-24 hours') ORDER BY created_at DESC LIMIT 1").get(req.params.userId) as any;
+    // Cleanup first
+    db.prepare("DELETE FROM banner_messages WHERE created_at < datetime('now', '-24 hours')").run();
+
+    const activeMsg = db.prepare("SELECT * FROM banner_messages WHERE user_id = ? AND created_at >= datetime('now', '-24 hours') ORDER BY created_at DESC LIMIT 1").get(req.params.userId) as any;
     if (!activeMsg) return res.json(null);
     const replies = db.prepare(`
       SELECT r.*, u.name, u.photo_url 
       FROM banner_replies r
-      JOIN users u ON r.from_user_id = u.id
+      LEFT JOIN users u ON r.from_user_id = u.id
       WHERE r.banner_message_id = ?
       ORDER BY r.created_at DESC
     `).all(activeMsg.id);

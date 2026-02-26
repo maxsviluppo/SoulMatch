@@ -5516,10 +5516,22 @@ const ProfilePage = () => {
                   <button onClick={async () => {
                     if (!bannerText.trim()) return;
                     setIsWritingBanner(false);
-                    await fetch('/api/banner-messages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_id: user.id, message: bannerText }) });
+                    await fetch('/api/banner-messages', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        user_id: user.id,
+                        message: bannerText,
+                        name: user.name,
+                        photo_url: user.photos?.[0] || user.photo_url,
+                        city: user.city,
+                        dob: user.dob
+                      })
+                    });
                     setBannerText('');
                     const bRes = await fetch(`/api/users/${user.id}/banner-data`);
                     if (bRes.ok) setBannerData(await bRes.json());
+                    setToast({ message: 'Messaggio flash pubblicato in bacheca!', type: 'success' });
                   }} className="flex-1 bg-stone-900 text-white py-2.5 rounded-[12px] text-[10px] font-black uppercase tracking-widest shadow-md">
                     Pubblica Flash
                   </button>
