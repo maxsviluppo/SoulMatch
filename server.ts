@@ -51,7 +51,10 @@ const migrateColumns = () => {
     { name: 'height_cm', type: 'INTEGER' },
     { name: 'body_type', type: 'TEXT' },
     { name: 'photos', type: 'TEXT' },
-    { name: 'looking_for_other', type: 'TEXT' }
+    { name: 'looking_for_other', type: 'TEXT' },
+    { name: 'is_blocked', type: 'INTEGER DEFAULT 0' },
+    { name: 'is_suspended', type: 'INTEGER DEFAULT 0' },
+    { name: 'is_validated', type: 'INTEGER DEFAULT 0' }
   ];
 
   for (const col of columns) {
@@ -102,6 +105,24 @@ db.exec(`
     UNIQUE(post_id, user_id, type),
     FOREIGN KEY(post_id) REFERENCES posts(id),
     FOREIGN KEY(user_id) REFERENCES users(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS banner_messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    message TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(user_id) REFERENCES users(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS banner_replies (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    banner_message_id INTEGER NOT NULL,
+    from_user_id INTEGER NOT NULL,
+    reply_text TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(banner_message_id) REFERENCES banner_messages(id),
+    FOREIGN KEY(from_user_id) REFERENCES users(id)
   );
 
   CREATE TABLE IF NOT EXISTS site_settings (
@@ -223,6 +244,8 @@ async function startServer() {
         (SELECT COUNT(*) FROM interactions WHERE to_user_id = u.id AND type = 'like') as likes_count,
         (SELECT COUNT(*) FROM interactions WHERE to_user_id = u.id AND type = 'heart') as hearts_count
       FROM users u
+      WHERE u.is_blocked = 0 
+        AND u.is_suspended = 0 
     `).all();
 
     const parsedProfiles = profiles.map((p: any) => ({ ...parseUser(p), likes_count: p.likes_count || 0, hearts_count: p.hearts_count || 0 }));
@@ -479,6 +502,53 @@ async function startServer() {
       const result = del.run(postId, user_id, type);
       res.json({ success: true, toggled: result.changes > 0 });
     }
+  });
+
+  // Banner Messages
+  app.get("/api/banner-messages", (req, res) => {
+    // Cleanup vecchi di 24h
+    db.prepare("DELETE FROM banner_messages WHERE created_at < datetime('now', '-24 hours')").run();
+
+    const messages = db.prepare(`
+      SELECT b.*, u.name, u.surname, u.photo_url, u.dob, u.city
+      FROM banner_messages b
+      JOIN users u ON b.user_id = u.id
+      ORDER BY b.created_at DESC
+    `).all();
+    res.json(messages);
+  });
+
+  app.post("/api/banner-messages", (req, res) => {
+    const { user_id, message } = req.body;
+    // cancella messaggi precedenti dello stesso utente
+    db.prepare("DELETE FROM banner_messages WHERE user_id = ?").run(user_id);
+    const stmt = db.prepare("INSERT INTO banner_messages (user_id, message) VALUES (?, ?)");
+    stmt.run(user_id, message);
+    res.json({ success: true });
+  });
+
+  app.delete("/api/banner-messages/:id", (req, res) => {
+    db.prepare("DELETE FROM banner_messages WHERE id = ?").run(req.params.id);
+    res.json({ success: true });
+  });
+
+  app.post("/api/banner-messages/:id/replies", (req, res) => {
+    const { from_user_id, reply_text } = req.body;
+    db.prepare("INSERT INTO banner_replies (banner_message_id, from_user_id, reply_text) VALUES (?, ?, ?)").run(req.params.id, from_user_id, reply_text);
+    res.json({ success: true });
+  });
+
+  app.get("/api/users/:userId/banner-data", (req, res) => {
+    const activeMsg = db.prepare("SELECT id, message, created_at FROM banner_messages WHERE user_id = ? AND created_at >= datetime('now', '-24 hours') ORDER BY created_at DESC LIMIT 1").get(req.params.userId) as any;
+    if (!activeMsg) return res.json(null);
+    const replies = db.prepare(`
+      SELECT r.*, u.name, u.photo_url 
+      FROM banner_replies r
+      JOIN users u ON r.from_user_id = u.id
+      WHERE r.banner_message_id = ?
+      ORDER BY r.created_at DESC
+    `).all(activeMsg.id);
+    res.json({ message: activeMsg, replies });
   });
 
   // Site Settings

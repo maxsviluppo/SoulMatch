@@ -160,7 +160,7 @@ const Navbar = () => {
   const checkUser = () => {
     try {
       const saved = localStorage.getItem('soulmatch_user');
-      if (saved) setUser(JSON.parse(saved));
+      if (saved) setUser(normalizeUser(JSON.parse(saved)));
       else setUser(null);
     } catch (e) {
       setUser(null);
@@ -234,7 +234,7 @@ const ProfileCard: React.FC<{ profile: UserProfile; onInteract?: () => void }> =
   useEffect(() => {
     try {
       const saved = localStorage.getItem('soulmatch_user');
-      if (saved) setCurrentUser(JSON.parse(saved));
+      if (saved) setCurrentUser(normalizeUser(JSON.parse(saved)));
     } catch (e) { }
   }, []);
 
@@ -313,15 +313,25 @@ const ProfileCard: React.FC<{ profile: UserProfile; onInteract?: () => void }> =
                 {profile.name}{calculateAge(profile.dob) > 0 ? `, ${calculateAge(profile.dob)}` : ""}
               </h3>
             </div>
-            <div className="flex items-center gap-1.5 text-stone-500">
-              <div className="w-5 h-5 rounded-full bg-rose-50 flex items-center justify-center shrink-0">
-                <MapPin className="w-3 h-3 text-rose-500" />
+            <div className="flex flex-col gap-1.5 text-stone-500 mt-2">
+              <div className="flex items-center gap-1.5">
+                <div className="w-5 h-5 rounded-full bg-rose-50 flex items-center justify-center shrink-0">
+                  <MapPin className="w-3 h-3 text-rose-500" />
+                </div>
+                <span className="text-xs font-bold text-stone-600 truncate">{profile.city}</span>
+                {showScore && (
+                  <span className="text-[10px] font-black text-rose-600 bg-rose-50 px-2 py-0.5 rounded-md ml-auto">
+                    {score}% Match
+                  </span>
+                )}
               </div>
-              <span className="text-xs font-bold text-stone-600 truncate">{profile.city}</span>
-              {showScore && (
-                <span className="ml-auto text-[10px] font-black text-rose-600 bg-rose-50 px-2 py-0.5 rounded-md">
-                  {score}% Match
-                </span>
+              {profile.orientation && profile.orientation.length > 0 && (
+                <div className="flex items-center gap-1.5">
+                  <div className="w-5 h-5 rounded-full bg-violet-50 flex items-center justify-center shrink-0">
+                    <Heart className="w-3 h-3 text-violet-500" />
+                  </div>
+                  <span className="text-[10px] font-black text-violet-600 truncate uppercase tracking-widest">{profile.orientation.join(', ')}</span>
+                </div>
               )}
             </div>
           </div>
@@ -422,7 +432,7 @@ const HomePage = () => {
       const saved = localStorage.getItem('soulmatch_user');
       if (saved) {
         setIsLoggedIn(true);
-        setCurrentUser(JSON.parse(saved));
+        setCurrentUser(normalizeUser(JSON.parse(saved)));
       }
     } catch (e) { }
   }, []);
@@ -530,7 +540,7 @@ const HomePage = () => {
 
 
         {/* Single CTA */}
-        <div className="px-4">
+        <div className="px-4 space-y-4">
           <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}>
             <Link
               to={isLoggedIn ? "/bacheca" : "/register"}
@@ -555,6 +565,19 @@ const HomePage = () => {
               </div>
             </Link>
           </motion.div>
+
+          {!isLoggedIn && (
+            <div className="grid grid-cols-2 gap-3 mt-4">
+              <button onClick={() => alert("Login con Google non ancora implementato.")} className="flex items-center justify-center gap-2 bg-white border border-stone-200 text-stone-700 py-3 rounded-[16px] font-black text-[11px] hover:border-stone-300 hover:bg-stone-50 transition-all uppercase tracking-widest shadow-sm">
+                <svg className="w-4 h-4" viewBox="0 0 24 24"><path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" /><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" /><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" /><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" /></svg>
+                Google
+              </button>
+              <button onClick={() => alert("Login con Apple non ancora implementato.")} className="flex items-center justify-center gap-2 bg-stone-900 text-white py-3 rounded-[16px] font-black text-[11px] hover:bg-stone-800 transition-all uppercase tracking-widest shadow-sm shadow-stone-400/20">
+                <svg className="w-5 h-5 mb-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.05 2.95.72 3.84 1.94-3.25 1.89-2.71 5.92.51 7.15-.75 1.57-1.66 3.01-3 4.5v-.08zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" /></svg>
+                Apple
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Feature cards — horizontal list style */}
@@ -799,7 +822,7 @@ const ProfileDetailPage = () => {
           likes_count: (userProfile.interactions as any[] || []).filter(i => i.type === 'like').length,
           hearts_count: (userProfile.interactions as any[] || []).filter(i => i.type === 'heart').length
         };
-        setProfile(profileWithCounts);
+        setProfile(normalizeUser(profileWithCounts));
       }
       else {
         console.warn("No detail profile found for ID:", id);
@@ -1097,6 +1120,9 @@ const ProfileDetailPage = () => {
                   </span>
                 )}
                 <span className="bg-white/25 backdrop-blur text-white px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider">{profile.gender}</span>
+                {profile.orientation && profile.orientation.length > 0 && (
+                  <span className="bg-violet-500/80 backdrop-blur text-white px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider">{profile.orientation.join(', ')}</span>
+                )}
               </div>
               <h1 className="text-3xl font-serif font-black text-stone-900 leading-tight drop-shadow-sm">
                 {profile.name}{calculateAge(profile.dob) > 0 ? <span className="font-light text-2xl text-stone-500">, {calculateAge(profile.dob)}</span> : null}
@@ -1388,7 +1414,7 @@ const ProfileDetailPage = () => {
               <div className="w-10 h-1 bg-stone-200 rounded-full mx-auto mb-2" />
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-[16px] overflow-hidden border border-stone-100 shadow-sm shrink-0">
-                  <img src={heroPhoto} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  <img src={(profile.photos && profile.photos.length > 0) ? profile.photos[0] : (profile.photo_url || `https://picsum.photos/seed/${profile.name}/400/600`)} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                 </div>
                 <div>
                   <h3 className="text-lg font-serif font-black text-stone-900">Scrivi a {profile.name}</h3>
@@ -1433,6 +1459,9 @@ const BachecaPage = () => {
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [showSoulMatch, setShowSoulMatch] = useState(false);
   const [soulmatchToast, setSoulmatchToast] = useState(false);
+  const [selectedGenders, setSelectedGenders] = useState<string[]>([]);
+  const [bannerMessages, setBannerMessages] = useState<any[]>([]);
+  const [bannerIndex, setBannerIndex] = useState(0);
 
   const SM_COOLDOWN_KEY = 'soulmatch_last_used';
   const COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24h
@@ -1469,20 +1498,34 @@ const BachecaPage = () => {
   };
 
   const fetchProfiles = async () => {
-    const { data, error } = await supabase
-      .from('users')
-      .select(`
-        *,
-        interactions!to_user_id(type)
-      `);
+    setLoading(true);
+    try {
+      // Try local API first
+      const res = await fetch('/api/profiles');
+      if (res.ok) {
+        const data = await res.json();
+        // Local API already normalizes and includes counts
+        setProfiles(data);
+      } else {
+        // Fallback to Supabase
+        const { data, error } = await supabase
+          .from('users')
+          .select(`
+            *,
+            interactions!to_user_id(type)
+          `);
 
-    if (data && !error) {
-      const processed = data.map(u => ({
-        ...u,
-        likes_count: (u.interactions as any[] || []).filter(i => i.type === 'like').length,
-        hearts_count: (u.interactions as any[] || []).filter(i => i.type === 'heart').length
-      }));
-      setProfiles(processed);
+        if (data && !error) {
+          const processed = data.map(u => ({
+            ...normalizeUser(u),
+            likes_count: (u.interactions as any[] || []).filter(i => i.type === 'like').length,
+            hearts_count: (u.interactions as any[] || []).filter(i => i.type === 'heart').length
+          }));
+          setProfiles(processed);
+        }
+      }
+    } catch (e) {
+      console.error("Profiles fetching failed:", e);
     }
     setLoading(false);
   };
@@ -1491,8 +1534,9 @@ const BachecaPage = () => {
     try {
       const saved = localStorage.getItem('soulmatch_user');
       if (saved) {
-        const user = JSON.parse(saved);
+        const user = normalizeUser(JSON.parse(saved));
         setCurrentUser(user);
+        setSelectedGenders((user.looking_for_gender || []).map((g: string) => g.toLowerCase()));
         fetchProfiles();
       } else {
         navigate('/register');
@@ -1501,11 +1545,21 @@ const BachecaPage = () => {
       navigate('/register');
     }
 
+    fetch('/api/banner-messages').then(r => r.json()).then(setBannerMessages).catch(() => { });
+
     // Save scroll position on unmount
     return () => {
       sessionStorage.setItem('bacheca_scroll', window.scrollY.toString());
     };
   }, []);
+
+  useEffect(() => {
+    if (bannerMessages.length === 0) return;
+    const interval = setInterval(() => {
+      setBannerIndex(prev => (prev + 3 >= bannerMessages.length ? 0 : prev + 3));
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [bannerMessages]);
 
   // Restore scroll position after profiles are loaded
   useEffect(() => {
@@ -1527,8 +1581,13 @@ const BachecaPage = () => {
   }, [profiles]);
 
   const filteredProfiles = profiles.filter(p => {
-    // Exclude self
+    // Exclude self, blocked, suspended
     if (currentUser && p.id === currentUser.id) return false;
+    if (p.is_blocked || p.is_suspended) return false;
+
+    // Ensure "real" users have at least one photo or a photo URL
+    const hasPhoto = (p.photos && p.photos.length > 0) || p.photo_url;
+    if (!hasPhoto) return false;
 
     // ─── 1. Secondary UI filters (city, age, body type) ───
     const cityMatch = filterCity === 'Tutte' || p.city === filterCity;
@@ -1537,36 +1596,78 @@ const BachecaPage = () => {
     const ageMatch = !age || (age >= filterAge[0] && age <= filterAge[1]);
     if (!cityMatch || !ageMatch || !bodyTypeMatch) return false;
 
-    // ─── 2. Preference-based matching (gender + orientation together) ───
-    const toArr = (val: any): string[] => {
-      if (!val) return [];
-      if (Array.isArray(val)) return val;
-      return [val as string];
+    // ─── 2. Preference-based matching (Identità, Attrazione, Inclusione) ───
+
+    // Raggruppamento Logico Macro-Aree
+    const getMacroArea = (gender: string) => {
+      const g = gender?.toLowerCase() || '';
+      if (['uomo', 'mascolino'].includes(g)) return 'M';
+      if (['donna', 'femminile'].includes(g)) return 'F';
+      if (['non-binario', 'genderfluid', 'queer', 'genderqueer', 'agender', 'bigender', 'pangender', 'neutrois', 'intersex', 'altro'].includes(g)) return 'NB';
+      if (['transgender'].includes(g)) return 'TRANS';
+      return 'NB'; // Fallback per identità fluide
     };
 
-    const viewerWants = toArr(currentUser?.looking_for_gender);
-    const profileWants = toArr(p.looking_for_gender);
+    const viewer = normalizeUser(currentUser);
+    const target = normalizeUser(p);
 
-    // Orientations that are open to all / multiple genders
-    const openOrientations = ['Bisessuale', 'Pansessuale', 'Fluido', 'Polisessuale', 'Queer', 'Curioso/a', 'Sapiosexual'];
-    const viewerOrientation = toArr(currentUser?.orientation);
-    const profileOrientation = toArr(p.orientation);
-    const viewerIsOpen = viewerOrientation.some(o => openOrientations.includes(o));
-    const profileIsOpen = profileOrientation.some(o => openOrientations.includes(o));
+    if (!viewer || !target) return false;
 
-    // Viewer wants this profile's gender?
-    const viewerWantsProfile =
-      viewerIsOpen || // open orientation → sees all genders
-      viewerWants.length === 0 ||
-      (p.gender ? viewerWants.includes(p.gender) : true);
+    const macroV = getMacroArea(viewer.gender);
+    const macroT = getMacroArea(target.gender);
 
-    // Profile wants the viewer's gender?
-    const profileWantsViewer =
-      profileIsOpen || // open orientation → visible to all genders
-      profileWants.length === 0 ||
-      (currentUser?.gender ? profileWants.includes(currentUser.gender) : true);
+    const wantsV = selectedGenders.map((g: string) => g.toLowerCase());
+    const wantsT = (target.looking_for_gender || []).map((g: string) => g.toLowerCase());
 
-    if (!viewerWantsProfile || !profileWantsViewer) return false;
+    const isWildcard = (arr: string[]) => arr.some(v => ['tutti', 'tutte', 'entrambi', 'qualsiasi', 'tutti i generi'].includes(v));
+
+    // A. RECIPROCITÀ GENDER MATCH (Pilastro: Attrazione)
+    const targetGender = target.gender?.toLowerCase() || '';
+    const viewerGender = viewer.gender?.toLowerCase() || '';
+    const viewerWantsTarget = wantsV.length === 0 || isWildcard(wantsV) || wantsV.includes(targetGender);
+    const targetWantsViewer = wantsT.length === 0 || isWildcard(wantsT) || wantsT.includes(viewerGender);
+
+    if (!viewerWantsTarget || !targetWantsViewer) return false;
+
+    // B. COMPATIBILITÀ ORIENTAMENTO (Il Motore)
+    const checkOri = (myMacro: string, myOris: string[], targetMacro: string) => {
+      // 1. Eterosessuale: M -> F, F -> M
+      if (myOris.includes('Eterosessuale')) {
+        return (myMacro === 'M' && targetMacro === 'F') || (myMacro === 'F' && targetMacro === 'M');
+      }
+
+      // 2. Gay / Lesbica: M -> M(+NB compatible), F -> F(+NB compatible)
+      if (myOris.includes('Gay')) {
+        return targetMacro === 'M' || targetMacro === 'NB';
+      }
+      if (myOris.includes('Lesbica')) {
+        return targetMacro === 'F' || targetMacro === 'NB';
+      }
+
+      // 3. Bisessuale / Pansessuale / Queer / Fluido: Aperto a tutti (già filtrato da chi_cerca)
+      if (myOris.some(o => ['Bisessuale', 'Pansessuale', 'Queer', 'Fluido', 'Polisessuale', 'Curioso/a'].includes(o))) {
+        return true;
+      }
+
+      // 4. Asessuale / Demisessuale / Sapiosessuale: Si basa puramente su chi_cerca
+      if (myOris.some(o => ['Asessuale', 'Demisessuale', 'Sapiosexual', 'Aromantic'].includes(o))) {
+        return true;
+      }
+
+      return true; // Default per altri orientamenti
+    };
+
+    const orisV = viewer.orientation || [];
+    const orisT = target.orientation || [];
+
+    const vCompatibleWithT = checkOri(macroV, orisV, macroT);
+    const tCompatibleWithV = checkOri(macroT, orisT, macroV);
+
+    if (!vCompatibleWithT || !tCompatibleWithV) return false;
+
+    // C. CASI SPECIALI: Transgender
+    // Se l'utente A cerca specificamente Transgender, il profilo B deve essere Transgender.
+    // Viceversa, se B è Transgender, A deve avere 'Transgender' o un Wildcard nel suo "Chi Cerca" (già gestito sopra nel Reciprocal Match).
 
     return true;
   });
@@ -1667,10 +1768,13 @@ const BachecaPage = () => {
         </div>
       )}
 
-      <div className="max-w-md mx-auto px-4 space-y-5 mt-4">
+
+
+      <div className="max-w-md mx-auto px-4 space-y-5 mt-6">
 
         {/* Filter bar */}
-        <div className="space-y-3">
+        <div className="space-y-4">
+
           <div className="flex items-center gap-2">
             <div className="flex-1 flex gap-2 overflow-x-auto scrollbar-hide">
               <button
@@ -1682,62 +1786,113 @@ const BachecaPage = () => {
               >
                 <Filter className="w-3.5 h-3.5" />
                 Filtri
-                {(filterCity !== 'Tutte' || filterAge[0] !== 18 || filterAge[1] !== 99) && (
+                {(filterAge[0] !== 18 || filterAge[1] !== 99 || filterCity !== 'Tutte') && (
                   <span className="w-2 h-2 bg-rose-600 rounded-full" />
                 )}
               </button>
-
-              {filterCity !== 'Tutte' && (
-                <span className="flex items-center gap-1.5 bg-rose-50 text-rose-600 border border-rose-100 px-3 py-1 rounded-full text-[10px] font-black shrink-0">
-                  {filterCity}
-                  <button onClick={() => setFilterCity('Tutte')} className="text-rose-400 hover:text-rose-600">×</button>
-                </span>
-              )}
             </div>
           </div>
 
-          {showAdvanced && (
-            <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
-              className="bg-white rounded-[24px] border border-stone-100 p-5 shadow-sm space-y-5"
-            >
-              {/* Genere - readonly info from profile */}
-              <div className="p-3 bg-violet-50 rounded-[16px] border border-violet-100">
-                <p className="text-[10px] font-black text-violet-700 uppercase tracking-widest mb-1">🎯 Genere cercato</p>
-                <p className="text-[11px] text-violet-600 font-semibold">
-                  {userWantsGender.length > 0 ? userWantsGender.join(', ') : 'Nessuna preferenza impostata'}
-                </p>
-                <p className="text-[9px] text-violet-400 mt-1">Modifica in: Profilo → Modifica Profilo</p>
-              </div>
-              {/* City */}
-              <div className="space-y-2">
-                <label className="text-[9px] font-black text-stone-400 uppercase tracking-widest flex items-center gap-1"><MapPin className="w-3 h-3" /> Città</label>
-                <div className="flex flex-wrap gap-1.5">
-                  {cityOptions.map(c => (
-                    <button key={c} onClick={() => setFilterCity(c)}
-                      className={cn('px-3 py-1 rounded-full text-[10px] font-semibold border transition-all',
-                        filterCity === c ? 'bg-rose-600 text-white border-rose-600' : 'bg-stone-50 text-stone-500 border-stone-100')}
-                    >{c}</button>
-                  ))}
+          <AnimatePresence>
+            {showAdvanced && (
+              <motion.div initial={{ opacity: 0, height: 0, marginTop: 0 }} animate={{ opacity: 1, height: 'auto', marginTop: 16 }} exit={{ opacity: 0, height: 0, overflow: 'hidden' }}
+                className="bg-white rounded-[24px] border border-stone-100 p-5 shadow-sm space-y-6"
+              >
+                {/* Orizzontal Genders Toggle slider */}
+                <div className="space-y-2">
+                  <label className="text-[9px] font-black text-stone-400 uppercase tracking-widest pl-1 border-b border-stone-100 pb-2 flex">🎯 Genere Cercato</label>
+                  <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-2 pt-1">
+                    {['Uomo', 'Donna', 'Non-binario', 'Transgender', 'Genderfluid', 'Queer', 'Altro'].map(g => {
+                      const isActive = selectedGenders.map(s => s.toLowerCase()).includes(g.toLowerCase());
+                      return (
+                        <button key={g} onClick={() => {
+                          const lower = g.toLowerCase();
+                          if (isActive) {
+                            setSelectedGenders(selectedGenders.filter(s => s.toLowerCase() !== lower));
+                          } else {
+                            setSelectedGenders([...selectedGenders, g]);
+                          }
+                        }}
+                          className={cn("px-4 py-2 rounded-full text-[11px] font-black whitespace-nowrap transition-all shadow-sm active:scale-95",
+                            isActive ? "bg-stone-900 text-white border-stone-900" : "bg-stone-50 text-stone-500 border border-stone-100 hover:border-stone-200"
+                          )}>
+                          {g}
+                        </button>
+                      )
+                    })}
+                  </div>
                 </div>
-              </div>
-              {/* Age */}
-              <div className="space-y-2">
-                <label className="text-[9px] font-black text-stone-400 uppercase tracking-widest">Età ({filterAge[0]}-{filterAge[1]})</label>
-                <div className="flex gap-3">
-                  <input type="range" min="18" max="99" value={filterAge[0]}
-                    onChange={e => setFilterAge([+e.target.value, filterAge[1]])} className="flex-1 accent-rose-600" />
-                  <input type="range" min="18" max="99" value={filterAge[1]}
-                    onChange={e => setFilterAge([filterAge[0], +e.target.value])} className="flex-1 accent-rose-600" />
+
+                {/* Orizzontal Cities slider */}
+                <div className="space-y-2">
+                  <label className="text-[9px] font-black text-stone-400 uppercase tracking-widest pl-1 flex items-center gap-1 border-b border-stone-100 pb-2"><MapPin className="w-3 h-3" /> Città</label>
+                  <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-2 pt-1">
+                    {cityOptions.map(c => (
+                      <button key={c} onClick={() => setFilterCity(c)}
+                        className={cn("px-4 py-2 rounded-full text-[11px] font-black whitespace-nowrap transition-all shadow-sm active:scale-95",
+                          filterCity === c ? "bg-rose-600 text-white border-rose-600" : "bg-stone-50 text-stone-500 border border-stone-100 hover:border-stone-200"
+                        )}>
+                        {c}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-              {/* Reset */}
-              <button
-                onClick={() => { setFilterCity('Tutte'); setFilterAge([18, 99]); setFilterBodyType('Tutte'); setShowAdvanced(false); }}
-                className="text-[10px] font-black text-stone-400 uppercase tracking-widest hover:text-rose-600 transition-colors"
-              >Azzera filtri</button>
-            </motion.div>
-          )}
+
+                {/* Age */}
+                <div className="space-y-2">
+                  <label className="text-[9px] font-black text-stone-400 uppercase tracking-widest pl-1 border-b border-stone-100 pb-2 flex">Età ({filterAge[0]}-{filterAge[1]})</label>
+                  <div className="flex gap-4 pt-2 px-1">
+                    <input type="range" min="18" max="99" value={filterAge[0]}
+                      onChange={e => setFilterAge([+e.target.value, filterAge[1]])} className="flex-1 accent-rose-600 h-1.5 bg-stone-100 rounded-lg appearance-none" />
+                    <input type="range" min="18" max="99" value={filterAge[1]}
+                      onChange={e => setFilterAge([filterAge[0], +e.target.value])} className="flex-1 accent-rose-600 h-1.5 bg-stone-100 rounded-lg appearance-none" />
+                  </div>
+                </div>
+
+                {/* Reset */}
+                <div className="pt-2 flex justify-end">
+                  <button
+                    onClick={() => { setFilterCity('Tutte'); setFilterAge([18, 99]); setFilterBodyType('Tutte'); setSelectedGenders(['uomo', 'donna', 'non-binario', 'transgender']); setShowAdvanced(false); }}
+                    className="text-[10px] font-black uppercase tracking-widest bg-stone-100 text-stone-500 px-4 py-2 rounded-full hover:bg-rose-50 hover:text-rose-600 transition-colors"
+                  >Azzera filtri</button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
+
+        {/* ── FLOATING BANNER (ISOLA BANNER) ── */}
+        {bannerMessages.length > 0 && (
+          <div className="relative -mx-4 px-4 z-20">
+            <div className="bg-white/90 backdrop-blur-md rounded-[20px] p-3 shadow-xl shadow-rose-900/5 border border-rose-100/50 flex flex-col justify-center relative overflow-hidden h-[76px] ring-1 ring-black/5">
+              <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b from-rose-400 to-rose-600 rounded-l-[20px]" />
+              <AnimatePresence mode="popLayout">
+                {bannerMessages.slice(bannerIndex, bannerIndex + 3).map((msg, i) => (
+                  <motion.div
+                    key={msg.id + '-' + i}
+                    initial={{ opacity: 0, y: 15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -15, position: 'absolute' }}
+                    transition={{ duration: 0.4 }}
+                    className="flex items-center gap-3 w-full pl-2"
+                  >
+                    <div className="w-11 h-11 rounded-full overflow-hidden shrink-0 ring-2 ring-rose-100 shadow-sm bg-stone-100">
+                      <img src={msg.photo_url || `https://picsum.photos/seed/${msg.name}/100`} className="w-full h-full object-cover" />
+                    </div>
+                    <div className="flex-1 min-w-0 pr-1">
+                      <div className="flex items-center gap-1.5 leading-tight">
+                        <span className="text-[11px] font-black text-stone-900 truncate max-w-[120px]">{msg.name}</span>
+                        <span className="text-[10px] font-bold text-stone-400 shrink-0">{msg.dob ? calculateAge(msg.dob) : ''}</span>
+                        <span className="text-[9px] px-1.5 py-0.5 bg-stone-100 text-stone-500 rounded-full font-bold ml-auto shrink-0 truncate max-w-[70px]">{msg.city}</span>
+                      </div>
+                      <p className="text-xs text-stone-600 font-medium truncate mt-0.5 pr-2">{msg.message}</p>
+                    </div>
+                  </motion.div>
+                )).slice(0, 1)} {/* Currently showing 1 at a time sliding rapidly as a ticker, since area is small */}
+              </AnimatePresence>
+            </div>
+          </div>
+        )}
 
         {/* Section title */}
         <div className="flex items-center justify-between px-1">
@@ -2501,6 +2656,7 @@ const SoulLinksPage = () => {
 };
 
 // --- Admin Page ---
+// --- Admin Page ---
 const AdminPage = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -2516,8 +2672,19 @@ const AdminPage = () => {
   const [docSubTab, setDocSubTab] = useState<'pending' | 'archive'>('pending');
   const [previewDoc, setPreviewDoc] = useState<{ url: string; name: string } | null>(null);
 
+  // Dashboard Stats
+  const stats = useMemo(() => {
+    return {
+      total: users.length,
+      verified: users.filter(u => u.is_validated).length,
+      premium: users.filter(u => u.is_paid).length,
+      suspended: users.filter(u => u.is_suspended || u.is_blocked).length,
+      pendingDocs: users.filter(u => u.id_document_url && !u.is_validated && !u.doc_rejected).length,
+    };
+  }, [users]);
+
   // Modals / Specific UI
-  const [activeTab, setActiveTab] = useState<'utenti' | 'documenti' | 'segnalazioni' | 'pagamenti' | 'impostazioni'>('utenti');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'utenti' | 'documenti' | 'segnalazioni' | 'pagamenti' | 'impostazioni'>('dashboard');
 
   const handleShareDoc = async (url: string, name: string) => {
     try {
@@ -2526,14 +2693,12 @@ const AdminPage = () => {
           const res = await fetch(url);
           const blob = await res.blob();
           const ext = url.split('.').pop()?.split('?')[0] || 'jpg';
-          const file = new File([blob], `documento-${name.replace(/\\s+/g, '_')}.${ext}`, { type: blob.type || 'image/jpeg' });
+          const file = new File([blob], `documento-${name.replace(/\s+/g, '_')}.${ext}`, { type: blob.type || 'image/jpeg' });
           if (navigator.canShare && navigator.canShare({ files: [file] })) {
             await navigator.share({ title: `Documento: ${name}`, files: [file] });
             return;
           }
-        } catch (err) {
-          /* ignore fetch/file creation errors and fallback to url sharing */
-        }
+        } catch (err) { }
         await navigator.share({ title: `Documento: ${name}`, url });
       } else {
         window.open(url, '_blank');
@@ -2557,18 +2722,45 @@ const AdminPage = () => {
   const fetchUsers = async () => {
     setLoadingData(true);
     try {
-      const { data, error } = await supabase.from('users').select('*').order('name', { ascending: true });
-      if (data) setUsers(data);
-    } catch (e) { }
+      // 1. Prova a caricare da Supabase
+      const { data: sbData, error: sbError } = await supabase.from('users').select('*').order('created_at', { ascending: false });
+
+      // 2. Prova a caricare dall'API locale
+      let localData = [];
+      try {
+        const res = await fetch('/api/profiles');
+        if (res.ok) {
+          const rawLocal = await res.json();
+          localData = rawLocal.map((u: any) => ({
+            ...u,
+            photo_url: u.photo_url || (u.photos && u.photos[0]) || null,
+            created_at: u.created_at || new Date().toISOString()
+          }));
+        }
+      } catch (err) { console.log("Local API not available"); }
+
+      // 3. Unione
+      const combined = [...(sbData || [])];
+      localData.forEach((lu: any) => {
+        if (!combined.find(cu => cu.id === lu.id)) {
+          combined.push(lu);
+        }
+      });
+
+      setUsers(combined);
+      if (sbError && combined.length === 0) {
+        setToast({ message: "Sincronizzazione Supabase limitata. Uso dati locali.", type: 'info' });
+      }
+    } catch (e) {
+      setToast({ message: "Errore caricamento dati.", type: 'error' });
+    }
     setLoadingData(false);
   };
 
   const fetchSliderImages = async () => {
     try {
       const res = await fetch('/api/settings/home_slider');
-      if (res.ok) {
-        setSliderImages(await res.json());
-      }
+      if (res.ok) setSliderImages(await res.json());
     } catch (e) { }
   };
 
@@ -2581,23 +2773,21 @@ const AdminPage = () => {
       });
       if (res.ok) {
         setSliderImages(newImages);
-        setToast({ message: "Slider aggiornato con successo!", type: 'success' });
+        setToast({ message: "Slider aggiornato!", type: 'success' });
       }
     } catch (e) {
-      setToast({ message: "Errore durante l'aggiornamento.", type: 'error' });
+      setToast({ message: "Errore aggiornamento.", type: 'error' });
     }
   };
 
   const addImage = () => {
     if (!newUrl) return;
-    const updated = [...sliderImages, newUrl];
-    handleUpdateSlider(updated);
+    handleUpdateSlider([...sliderImages, newUrl]);
     setNewUrl('');
   };
 
   const removeImage = (index: number) => {
-    const updated = sliderImages.filter((_, i) => i !== index);
-    handleUpdateSlider(updated);
+    handleUpdateSlider(sliderImages.filter((_, i) => i !== index));
   };
 
   const handleValidateDoc = async (userId: string) => {
@@ -2608,13 +2798,12 @@ const AdminPage = () => {
         doc_rejected_at: null,
         is_suspended: false,
       }).eq('id', userId);
+
       if (!error) {
-        setToast({ message: "Documento approvato! Utente verificato.", type: 'success' });
+        setToast({ message: "Utente Verificato!", type: 'success' });
         fetchUsers();
-      } else throw error;
-    } catch (e) {
-      setToast({ message: "Errore durante l'approvazione.", type: 'error' });
-    }
+      }
+    } catch (e) { setToast({ message: "Errore.", type: 'error' }); }
   };
 
   const handleRejectDoc = async (userId: string) => {
@@ -2623,12 +2812,12 @@ const AdminPage = () => {
         is_validated: false,
         doc_rejected: true,
         doc_rejected_at: new Date().toISOString(),
-        is_suspended: true,   // limita a solo ricezione
+        is_suspended: true,
       }).eq('id', userId);
       if (!error) {
-        setToast({ message: "Documento respinto. Utente sospeso parzialmente per 15 giorni.", type: 'info' });
+        setToast({ message: "Documento respinto.", type: 'info' });
         fetchUsers();
-      } else throw error;
+      }
     } catch (e) { setToast({ message: "Errore.", type: 'error' }); }
   };
 
@@ -2638,583 +2827,579 @@ const AdminPage = () => {
       if (!error) {
         setToast({ message: !isBlocked ? "Utente bloccato." : "Utente sbloccato.", type: 'success' });
         fetchUsers();
-      } else {
-        throw error;
       }
-    } catch (e) {
-      setToast({ message: "Errore.", type: 'error' });
-    }
+    } catch (e) { setToast({ message: "Errore.", type: 'error' }); }
   };
+
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-stone-50 flex flex-col" style={{ paddingTop: '72px' }}>
-        {/* Admin Login Navbar */}
-        <nav className="fixed top-0 left-0 right-0 z-50 px-6 py-4 flex justify-between items-center bg-white/90 backdrop-blur-md border-b border-stone-100 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 bg-rose-600 rounded-xl flex items-center justify-center shadow-lg shadow-rose-200 shrink-0">
-              <Heart className="text-white w-6 h-6 fill-current" />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-2xl font-serif font-black tracking-tight text-stone-900 leading-none">SoulMatch</span>
-              <span className="text-[10px] font-bold text-rose-600 uppercase tracking-[0.15em] mt-0.5">Admin</span>
-            </div>
-          </div>
-          <Link
-            to="/"
-            className="w-11 h-11 bg-white text-stone-400 rounded-2xl flex items-center justify-center hover:bg-rose-50 hover:text-rose-600 transition-all border border-stone-100 active:scale-90 shadow-sm"
-            title="Torna all'app"
-          >
-            <LogOut className="w-5 h-5" />
-          </Link>
-        </nav>
+      <div className="min-h-screen bg-[#0C0A09] flex flex-col items-center justify-center p-6 relative overflow-hidden">
+        {/* Background Decor */}
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-rose-900/10 rounded-full blur-[120px] animate-pulse" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-stone-900/20 rounded-full blur-[120px] animate-pulse delay-700" />
 
-        <div className="flex-1 flex items-center justify-center px-6">
-          <AnimatePresence>
-            {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-          </AnimatePresence>
-          <div className="bg-white p-8 rounded-3xl shadow-xl w-full max-w-sm border border-stone-100 relative z-10 my-8">
-            <div className="flex justify-center mb-6">
-              <div className="w-16 h-16 bg-rose-600 rounded-2xl flex items-center justify-center shadow-lg shadow-rose-900/40">
-                <ShieldCheck className="w-8 h-8 text-white" />
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="w-full max-w-sm z-10"
+        >
+          <div className="bg-stone-900/40 backdrop-blur-3xl border border-white/5 p-10 rounded-[40px] shadow-2xl relative">
+            <div className="flex justify-center mb-8">
+              <div className="w-20 h-20 bg-gradient-to-br from-rose-500 to-rose-700 rounded-3xl flex items-center justify-center shadow-2xl shadow-rose-900/40 rotate-12">
+                <ShieldCheck className="w-10 h-10 text-white" />
               </div>
             </div>
-            <h1 className="text-2xl font-serif font-black text-center text-stone-900 mb-6">Amministrazione</h1>
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest mb-1">Username</label>
-                <input
-                  type="text"
-                  value={username} onChange={e => setUsername(e.target.value)}
-                  className="w-full p-4 rounded-xl bg-stone-50 border border-stone-200 outline-none focus:ring-2 focus:ring-rose-500"
-                />
+
+            <div className="text-center mb-10">
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <Heart className="w-5 h-5 text-rose-500 fill-current" />
+                <h1 className="text-3xl font-serif font-black text-white tracking-tighter">SoulMatch</h1>
               </div>
-              <div>
-                <label className="block text-xs font-bold text-stone-500 uppercase tracking-widest mb-1">Password</label>
-                <input
-                  type="password"
-                  value={password} onChange={e => setPassword(e.target.value)}
-                  className="w-full p-4 rounded-xl bg-stone-50 border border-stone-200 outline-none focus:ring-2 focus:ring-rose-500"
-                />
+              <p className="text-stone-50 text-[10px] font-black uppercase tracking-[0.4em]">Control Center</p>
+            </div>
+
+            <form onSubmit={handleLogin} className="space-y-5">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-stone-500 uppercase tracking-widest ml-1">Account</label>
+                <div className="relative">
+                  <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-600" />
+                  <input
+                    type="text"
+                    value={username} onChange={e => setUsername(e.target.value)}
+                    className="w-full bg-white/[0.03] border border-white/5 p-4 pl-12 rounded-2xl text-white outline-none focus:ring-2 focus:ring-rose-500 transition-all placeholder:text-stone-700"
+                    placeholder="Username"
+                  />
+                </div>
               </div>
-              <button type="submit" className="w-full bg-stone-900 text-white p-4 rounded-xl font-black uppercase hover:bg-rose-600 hover:shadow-lg hover:shadow-rose-600/30 transition-all">Accedi</button>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-stone-500 uppercase tracking-widest ml-1">Chiave Accesso</label>
+                <div className="relative">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-600" />
+                  <input
+                    type="password"
+                    value={password} onChange={e => setPassword(e.target.value)}
+                    className="w-full bg-white/[0.03] border border-white/5 p-4 pl-12 rounded-2xl text-white outline-none focus:ring-2 focus:ring-rose-500 transition-all placeholder:text-stone-700"
+                    placeholder="Password"
+                  />
+                </div>
+              </div>
+              <button
+                type="submit"
+                className="w-full bg-rose-600 hover:bg-rose-500 text-white py-4 rounded-2xl font-black uppercase tracking-widest shadow-xl shadow-rose-900/20 active:scale-95 transition-all mt-4 border border-rose-500/20"
+              >
+                Accedi Ora
+              </button>
             </form>
+
+            <button
+              onClick={() => window.location.href = '/'}
+              className="w-full mt-6 text-stone-600 text-[10px] font-black uppercase tracking-widest hover:text-stone-400 transition-colors"
+            >
+              ← Torna all'App
+            </button>
           </div>
-        </div>
+        </motion.div>
       </div>
     );
   }
+
   return (
-    <div className="min-h-screen bg-stone-50 flex" style={{ paddingTop: '72px' }}>
+    <div className="min-h-screen bg-stone-50 flex flex-col md:flex-row">
       <AnimatePresence>
         {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       </AnimatePresence>
 
-      {/* Document Preview Modal */}
-      <AnimatePresence>
-        {previewDoc && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[200] bg-black/90 flex flex-col"
-            onClick={() => setPreviewDoc(null)}
-          >
-            {/* Toolbar */}
-            <div className="flex items-center justify-between px-5 py-4 shrink-0" onClick={e => e.stopPropagation()}>
-              <p className="text-white font-black truncate max-w-[60%]">{previewDoc.name}</p>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => handleShareDoc(previewDoc.url, previewDoc.name)}
-                  className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-2xl font-bold text-sm transition-all"
-                >
-                  <Share2 className="w-4 h-4" /> Condividi / Apri
-                </button>
-                <button
-                  onClick={() => window.open(previewDoc.url, '_blank')}
-                  className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-2xl font-bold text-sm transition-all"
-                >
-                  <Eye className="w-4 h-4" /> Apri
-                </button>
-                <button
-                  onClick={() => setPreviewDoc(null)}
-                  className="w-10 h-10 bg-white/10 hover:bg-white/20 border border-white/20 rounded-2xl flex items-center justify-center text-white transition-all"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
+      {/* Sidebar */}
+      <aside className="w-full md:w-72 bg-stone-900 text-white flex flex-col sticky top-0 md:h-screen z-50 shadow-2xl">
+        <div className="p-8 pb-4">
+          <div className="flex items-center gap-3 mb-10">
+            <div className="w-10 h-10 bg-rose-600 rounded-xl flex items-center justify-center shrink-0 shadow-lg shadow-rose-900/40">
+              <Heart className="w-5 h-5 text-white fill-current" />
             </div>
-            {/* Content */}
-            <div className="flex-1 flex items-center justify-center p-4 overflow-auto" onClick={() => setPreviewDoc(null)}>
-              {previewDoc.url.toLowerCase().includes('.pdf') ? (
-                <div className="text-center" onClick={e => e.stopPropagation()}>
-                  <div className="w-24 h-24 bg-white/10 rounded-3xl flex items-center justify-center mx-auto mb-4">
-                    <span className="text-4xl">📄</span>
-                  </div>
-                  <p className="text-white/70 mb-4">Anteprima PDF non disponibile nel browser.</p>
-                  <button
-                    onClick={() => window.open(previewDoc.url, '_blank')}
-                    className="px-6 py-3 bg-rose-600 hover:bg-rose-700 text-white font-black rounded-2xl transition-all"
-                  >
-                    Apri PDF
-                  </button>
+            <div className="flex flex-col">
+              <span className="text-xl font-serif font-black tracking-tight leading-none text-white">SoulMatch</span>
+              <span className="text-[9px] font-black text-rose-500 uppercase tracking-widest mt-1">Admin Dashboard</span>
+            </div>
+          </div>
+
+          <nav className="space-y-1.5 ">
+            {([
+              { key: 'dashboard', label: 'Dashboard', icon: LayoutGrid },
+              { key: 'utenti', label: 'Utenti Iscritti', icon: Users },
+              { key: 'documenti', label: 'Validazione ID', icon: ShieldCheck, badge: stats.pendingDocs },
+              { key: 'segnalazioni', label: 'Segnalazioni', icon: AlertTriangle },
+              { key: 'pagamenti', label: 'Abbonamenti', icon: CreditCard },
+              { key: 'impostazioni', label: 'Slider Home', icon: ImageIcon },
+            ] as Array<{ key: string, label: string, icon: any, badge?: number }>).map(({ key, label, icon: Icon, badge }) => (
+              <button
+                key={key}
+                onClick={() => setActiveTab(key)}
+                className={cn(
+                  "w-full flex items-center justify-between px-4 py-3.5 rounded-2xl text-sm font-bold transition-all border border-transparent",
+                  activeTab === key
+                    ? "bg-white/10 text-white border-white/5 shadow-inner"
+                    : "text-stone-400 hover:text-white hover:bg-white/5"
+                )}
+              >
+                <div className="flex items-center gap-3">
+                  <Icon className={cn("w-4 h-4", activeTab === key ? "text-rose-500" : "text-stone-500")} />
+                  {label}
                 </div>
-              ) : (
-                <img
-                  src={previewDoc.url}
-                  alt={previewDoc.name}
-                  className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl"
-                  onClick={e => e.stopPropagation()}
-                />
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Admin fixed top navbar */}
-      <nav className="fixed top-0 left-0 right-0 z-50 px-6 py-4 flex justify-between items-center bg-white/90 backdrop-blur-md border-b border-stone-100 shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="w-11 h-11 bg-rose-600 rounded-xl flex items-center justify-center shadow-lg shadow-rose-200 shrink-0">
-            <Heart className="text-white w-6 h-6 fill-current" />
-          </div>
-          <div className="flex flex-col">
-            <span className="text-2xl font-serif font-black tracking-tight text-stone-900 leading-none">SoulMatch</span>
-            <span className="text-[10px] font-bold text-rose-600 uppercase tracking-[0.15em] mt-0.5">Admin</span>
-          </div>
-        </div>
-        <button
-          onClick={() => setIsAuthenticated(false)}
-          className="w-11 h-11 bg-white text-stone-400 rounded-2xl flex items-center justify-center hover:bg-rose-50 hover:text-rose-600 transition-all border border-stone-100 active:scale-90 shadow-sm"
-          title="Esci dal pannello"
-        >
-          <LogOut className="w-5 h-5" />
-        </button>
-      </nav>
-
-      {/* Sidebar — fixed, vertical always */}
-      <aside className="w-64 shrink-0 bg-white border-r border-stone-100 min-h-[calc(100vh-72px)] p-6 flex flex-col gap-6 sticky top-[72px] self-start hidden md:flex">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <div className="w-8 h-8 bg-rose-600 rounded-xl flex items-center justify-center shadow shadow-rose-200">
-              <ShieldCheck className="w-4 h-4 text-white" />
-            </div>
-            <h2 className="text-lg font-serif font-black text-stone-900">Pannello Admin</h2>
-          </div>
-          <p className="text-[11px] text-stone-400 font-medium ml-10">SoulMatch Back-office</p>
+                {'badge' in { badge } && (badge as number) > 0 && <span className="bg-rose-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full ring-2 ring-stone-900">{badge as number}</span>}
+              </button>
+            ))}
+          </nav>
         </div>
 
-        <nav className="flex flex-col gap-1">
-          {([
-            { key: 'utenti', label: 'Utenti Iscritti', icon: Users },
-            { key: 'documenti', label: 'Documenti', icon: CheckCircle },
-            { key: 'segnalazioni', label: 'Segnalazioni', icon: AlertTriangle },
-            { key: 'pagamenti', label: 'Stripe & Pagamenti', icon: CreditCard },
-            { key: 'impostazioni', label: 'Slider Home', icon: Settings2 },
-          ] as const).map(({ key, label, icon: Icon }) => (
-            <button
-              key={key}
-              onClick={() => setActiveTab(key)}
-              className={cn(
-                "w-full text-left px-4 py-3 rounded-2xl font-bold transition-all flex items-center gap-3 text-sm",
-                activeTab === key
-                  ? "bg-rose-50 text-rose-700 shadow-sm"
-                  : "text-stone-500 hover:bg-stone-50 hover:text-stone-700"
-              )}
-            >
-              <Icon className="w-4 h-4 shrink-0" />
-              {label}
-            </button>
-          ))}
-        </nav>
-
-        <div className="mt-auto pt-4 border-t border-stone-100">
+        <div className="mt-auto p-8 border-t border-white/5 bg-stone-950/20">
           <button
             onClick={() => setIsAuthenticated(false)}
-            className="w-full text-left px-4 py-3 rounded-2xl font-bold transition-all flex items-center gap-3 text-sm text-stone-400 hover:bg-rose-50 hover:text-rose-600"
+            className="w-full flex items-center justify-center gap-3 bg-stone-800/50 hover:bg-rose-950/30 text-stone-400 hover:text-rose-500 py-3 rounded-xl transition-all font-black text-[10px] uppercase tracking-widest border border-white/5"
           >
-            <LogOut className="w-4 h-4 shrink-0" />
-            Esci dal pannello
+            <LogOut className="w-4 h-4" /> Disconnetti
           </button>
         </div>
       </aside>
 
-      {/* Mobile Tab Bar */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-stone-100 z-40 flex">
-        {([
-          { key: 'utenti', icon: Users },
-          { key: 'documenti', icon: CheckCircle },
-          { key: 'segnalazioni', icon: AlertTriangle },
-          { key: 'pagamenti', icon: CreditCard },
-          { key: 'impostazioni', icon: Settings2 },
-        ] as const).map(({ key, icon: Icon }) => (
-          <button
-            key={key}
-            onClick={() => setActiveTab(key)}
-            className={cn(
-              "flex-1 py-3 flex flex-col items-center gap-0.5 transition-colors text-xs font-bold",
-              activeTab === key ? "text-rose-600" : "text-stone-400"
-            )}
-          >
-            <Icon className="w-5 h-5" />
-          </button>
-        ))}
-      </div>
-
       {/* Main Content */}
-      <main className="flex-1 min-w-0 p-4 md:p-8 pb-24 md:pb-8">
-        {loadingData ? (
-          <div className="flex items-center justify-center py-32">
-            <div className="w-8 h-8 border-4 border-rose-200 border-t-rose-600 rounded-full animate-spin" />
+      <main className="flex-1 min-w-0 flex flex-col">
+        {/* Top Header */}
+        <header className="bg-white/80 backdrop-blur-md border-b border-stone-100 px-8 py-6 flex flex-col md:flex-row md:items-center justify-between gap-4 sticky top-0 z-40">
+          <div>
+            <div className="flex items-center gap-2 mb-0.5">
+              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <h2 className="text-2xl font-serif font-black text-stone-900 capitalize leading-none">{activeTab.replace('_', ' ')}</h2>
+            </div>
+            <p className="text-[10px] text-stone-400 font-bold uppercase tracking-widest">SoulMatch Back-office v2.0</p>
           </div>
-        ) : (
-          <>
-            {/* ---- UTENTI ---- */}
-            {activeTab === 'utenti' && (
-              <div>
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-2xl font-serif font-black text-stone-900">
-                    Iscritti <span className="text-rose-600">({users.length})</span>
-                  </h3>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {users.map((u: any) => (
-                    <div key={u.id} className="bg-white rounded-3xl border border-stone-100 shadow-sm p-5 flex flex-col gap-4">
-                      {/* Header */}
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-2xl bg-stone-100 overflow-hidden shrink-0 flex items-center justify-center">
-                          {u.photo_url
-                            ? <img src={u.photo_url} className="w-full h-full object-cover" />
-                            : <User className="w-6 h-6 text-stone-400" />
-                          }
-                        </div>
-                        <div className="min-w-0">
-                          <p className="font-black text-stone-900 truncate">{u.name} {u.surname}</p>
-                          <p className="text-xs text-stone-400 truncate">{u.email || '—'}</p>
-                        </div>
-                      </div>
-                      {/* Info badges */}
-                      <div className="flex flex-wrap gap-2">
-                        <span className="text-[11px] px-2.5 py-1 bg-stone-100 text-stone-600 rounded-full font-bold">{u.city || '—'}</span>
-                        <span className="text-[11px] px-2.5 py-1 bg-stone-100 text-stone-600 rounded-full font-bold">{u.gender || '—'}</span>
-                        {u.is_paid
-                          ? <span className="text-[11px] px-2.5 py-1 bg-amber-100 text-amber-700 rounded-full font-bold">VIP</span>
-                          : <span className="text-[11px] px-2.5 py-1 bg-stone-100 text-stone-400 rounded-full font-bold">Standard</span>
-                        }
-                        {u.is_blocked
-                          ? <span className="text-[11px] px-2.5 py-1 bg-red-100 text-red-700 rounded-full font-bold">Bloccato</span>
-                          : <span className="text-[11px] px-2.5 py-1 bg-emerald-100 text-emerald-700 rounded-full font-bold">Attivo</span>
-                        }
-                      </div>
-                      {/* Action */}
-                      <button
-                        onClick={() => handleBlockUserToggle(u.id, u.is_blocked)}
-                        className={cn(
-                          "w-full py-2.5 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 transition-all border",
-                          u.is_blocked
-                            ? "bg-emerald-50 text-emerald-700 border-emerald-100 hover:bg-emerald-100"
-                            : "bg-rose-50 text-rose-700 border-rose-100 hover:bg-rose-100"
-                        )}
-                      >
-                        {u.is_blocked
-                          ? <><UserCheck className="w-4 h-4" /> Sblocca</>
-                          : <><AlertTriangle className="w-4 h-4" /> Sospendi</>
-                        }
-                      </button>
-                    </div>
-                  ))}
-                </div>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={fetchUsers}
+              className="flex items-center gap-2 px-4 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-stone-600 hover:text-rose-600 hover:bg-rose-50 transition-all font-bold text-xs shadow-sm"
+              title="Sincronizza Dati"
+            >
+              <RefreshCw className={cn("w-4 h-4", loadingData ? "animate-spin" : "")} />
+              <span className="hidden sm:inline">Aggiorna</span>
+            </button>
+
+            <div className="h-10 w-[1px] bg-stone-200 mx-1 hidden sm:block" />
+
+            <div className="flex items-center gap-3 pl-2">
+              <div className="text-right hidden sm:block">
+                <p className="text-xs font-black text-stone-900 leading-none">Super Admin</p>
+                <p className="text-[9px] text-stone-400 font-bold mt-1 uppercase tracking-tighter">Accesso root attivo</p>
               </div>
-            )}
+              <div className="w-11 h-11 bg-stone-900 rounded-2xl flex items-center justify-center text-white font-black text-xs border border-white shadow-xl rotate-3">AD</div>
+            </div>
+          </div>
+        </header>
 
-            {activeTab === 'documenti' && (() => {
-              const pendingDocs = users.filter((u: any) => u.id_document_url && !u.is_validated && !u.doc_rejected);
-              const archivedDocs = users.filter((u: any) => u.id_document_url && (u.is_validated || u.doc_rejected));
-              const q = archiveSearch.toLowerCase();
-              const filteredArchive = archivedDocs.filter((u: any) =>
-                !q || u.name?.toLowerCase().includes(q) || u.surname?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q)
-              );
+        <div className="p-8 pb-20 overflow-y-auto">
+          {loadingData && users.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-32 space-y-4">
+              <div className="w-12 h-12 border-[5px] border-rose-100 border-t-rose-600 rounded-full animate-spin" />
+              <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest">Inizializzazione dati...</p>
+            </div>
+          ) : (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
 
-              return (
-                <div>
-                  {/* Sub-tab switcher */}
-                  <div className="flex items-center gap-1 mb-6 bg-stone-100 p-1 rounded-2xl w-fit">
-                    <button
-                      onClick={() => setDocSubTab('pending')}
-                      className={cn("px-5 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2", docSubTab === 'pending' ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700")}
-                    >
-                      <CheckCircle className="w-4 h-4" />
-                      In attesa
-                      {pendingDocs.length > 0 && <span className="w-5 h-5 bg-rose-600 text-white rounded-full text-[10px] font-black flex items-center justify-center">{pendingDocs.length}</span>}
-                    </button>
-                    <button
-                      onClick={() => setDocSubTab('archive')}
-                      className={cn("px-5 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2", docSubTab === 'archive' ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700")}
-                    >
-                      <ShieldCheck className="w-4 h-4" />
-                      Archivio
-                      {archivedDocs.length > 0 && <span className="w-5 h-5 bg-stone-400 text-white rounded-full text-[10px] font-black flex items-center justify-center">{archivedDocs.length}</span>}
-                    </button>
+              {/* --- DASHBOARD --- */}
+              {activeTab === 'dashboard' && (
+                <div className="space-y-10">
+                  {/* Stats Grid */}
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+                    {[
+                      { label: 'Utenti Iscritti', val: stats.total, sub: 'In crescita dell\'8%', icon: Users, color: 'stone' },
+                      { label: 'Verificati', val: stats.verified, sub: 'Badge assegnati', icon: ShieldCheck, color: 'emerald' },
+                      { label: 'VIP accounts', val: stats.premium, sub: 'Entrate attive', icon: Sparkles, color: 'amber' },
+                      { label: 'In Attesa ID', val: stats.pendingDocs, sub: 'Richieste urgenti', icon: Bell, color: 'rose' },
+                    ].map((s, i) => (
+                      <div key={i} className="bg-white border border-stone-100 p-8 rounded-[40px] shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all group overflow-hidden relative">
+                        <div className={cn("absolute top-0 right-0 w-32 h-32 blur-3xl rounded-full translate-x-12 -translate-y-12 opacity-10 transition-opacity group-hover:opacity-20",
+                          s.color === 'rose' ? 'bg-rose-500' :
+                            s.color === 'emerald' ? 'bg-emerald-500' :
+                              s.color === 'amber' ? 'bg-amber-500' : 'bg-stone-500'
+                        )} />
+
+                        <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center mb-6 shadow-lg",
+                          s.color === 'rose' ? 'bg-rose-50 text-rose-600' :
+                            s.color === 'emerald' ? 'bg-emerald-50 text-emerald-600' :
+                              s.color === 'amber' ? 'bg-amber-50 text-amber-600' : 'bg-stone-50 text-stone-600'
+                        )}>
+                          <s.icon className="w-6 h-6" />
+                        </div>
+                        <p className="text-4xl font-black text-stone-900 leading-none tracking-tighter">{s.val}</p>
+                        <p className="text-[11px] font-black text-stone-400 uppercase tracking-[0.2em] mt-4 ml-1">{s.label}</p>
+                        <p className="text-[10px] text-stone-400 mt-2 ml-1 flex items-center gap-1">
+                          <span className={cn("w-1.5 h-1.5 rounded-full", s.color === 'emerald' ? 'bg-emerald-500' : 'bg-stone-300')} />
+                          {s.sub}
+                        </p>
+                      </div>
+                    ))}
                   </div>
 
-                  {/* ----- PENDING QUEUE ----- */}
-                  {docSubTab === 'pending' && (
-                    <div>
-                      <p className="text-stone-500 text-sm mb-6">Verifica che i dati del documento corrispondano a quelli del profilo. Approva o richiedi nuovo invio.</p>
-                      {pendingDocs.length === 0 ? (
-                        <div className="py-24 text-center bg-white rounded-3xl border border-stone-100">
-                          <ShieldCheck className="w-16 h-16 mx-auto mb-4 text-emerald-400" />
-                          <p className="font-bold text-stone-400 text-lg">Nessun documento in attesa.</p>
-                          <p className="text-stone-300 text-sm mt-1">Ottimo lavoro, tutto aggiornato!</p>
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                          {pendingDocs.map((u: any) => (
-                            <div key={u.id} className="bg-white rounded-3xl border border-stone-100 shadow-sm overflow-hidden">
-                              {/* Document image — click to preview */}
-                              <div
-                                className="w-full h-48 bg-stone-100 relative group cursor-zoom-in"
-                                onClick={() => setPreviewDoc({ url: u.id_document_url, name: `${u.name} ${u.surname}` })}
-                              >
-                                <img src={u.id_document_url} alt="Documento ID" className="w-full h-full object-cover group-hover:brightness-90 transition-all" />
-                                {/* Hover overlay */}
-                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100">
-                                  <div className="bg-white/90 text-stone-900 px-3 py-1.5 rounded-full text-xs font-black flex items-center gap-1.5 shadow-lg">
-                                    <Eye className="w-3.5 h-3.5" /> Anteprima
-                                  </div>
-                                  <button
-                                    onClick={e => { e.stopPropagation(); handleShareDoc(u.id_document_url, `${u.name} ${u.surname}`); }}
-                                    className="bg-white/90 text-stone-900 px-3 py-1.5 rounded-full text-xs font-black flex items-center gap-1.5 shadow-lg hover:bg-white transition-colors"
-                                  >
-                                    <Share2 className="w-3.5 h-3.5" /> Condividi
-                                  </button>
-                                </div>
-                                <div className="absolute top-3 right-3 px-3 py-1 bg-amber-500 text-white text-[11px] font-black uppercase rounded-full shadow-sm">
-                                  Da verificare
-                                </div>
-                              </div>
-
-                              <div className="p-5 flex flex-col gap-4">
-                                {/* User data from profile for cross-check */}
-                                <div>
-                                  <p className="text-[11px] font-bold text-stone-400 uppercase tracking-widest mb-3">Dati profilo da verificare</p>
-                                  <div className="grid grid-cols-2 gap-2">
-                                    <div className="bg-stone-50 rounded-xl px-3 py-2">
-                                      <p className="text-[10px] text-stone-400 font-bold uppercase tracking-wide">Nome</p>
-                                      <p className="font-black text-stone-800 text-sm">{u.name || '—'}</p>
-                                    </div>
-                                    <div className="bg-stone-50 rounded-xl px-3 py-2">
-                                      <p className="text-[10px] text-stone-400 font-bold uppercase tracking-wide">Cognome</p>
-                                      <p className="font-black text-stone-800 text-sm">{u.surname || '—'}</p>
-                                    </div>
-                                    <div className="bg-stone-50 rounded-xl px-3 py-2">
-                                      <p className="text-[10px] text-stone-400 font-bold uppercase tracking-wide">Età</p>
-                                      <p className="font-black text-stone-800 text-sm">{calculateAge(u.dob)} anni</p>
-                                    </div>
-                                    <div className="bg-stone-50 rounded-xl px-3 py-2">
-                                      <p className="text-[10px] text-stone-400 font-bold uppercase tracking-wide">Città</p>
-                                      <p className="font-black text-stone-800 text-sm">{u.city || '—'}</p>
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* Actions */}
-                                <div className="flex gap-3">
-                                  <button
-                                    onClick={() => handleValidateDoc(u.id)}
-                                    className="flex-1 py-3 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white rounded-2xl font-black flex items-center justify-center gap-2 text-sm transition-all shadow-sm shadow-emerald-200"
-                                  >
-                                    <CheckCircle className="w-5 h-5" /> Approva
-                                  </button>
-                                  <button
-                                    onClick={() => handleRejectDoc(u.id)}
-                                    className="flex-1 py-3 bg-amber-50 hover:bg-amber-100 active:scale-95 text-amber-700 border border-amber-200 rounded-2xl font-black flex items-center justify-center gap-2 text-sm transition-all"
-                                  >
-                                    <XCircle className="w-5 h-5" /> Richiedi Nuovo
-                                  </button>
-                                </div>
-                                {/* Block button — immediate full block */}
-                                <button
-                                  onClick={() => handleBlockUserToggle(u.id, u.is_blocked)}
-                                  className={cn(
-                                    "w-full py-2.5 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition-all border active:scale-95",
-                                    u.is_blocked
-                                      ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
-                                      : "bg-stone-900 text-white border-stone-900 hover:bg-stone-700"
-                                  )}
-                                >
-                                  {u.is_blocked
-                                    ? <><UserCheck className="w-4 h-4" /> Sblocca Utente</>
-                                    : <><AlertTriangle className="w-4 h-4" /> Blocca Utente</>}
-                                </button>
-                                <p className="text-[11px] text-stone-400 text-center leading-relaxed -mt-1">
-                                  "Richiedi Nuovo" sospende parzialmente per <strong>15 gg</strong>. "Blocca" esclude l'utente immediatamente.
-                                </p>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* ----- ARCHIVE ----- */}
-                  {docSubTab === 'archive' && (
-                    <div>
-                      {/* Search bar */}
-                      <div className="relative mb-6">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
-                        <input
-                          type="text"
-                          value={archiveSearch}
-                          onChange={e => setArchiveSearch(e.target.value)}
-                          placeholder="Cerca per nome, cognome o email…"
-                          className="w-full pl-11 pr-4 py-3 rounded-2xl bg-white border border-stone-100 shadow-sm text-sm outline-none focus:ring-2 focus:ring-rose-400 transition"
-                        />
-                        {archiveSearch && (
-                          <button onClick={() => setArchiveSearch('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600">
-                            <X className="w-4 h-4" />
-                          </button>
-                        )}
+                  {/* Recent Users Table */}
+                  <div className="bg-white border border-stone-100 rounded-[48px] overflow-hidden shadow-sm">
+                    <div className="px-10 py-8 border-b border-stone-50 flex items-center justify-between bg-stone-50/30">
+                      <div>
+                        <h4 className="text-xl font-serif font-black text-stone-900">Ultimi Iscritti</h4>
+                        <p className="text-[10px] text-stone-400 font-bold uppercase tracking-widest mt-1">Sincronizzazione real-time Supabase</p>
                       </div>
-
-                      {filteredArchive.length === 0 ? (
-                        <div className="py-24 text-center bg-white rounded-3xl border border-stone-100">
-                          <ShieldCheck className="w-16 h-16 mx-auto mb-4 text-stone-200" />
-                          <p className="font-bold text-stone-400">{archiveSearch ? 'Nessun risultato trovato.' : 'Archivio vuoto.'}</p>
-                        </div>
-                      ) : (
-                        <div className="bg-white rounded-3xl border border-stone-100 shadow-sm overflow-hidden">
-                          {filteredArchive.map((u: any, idx: number) => {
-                            const daysLeft = u.doc_rejected_at
-                              ? 15 - Math.floor((Date.now() - new Date(u.doc_rejected_at).getTime()) / (1000 * 60 * 60 * 24))
-                              : null;
-                            return (
-                              <div key={u.id} className={cn("flex items-center gap-4 p-4 hover:bg-stone-50 transition-colors", idx !== filteredArchive.length - 1 && "border-b border-stone-50")}>
-                                {/* Doc thumbnail */}
-                                <div className="w-16 h-12 rounded-xl overflow-hidden shrink-0 border border-stone-100 bg-stone-100">
-                                  {u.id_document_url
-                                    ? <img src={u.id_document_url} className="w-full h-full object-cover" />
-                                    : <div className="w-full h-full flex items-center justify-center"><User className="w-5 h-5 text-stone-300" /></div>
+                      <button onClick={() => setActiveTab('utenti')} className="bg-rose-600 hover:bg-rose-700 text-white px-6 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-rose-900/10 transition-all active:scale-95">Vedi Tabella Completa</button>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left">
+                        <thead>
+                          <tr className="bg-white border-b border-stone-50">
+                            <th className="px-10 py-5 text-[10px] font-black text-stone-500 uppercase tracking-[0.2em]">Profilo Utente</th>
+                            <th className="px-10 py-5 text-[10px] font-black text-stone-500 uppercase tracking-[0.2em]">Località</th>
+                            <th className="px-10 py-5 text-[10px] font-black text-stone-500 uppercase tracking-[0.2em]">Privilegi</th>
+                            <th className="px-10 py-5 text-[10px] font-black text-stone-500 uppercase tracking-[0.2em]">Registrazione</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-stone-50">
+                          {users.length === 0 ? (
+                            <tr>
+                              <td colSpan={4} className="px-10 py-20 text-center">
+                                <Users className="w-12 h-12 text-stone-200 mx-auto mb-4" />
+                                <p className="text-stone-400 font-medium">Nessun utente trovato nel database.</p>
+                                <button onClick={fetchUsers} className="mt-4 text-rose-600 font-black text-xs uppercase tracking-widest hover:underline">Riprova Sincronizzazione</button>
+                              </td>
+                            </tr>
+                          ) : users.slice(0, 6).map((u: any) => (
+                            <tr key={u.id} className="hover:bg-stone-50/50 transition-all group">
+                              <td className="px-10 py-5">
+                                <div className="flex items-center gap-4">
+                                  <div className="w-12 h-12 rounded-2xl bg-stone-100 overflow-hidden ring-4 ring-white shadow-md group-hover:scale-110 transition-transform">
+                                    <img src={u.photo_url || `https://ui-avatars.com/api/?name=${u.name}+${u.surname}&background=F5F5F4&color=78716C&bold=true`} className="w-full h-full object-cover" />
+                                  </div>
+                                  <div>
+                                    <p className="text-sm font-black text-stone-900 leading-tight">{u.name} {u.surname}</p>
+                                    <p className="text-[10px] text-stone-400 font-medium mt-0.5">{u.email || '—'}</p>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-10 py-5">
+                                <div className="flex items-center gap-2">
+                                  <MapPin className="w-3 h-3 text-rose-400" />
+                                  <span className="text-xs font-bold text-stone-600">{u.city || 'Non specificata'}</span>
+                                </div>
+                              </td>
+                              <td className="px-10 py-5">
+                                <div className="flex gap-2">
+                                  {u.is_paid ?
+                                    <span className="px-3 py-1 bg-amber-50 text-amber-600 text-[9px] font-black rounded-full border border-amber-100 shadow-sm uppercase tracking-tighter">VIP</span> :
+                                    <span className="px-3 py-1 bg-stone-50 text-stone-400 text-[9px] font-black rounded-full border border-stone-100 uppercase tracking-tighter">Base</span>
+                                  }
+                                  {u.is_validated ?
+                                    <span className="px-3 py-1 bg-emerald-50 text-emerald-600 text-[9px] font-black rounded-full border border-emerald-100 shadow-sm uppercase tracking-tighter">Verificato</span> :
+                                    <span className="px-3 py-1 bg-stone-50 text-stone-300 text-[9px] font-black rounded-full border border-stone-100 uppercase tracking-tighter">Pending</span>
                                   }
                                 </div>
-                                {/* Info */}
-                                <div className="flex-1 min-w-0">
-                                  <p className="font-black text-stone-900 truncate">{u.name} {u.surname}</p>
-                                  <p className="text-xs text-stone-400 truncate">{u.email} · {u.city}</p>
-                                  {u.doc_rejected && daysLeft !== null && daysLeft > 0 && (
-                                    <p className="text-[11px] text-amber-600 font-bold mt-0.5">⏱ {daysLeft} giorni al blocco</p>
-                                  )}
-                                  {u.doc_rejected && daysLeft !== null && daysLeft <= 0 && (
-                                    <p className="text-[11px] text-red-600 font-bold mt-0.5">🔴 Scaduto — da bloccare</p>
-                                  )}
-                                </div>
-                                {/* Status + action */}
-                                <div className="shrink-0 flex flex-col items-end gap-2">
-                                  {u.is_validated ? (
-                                    <span className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-full text-[11px] font-black border border-emerald-100">
-                                      <CheckCircle className="w-3.5 h-3.5" /> Approvato
-                                    </span>
-                                  ) : (
-                                    <span className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 text-rose-700 rounded-full text-[11px] font-black border border-rose-100">
-                                      <XCircle className="w-3.5 h-3.5" /> Respinto
-                                    </span>
-                                  )}
-                                  {/* Block toggle for rejected users */}
-                                  {u.doc_rejected && (
+                              </td>
+                              <td className="px-10 py-5">
+                                <span className="text-[10px] text-stone-400 font-bold">{u.created_at ? new Date(u.created_at).toLocaleDateString('it-IT') : '—'}</span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+
+              {activeTab === 'documenti' && (() => {
+                const pendingDocs = users.filter((u: any) => u.id_document_url && !u.is_validated && !u.doc_rejected);
+                const archivedDocs = users.filter((u: any) => u.id_document_url && (u.is_validated || u.doc_rejected));
+                const q = archiveSearch.toLowerCase();
+                const filteredArchive = archivedDocs.filter((u: any) =>
+                  !q || u.name?.toLowerCase().includes(q) || u.surname?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q)
+                );
+
+                return (
+                  <div>
+                    {/* Sub-tab switcher */}
+                    <div className="flex items-center gap-1 mb-6 bg-stone-100 p-1 rounded-2xl w-fit">
+                      <button
+                        onClick={() => setDocSubTab('pending')}
+                        className={cn("px-5 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2", docSubTab === 'pending' ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700")}
+                      >
+                        <CheckCircle className="w-4 h-4" />
+                        In attesa
+                        {pendingDocs.length > 0 && <span className="w-5 h-5 bg-rose-600 text-white rounded-full text-[10px] font-black flex items-center justify-center">{pendingDocs.length}</span>}
+                      </button>
+                      <button
+                        onClick={() => setDocSubTab('archive')}
+                        className={cn("px-5 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2", docSubTab === 'archive' ? "bg-white text-stone-900 shadow-sm" : "text-stone-500 hover:text-stone-700")}
+                      >
+                        <ShieldCheck className="w-4 h-4" />
+                        Archivio
+                        {archivedDocs.length > 0 && <span className="w-5 h-5 bg-stone-400 text-white rounded-full text-[10px] font-black flex items-center justify-center">{archivedDocs.length}</span>}
+                      </button>
+                    </div>
+
+                    {/* ----- PENDING QUEUE ----- */}
+                    {docSubTab === 'pending' && (
+                      <div>
+                        <p className="text-stone-500 text-sm mb-6">Verifica che i dati del documento corrispondano a quelli del profilo. Approva o richiedi nuovo invio.</p>
+                        {pendingDocs.length === 0 ? (
+                          <div className="py-24 text-center bg-white rounded-3xl border border-stone-100">
+                            <ShieldCheck className="w-16 h-16 mx-auto mb-4 text-emerald-400" />
+                            <p className="font-bold text-stone-400 text-lg">Nessun documento in attesa.</p>
+                            <p className="text-stone-300 text-sm mt-1">Ottimo lavoro, tutto aggiornato!</p>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                            {pendingDocs.map((u: any) => (
+                              <div key={u.id} className="bg-white rounded-3xl border border-stone-100 shadow-sm overflow-hidden">
+                                {/* Document image — click to preview */}
+                                <div
+                                  className="w-full h-48 bg-stone-100 relative group cursor-zoom-in"
+                                  onClick={() => setPreviewDoc({ url: u.id_document_url, name: `${u.name} ${u.surname}` })}
+                                >
+                                  <img src={u.id_document_url} alt="Documento ID" className="w-full h-full object-cover group-hover:brightness-90 transition-all" />
+                                  {/* Hover overlay */}
+                                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100">
+                                    <div className="bg-white/90 text-stone-900 px-3 py-1.5 rounded-full text-xs font-black flex items-center gap-1.5 shadow-lg">
+                                      <Eye className="w-3.5 h-3.5" /> Anteprima
+                                    </div>
                                     <button
-                                      onClick={() => handleBlockUserToggle(u.id, u.is_blocked)}
-                                      className={cn(
-                                        "flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-black border transition-all active:scale-95",
-                                        u.is_blocked
-                                          ? "bg-emerald-50 text-emerald-700 border-emerald-100 hover:bg-emerald-100"
-                                          : "bg-stone-900 text-white border-stone-900 hover:bg-stone-700"
-                                      )}
+                                      onClick={e => { e.stopPropagation(); handleShareDoc(u.id_document_url, `${u.name} ${u.surname}`); }}
+                                      className="bg-white/90 text-stone-900 px-3 py-1.5 rounded-full text-xs font-black flex items-center gap-1.5 shadow-lg hover:bg-white transition-colors"
                                     >
-                                      {u.is_blocked
-                                        ? <><UserCheck className="w-3 h-3" /> Sblocca</>
-                                        : <><AlertTriangle className="w-3 h-3" /> Blocca</>}
+                                      <Share2 className="w-3.5 h-3.5" /> Condividi
                                     </button>
-                                  )}
+                                  </div>
+                                  <div className="absolute top-3 right-3 px-3 py-1 bg-amber-500 text-white text-[11px] font-black uppercase rounded-full shadow-sm">
+                                    Da verificare
+                                  </div>
+                                </div>
+
+                                <div className="p-5 flex flex-col gap-4">
+                                  {/* User data from profile for cross-check */}
+                                  <div>
+                                    <p className="text-[11px] font-bold text-stone-400 uppercase tracking-widest mb-3">Dati profilo da verificare</p>
+                                    <div className="grid grid-cols-2 gap-2">
+                                      <div className="bg-stone-50 rounded-xl px-3 py-2">
+                                        <p className="text-[10px] text-stone-400 font-bold uppercase tracking-wide">Nome</p>
+                                        <p className="font-black text-stone-800 text-sm">{u.name || '—'}</p>
+                                      </div>
+                                      <div className="bg-stone-50 rounded-xl px-3 py-2">
+                                        <p className="text-[10px] text-stone-400 font-bold uppercase tracking-wide">Cognome</p>
+                                        <p className="font-black text-stone-800 text-sm">{u.surname || '—'}</p>
+                                      </div>
+                                      <div className="bg-stone-50 rounded-xl px-3 py-2">
+                                        <p className="text-[10px] text-stone-400 font-bold uppercase tracking-wide">Età</p>
+                                        <p className="font-black text-stone-800 text-sm">{calculateAge(u.dob)} anni</p>
+                                      </div>
+                                      <div className="bg-stone-50 rounded-xl px-3 py-2">
+                                        <p className="text-[10px] text-stone-400 font-bold uppercase tracking-wide">Città</p>
+                                        <p className="font-black text-stone-800 text-sm">{u.city || '—'}</p>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Actions */}
+                                  <div className="flex gap-3">
+                                    <button
+                                      onClick={() => handleValidateDoc(u.id)}
+                                      className="flex-1 py-3 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white rounded-2xl font-black flex items-center justify-center gap-2 text-sm transition-all shadow-sm shadow-emerald-200"
+                                    >
+                                      <CheckCircle className="w-5 h-5" /> Approva
+                                    </button>
+                                    <button
+                                      onClick={() => handleRejectDoc(u.id)}
+                                      className="flex-1 py-3 bg-amber-50 hover:bg-amber-100 active:scale-95 text-amber-700 border border-amber-200 rounded-2xl font-black flex items-center justify-center gap-2 text-sm transition-all"
+                                    >
+                                      <XCircle className="w-5 h-5" /> Richiedi Nuovo
+                                    </button>
+                                  </div>
+                                  {/* Block button — immediate full block */}
+                                  <button
+                                    onClick={() => handleBlockUserToggle(u.id, u.is_blocked)}
+                                    className={cn(
+                                      "w-full py-2.5 rounded-2xl font-black text-sm flex items-center justify-center gap-2 transition-all border active:scale-95",
+                                      u.is_blocked
+                                        ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+                                        : "bg-stone-900 text-white border-stone-900 hover:bg-stone-700"
+                                    )}
+                                  >
+                                    {u.is_blocked
+                                      ? <><UserCheck className="w-4 h-4" /> Sblocca Utente</>
+                                      : <><AlertTriangle className="w-4 h-4" /> Blocca Utente</>}
+                                  </button>
+                                  <p className="text-[11px] text-stone-400 text-center leading-relaxed -mt-1">
+                                    "Richiedi Nuovo" sospende parzialmente per <strong>15 gg</strong>. "Blocca" esclude l'utente immediatamente.
+                                  </p>
                                 </div>
                               </div>
-                            );
-                          })}
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* ----- ARCHIVE ----- */}
+                    {docSubTab === 'archive' && (
+                      <div>
+                        {/* Search bar */}
+                        <div className="relative mb-6">
+                          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+                          <input
+                            type="text"
+                            value={archiveSearch}
+                            onChange={e => setArchiveSearch(e.target.value)}
+                            placeholder="Cerca per nome, cognome o email…"
+                            className="w-full pl-11 pr-4 py-3 rounded-2xl bg-white border border-stone-100 shadow-sm text-sm outline-none focus:ring-2 focus:ring-rose-400 transition"
+                          />
+                          {archiveSearch && (
+                            <button onClick={() => setArchiveSearch('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600">
+                              <X className="w-4 h-4" />
+                            </button>
+                          )}
                         </div>
-                      )}
+
+                        {filteredArchive.length === 0 ? (
+                          <div className="py-24 text-center bg-white rounded-3xl border border-stone-100">
+                            <ShieldCheck className="w-16 h-16 mx-auto mb-4 text-stone-200" />
+                            <p className="font-bold text-stone-400">{archiveSearch ? 'Nessun risultato trovato.' : 'Archivio vuoto.'}</p>
+                          </div>
+                        ) : (
+                          <div className="bg-white rounded-3xl border border-stone-100 shadow-sm overflow-hidden">
+                            {filteredArchive.map((u: any, idx: number) => {
+                              const daysLeft = u.doc_rejected_at
+                                ? 15 - Math.floor((Date.now() - new Date(u.doc_rejected_at).getTime()) / (1000 * 60 * 60 * 24))
+                                : null;
+                              return (
+                                <div key={u.id} className={cn("flex items-center gap-4 p-4 hover:bg-stone-50 transition-colors", idx !== filteredArchive.length - 1 && "border-b border-stone-50")}>
+                                  {/* Doc thumbnail */}
+                                  <div className="w-16 h-12 rounded-xl overflow-hidden shrink-0 border border-stone-100 bg-stone-100">
+                                    {u.id_document_url
+                                      ? <img src={u.id_document_url} className="w-full h-full object-cover" />
+                                      : <div className="w-full h-full flex items-center justify-center"><User className="w-5 h-5 text-stone-300" /></div>
+                                    }
+                                  </div>
+                                  {/* Info */}
+                                  <div className="flex-1 min-w-0">
+                                    <p className="font-black text-stone-900 truncate">{u.name} {u.surname}</p>
+                                    <p className="text-xs text-stone-400 truncate">{u.email} · {u.city}</p>
+                                    {u.doc_rejected && daysLeft !== null && daysLeft > 0 && (
+                                      <p className="text-[11px] text-amber-600 font-bold mt-0.5">⏱ {daysLeft} giorni al blocco</p>
+                                    )}
+                                    {u.doc_rejected && daysLeft !== null && daysLeft <= 0 && (
+                                      <p className="text-[11px] text-red-600 font-bold mt-0.5">🔴 Scaduto — da bloccare</p>
+                                    )}
+                                  </div>
+                                  {/* Status + action */}
+                                  <div className="shrink-0 flex flex-col items-end gap-2">
+                                    {u.is_validated ? (
+                                      <span className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-full text-[11px] font-black border border-emerald-100">
+                                        <CheckCircle className="w-3.5 h-3.5" /> Approvato
+                                      </span>
+                                    ) : (
+                                      <span className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 text-rose-700 rounded-full text-[11px] font-black border border-rose-100">
+                                        <XCircle className="w-3.5 h-3.5" /> Respinto
+                                      </span>
+                                    )}
+                                    {/* Block toggle for rejected users */}
+                                    {u.doc_rejected && (
+                                      <button
+                                        onClick={() => handleBlockUserToggle(u.id, u.is_blocked)}
+                                        className={cn(
+                                          "flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-black border transition-all active:scale-95",
+                                          u.is_blocked
+                                            ? "bg-emerald-50 text-emerald-700 border-emerald-100 hover:bg-emerald-100"
+                                            : "bg-stone-900 text-white border-stone-900 hover:bg-stone-700"
+                                        )}
+                                      >
+                                        {u.is_blocked
+                                          ? <><UserCheck className="w-3 h-3" /> Sblocca</>
+                                          : <><AlertTriangle className="w-3 h-3" /> Blocca</>}
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+
+              {activeTab === 'segnalazioni' && (
+                <div className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm">
+                  <h3 className="text-2xl font-black mb-6">Gestione Segnalazioni</h3>
+                  <div className="flex flex-col items-center justify-center py-24 text-stone-400">
+                    <AlertTriangle className="w-16 h-16 mb-4 opacity-50" />
+                    <p className="font-medium text-lg">Al momento la lista delle segnalazioni è vuota.</p>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'pagamenti' && (
+                <div className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm">
+                  <div className="flex items-center justify-between mb-8">
+                    <h3 className="text-2xl font-black">Piano Premium - Stripe</h3>
+                    <div className="px-4 py-2 bg-[#635BFF] text-white rounded-xl font-bold text-xs tracking-wide uppercase">Test Mode</div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div className="border border-stone-100 bg-stone-50 p-6 rounded-2xl">
+                      <p className="text-xs font-bold text-stone-500 mb-2 uppercase tracking-widest">Utenti VIP</p>
+                      <p className="text-4xl font-black text-stone-900">{users.filter((u: any) => u.is_paid).length}</p>
                     </div>
-                  )}
-                </div>
-              );
-            })()}
-
-
-            {activeTab === 'segnalazioni' && (
-              <div className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm">
-                <h3 className="text-2xl font-black mb-6">Gestione Segnalazioni</h3>
-                <div className="flex flex-col items-center justify-center py-24 text-stone-400">
-                  <AlertTriangle className="w-16 h-16 mb-4 opacity-50" />
-                  <p className="font-medium text-lg">Al momento la lista delle segnalazioni è vuota.</p>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'pagamenti' && (
-              <div className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm">
-                <div className="flex items-center justify-between mb-8">
-                  <h3 className="text-2xl font-black">Piano Premium - Stripe</h3>
-                  <div className="px-4 py-2 bg-[#635BFF] text-white rounded-xl font-bold text-xs tracking-wide uppercase">Test Mode</div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                  <div className="border border-stone-100 bg-stone-50 p-6 rounded-2xl">
-                    <p className="text-xs font-bold text-stone-500 mb-2 uppercase tracking-widest">Utenti VIP</p>
-                    <p className="text-4xl font-black text-stone-900">{users.filter((u: any) => u.is_paid).length}</p>
-                  </div>
-                  <div className="border border-stone-100 bg-stone-50 p-6 rounded-2xl">
-                    <p className="text-xs font-bold text-stone-500 mb-2 uppercase tracking-widest">MRR Stimato</p>
-                    <p className="text-4xl font-black text-stone-900">€{(users.filter((u: any) => u.is_paid).length * 9.99).toFixed(2)}</p>
-                  </div>
-                  <div className="border border-stone-100 bg-emerald-50 p-6 rounded-2xl">
-                    <p className="text-xs font-bold text-emerald-600 mb-2 uppercase tracking-widest">Status Webhook</p>
-                    <p className="text-lg font-bold text-emerald-700 flex items-center gap-2 mt-2"><CheckCircle className="w-5 h-5" /> In Sincronia</p>
-                  </div>
-                </div>
-                <div>
-                  <h4 className="font-bold text-lg mb-4">Registro Transazioni</h4>
-                  <div className="p-8 border-2 border-dashed border-stone-200 rounded-2xl text-center">
-                    <p className="text-stone-500 text-sm font-medium">L'integrazione di Stripe con Supabase deve essere prima settata lato server. Appariranno qui non appena i webhook Stripe invieranno eventi di pagamento al DB.</p>
-                    <button className="mt-4 px-6 py-2 bg-[#635BFF] text-white rounded-lg font-bold text-sm shadow-lg hover:bg-[#524BDB] transition-all">Apri Dashboard Stripe →</button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'impostazioni' && (
-              <div className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm">
-                <h3 className="text-2xl font-black mb-4 flex items-center gap-2">
-                  <ImageIcon className="w-6 h-6 text-rose-500" /> Slider HomePage
-                </h3>
-                <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-                  {sliderImages.map((img, i) => (
-                    <div key={i} className="aspect-video rounded-2xl overflow-hidden relative group border border-stone-200 shadow-sm transition-transform hover:scale-[1.02]">
-                      <img src={img} className="w-full h-full object-cover" />
-                      <button onClick={() => removeImage(i)} className="absolute top-2 right-2 w-8 h-8 bg-black/60 backdrop-blur-md text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">×</button>
+                    <div className="border border-stone-100 bg-stone-50 p-6 rounded-2xl">
+                      <p className="text-xs font-bold text-stone-500 mb-2 uppercase tracking-widest">MRR Stimato</p>
+                      <p className="text-4xl font-black text-stone-900">€{(users.filter((u: any) => u.is_paid).length * 9.99).toFixed(2)}</p>
                     </div>
-                  ))}
-                  {sliderImages.length === 0 && <p className="col-span-full py-8 text-stone-400 text-center border-2 border-dashed border-stone-200 rounded-2xl">Nessun URL caricato.</p>}
+                    <div className="border border-stone-100 bg-emerald-50 p-6 rounded-2xl">
+                      <p className="text-xs font-bold text-emerald-600 mb-2 uppercase tracking-widest">Status Webhook</p>
+                      <p className="text-lg font-bold text-emerald-700 flex items-center gap-2 mt-2"><CheckCircle className="w-5 h-5" /> In Sincronia</p>
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-lg mb-4">Registro Transazioni</h4>
+                    <div className="p-8 border-2 border-dashed border-stone-200 rounded-2xl text-center">
+                      <p className="text-stone-500 text-sm font-medium">L'integrazione di Stripe con Supabase deve essere prima settata lato server. Appariranno qui non appena i webhook Stripe invieranno eventi di pagamento al DB.</p>
+                      <button className="mt-4 px-6 py-2 bg-[#635BFF] text-white rounded-lg font-bold text-sm shadow-lg hover:bg-[#524BDB] transition-all">Apri Dashboard Stripe →</button>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <input
-                    value={newUrl} onChange={(e) => setNewUrl(e.target.value)}
-                    placeholder="URL immagine"
-                    className="flex-1 p-3 rounded-xl bg-stone-50 border border-stone-200 text-sm outline-none focus:ring-2 focus:ring-rose-500"
-                  />
-                  <button onClick={addImage} className="bg-stone-900 text-white px-6 py-3 rounded-xl font-black uppercase hover:bg-stone-800 transition-all">Aggiungi</button>
+              )}
+
+              {activeTab === 'impostazioni' && (
+                <div className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm">
+                  <h3 className="text-2xl font-black mb-4 flex items-center gap-2">
+                    <ImageIcon className="w-6 h-6 text-rose-500" /> Slider HomePage
+                  </h3>
+                  <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                    {sliderImages.map((img, i) => (
+                      <div key={i} className="aspect-video rounded-2xl overflow-hidden relative group border border-stone-200 shadow-sm transition-transform hover:scale-[1.02]">
+                        <img src={img} className="w-full h-full object-cover" />
+                        <button onClick={() => removeImage(i)} className="absolute top-2 right-2 w-8 h-8 bg-black/60 backdrop-blur-md text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">×</button>
+                      </div>
+                    ))}
+                    {sliderImages.length === 0 && <p className="col-span-full py-8 text-stone-400 text-center border-2 border-dashed border-stone-200 rounded-2xl">Nessun URL caricato.</p>}
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      value={newUrl} onChange={(e) => setNewUrl(e.target.value)}
+                      placeholder="URL immagine"
+                      className="flex-1 p-3 rounded-xl bg-stone-50 border border-stone-200 text-sm outline-none focus:ring-2 focus:ring-rose-500"
+                    />
+                    <button onClick={addImage} className="bg-stone-900 text-white px-6 py-3 rounded-xl font-black uppercase hover:bg-stone-800 transition-all">Aggiungi</button>
+                  </div>
                 </div>
-              </div>
-            )}
-          </>
-        )}
+              )}
+            </motion.div>
+          )}
+        </div>
       </main>
     </div>
   );
@@ -3640,10 +3825,20 @@ const RegisterPage = () => {
                   <button
                     type="button"
                     onClick={handleNextToStep1}
-                    className="btn-primary w-full py-4 text-sm mt-2"
+                    className="btn-primary w-full py-4 text-sm mt-2 font-black uppercase tracking-widest"
                   >
                     {isLogin ? 'Accedi' : 'Continua'}
                   </button>
+                  <div className="grid grid-cols-2 gap-3 mt-4">
+                    <button type="button" onClick={() => alert("Login con Google non implementato")} className="flex items-center justify-center gap-2 bg-white border border-stone-200 text-stone-700 py-3 rounded-xl font-black text-xs hover:border-stone-300 hover:bg-stone-50 transition-all transform active:scale-95 shadow-sm">
+                      <svg className="w-4 h-4" viewBox="0 0 24 24"><path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" /><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" /><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" /><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" /></svg>
+                      Google
+                    </button>
+                    <button type="button" onClick={() => alert("Login con Apple non implementato")} className="flex items-center justify-center gap-2 bg-stone-900 text-white py-3 rounded-xl font-black text-xs hover:bg-stone-800 transition-all transform active:scale-95 shadow-sm">
+                      <svg className="w-5 h-5 mb-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.05 2.95.72 3.84 1.94-3.25 1.89-2.71 5.92.51 7.15-.75 1.57-1.66 3.01-3 4.5v-.08zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" /></svg>
+                      Apple
+                    </button>
+                  </div>
                   <p className="text-center text-xs text-stone-500 font-medium">
                     {isLogin ? (
                       <>Non hai un account? <button type="button" onClick={() => { console.log("Switching to Register"); setIsLogin(false); }} className="text-rose-600 font-bold hover:underline">Iscriviti</button></>
@@ -5004,6 +5199,9 @@ const ProfilePage = () => {
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
   const [isSendingReply, setIsSendingReply] = useState(false);
+  const [bannerData, setBannerData] = useState<any>(null);
+  const [bannerText, setBannerText] = useState('');
+  const [isWritingBanner, setIsWritingBanner] = useState(false);
   const navigate = useNavigate();
 
   const fetchData = async (userId: string) => {
@@ -5052,6 +5250,16 @@ const ProfilePage = () => {
         }));
         setChatRequests(processedRequests);
       }
+
+      // Fetch banner data (Local API)
+      try {
+        const bRes = await fetch(`/api/users/${userId}/banner-data`);
+        if (bRes.ok) {
+          const bData = await bRes.json();
+          setBannerData(bData);
+        }
+      } catch (e) { console.error("Banner fetch err", e); }
+
       setLoading(false);
     } catch (e) {
       console.error("fetchData exception:", e);
@@ -5063,7 +5271,7 @@ const ProfilePage = () => {
     const saved = localStorage.getItem('soulmatch_user');
     if (saved) {
       try {
-        const parsed = JSON.parse(saved);
+        const parsed = normalizeUser(JSON.parse(saved));
         if (parsed?.id) fetchData(parsed.id);
         else navigate('/register');
       } catch (e) { navigate('/register'); }
@@ -5250,6 +5458,84 @@ const ProfilePage = () => {
             <span className="text-[9px] text-stone-400 font-bold uppercase tracking-widest">{s.label}</span>
           </div>
         ))}
+      </div>
+
+      {/* ── ISOLA BANNER MANAGEMENT ── */}
+      <div className="mx-4 mt-5 bg-white rounded-[24px] shadow-sm border border-stone-100 p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-[11px] font-black text-stone-900 uppercase tracking-widest flex items-center gap-2">
+            <MessageSquare className="w-4 h-4 text-rose-500" />
+            Il tuo Banner Globale (24h)
+          </h3>
+        </div>
+
+        {bannerData?.message ? (
+          <div className="space-y-4">
+            <div className="bg-rose-50 rounded-[16px] p-4 border border-rose-100 relative">
+              <p className="text-xs font-semibold text-rose-900 italic pr-6 leading-relaxed">"{bannerData.message.message}"</p>
+              <button onClick={async () => {
+                await fetch(`/api/banner-messages/${bannerData.message.id}`, { method: 'DELETE' });
+                setBannerData(null);
+              }} className="absolute top-3 right-3 text-rose-400 hover:text-rose-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {bannerData.replies && bannerData.replies.length > 0 && (
+              <div className="space-y-2 mt-4">
+                <h4 className="text-[9px] font-black uppercase text-stone-400 tracking-widest pl-1">Risposte ricevute agli interessati</h4>
+                {bannerData.replies.map((r: any) => (
+                  <div key={r.id} className="flex gap-3 bg-stone-50 p-3 rounded-[16px] border border-stone-100 items-center">
+                    <img src={r.photo_url || `https://picsum.photos/seed/${r.name}/100`} className="w-8 h-8 rounded-full shadow-sm object-cover" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[11px] font-black text-stone-900">{r.name}</p>
+                      <p className="text-[11px] text-stone-600 line-clamp-2 leading-tight">{r.reply_text}</p>
+                    </div>
+                    <button onClick={() => {
+                      setReplyingTo(r.from_user_id);
+                      setActiveTab('notifications'); // switch context to send DMs easily, or they can do it here via the same overlay. Setting state handled below.
+                    }} className="w-8 h-8 bg-white border border-stone-200 rounded-full flex items-center justify-center shadow-sm shrink-0">
+                      <MessageSquare className="w-3.5 h-3.5 text-rose-500" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {isWritingBanner ? (
+              <div className="space-y-2">
+                <textarea
+                  value={bannerText}
+                  onChange={e => setBannerText(e.target.value)}
+                  placeholder="Scrivi qui... es. Chi viene all'arena domani sera? Caffe?"
+                  className="w-full bg-stone-50 border border-stone-200 rounded-[16px] p-4 text-[12px] font-medium resize-none focus:outline-none focus:ring-2 focus:ring-rose-200 min-h-[80px]"
+                />
+                <div className="flex gap-2">
+                  <button onClick={async () => {
+                    if (!bannerText.trim()) return;
+                    setIsWritingBanner(false);
+                    await fetch('/api/banner-messages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_id: user.id, message: bannerText }) });
+                    setBannerText('');
+                    const bRes = await fetch(`/api/users/${user.id}/banner-data`);
+                    if (bRes.ok) setBannerData(await bRes.json());
+                  }} className="flex-1 bg-stone-900 text-white py-2.5 rounded-[12px] text-[10px] font-black uppercase tracking-widest shadow-md">
+                    Pubblica Flash
+                  </button>
+                  <button onClick={() => setIsWritingBanner(false)} className="px-4 bg-stone-100 text-stone-500 py-2.5 rounded-[12px] text-[10px] font-black uppercase tracking-widest border border-stone-200">
+                    Annulla
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button onClick={() => setIsWritingBanner(true)} className="w-full bg-stone-50 border border-dashed border-stone-300 rounded-[16px] p-5 flex flex-col items-center justify-center gap-2 hover:bg-stone-100 transition-colors">
+                <Plus className="w-5 h-5 text-stone-400" />
+                <span className="text-[10px] font-black text-stone-500 uppercase tracking-widest">Aggiungi messaggio in Bacheca</span>
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ── TAB BAR ── */}
@@ -5507,7 +5793,7 @@ const ProfilePage = () => {
           </div>
         )}
       </AnimatePresence>
-    </div>
+    </div >
   );
 };
 
@@ -5845,7 +6131,7 @@ export default function App() {
       const saved = localStorage.getItem('soulmatch_user');
       if (saved) {
         try {
-          const u = JSON.parse(saved);
+          const u = normalizeUser(JSON.parse(saved));
           if (u?.id) {
             const { data, error } = await supabase.from('users').select('id').eq('id', u.id).single();
             if (error || !data) {
