@@ -1113,17 +1113,7 @@ const ProfileDetailPage = () => {
         <div className="absolute bottom-0 left-0 right-0 px-6 pb-5 z-10">
           <div className="flex items-end justify-between">
             <div>
-              <div className="flex items-center gap-2 mb-1">
-                {!!profile.is_paid && (
-                  <span className="bg-amber-400 text-stone-900 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider flex items-center gap-1">
-                    <Sparkles className="w-3 h-3" /> Premium
-                  </span>
-                )}
-                <span className="bg-white/25 backdrop-blur text-white px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider">{profile.gender}</span>
-                {profile.orientation && profile.orientation.length > 0 && (
-                  <span className="bg-violet-500/80 backdrop-blur text-white px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider">{profile.orientation.join(', ')}</span>
-                )}
-              </div>
+
               <h1 className="text-3xl font-serif font-black text-stone-900 leading-tight drop-shadow-sm">
                 {profile.name}{calculateAge(profile.dob) > 0 ? <span className="font-light text-2xl text-stone-500">, {calculateAge(profile.dob)}</span> : null}
               </h1>
@@ -1131,6 +1121,14 @@ const ProfileDetailPage = () => {
                 <p className="flex items-center gap-1 text-stone-500 text-sm font-semibold mt-0.5">
                   <MapPin className="w-3.5 h-3.5" />{profile.city}{profile.province ? `, ${profile.province}` : ''}
                 </p>
+              )}
+              <p className="text-stone-400 text-xs font-bold mt-1 uppercase tracking-widest">
+                {profile.gender} • {profile.orientation?.join(', ')}
+              </p>
+              {!!profile.is_paid && (
+                <div className="mt-3 inline-flex items-center gap-1.5 bg-amber-50 text-amber-600 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-amber-200 shadow-sm">
+                  <Sparkles className="w-3 h-3" /> Membro Premium
+                </div>
               )}
             </div>
           </div>
@@ -1556,8 +1554,8 @@ const BachecaPage = () => {
   useEffect(() => {
     if (bannerMessages.length === 0) return;
     const interval = setInterval(() => {
-      setBannerIndex(prev => (prev + 3 >= bannerMessages.length ? 0 : prev + 3));
-    }, 3000);
+      setBannerIndex(prev => (prev + 1 >= bannerMessages.length ? 0 : prev + 1));
+    }, 4000);
     return () => clearInterval(interval);
   }, [bannerMessages]);
 
@@ -1863,32 +1861,32 @@ const BachecaPage = () => {
 
         {/* ── FLOATING BANNER (ISOLA BANNER) ── */}
         {bannerMessages.length > 0 && (
-          <div className="relative -mx-4 px-4 z-20">
-            <div className="bg-white/90 backdrop-blur-md rounded-[20px] p-3 shadow-xl shadow-rose-900/5 border border-rose-100/50 flex flex-col justify-center relative overflow-hidden h-[76px] ring-1 ring-black/5">
-              <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b from-rose-400 to-rose-600 rounded-l-[20px]" />
-              <AnimatePresence mode="popLayout">
-                {bannerMessages.slice(bannerIndex, bannerIndex + 3).map((msg, i) => (
+          <div className="relative -mx-4 px-4 z-40 mb-2">
+            <div className="bg-white/95 backdrop-blur-md rounded-[24px] p-3.5 shadow-xl shadow-rose-900/10 border border-white flex flex-col justify-center relative overflow-hidden h-[84px] ring-1 ring-black/[0.03]">
+              <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b from-rose-400 to-rose-600 rounded-l-[24px]" />
+              <AnimatePresence mode="popLayout" initial={false}>
+                {bannerMessages.length > 0 && (
                   <motion.div
-                    key={msg.id + '-' + i}
-                    initial={{ opacity: 0, y: 15 }}
+                    key={bannerMessages[bannerIndex]?.id || 'empty'}
+                    initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -15, position: 'absolute' }}
-                    transition={{ duration: 0.4 }}
-                    className="flex items-center gap-3 w-full pl-2"
+                    exit={{ opacity: 0, y: -20, position: 'absolute' }}
+                    transition={{ duration: 0.5, ease: "circOut" }}
+                    className="flex items-center gap-3.5 w-full pl-2"
                   >
-                    <div className="w-11 h-11 rounded-full overflow-hidden shrink-0 ring-2 ring-rose-100 shadow-sm bg-stone-100">
-                      <img src={msg.photo_url || `https://picsum.photos/seed/${msg.name}/100`} className="w-full h-full object-cover" />
+                    <div className="w-12 h-12 rounded-full overflow-hidden shrink-0 ring-4 ring-rose-50 shadow-sm bg-stone-100 border border-white">
+                      <img src={bannerMessages[bannerIndex]?.photo_url || `https://picsum.photos/seed/${bannerMessages[bannerIndex]?.name}/100`} className="w-full h-full object-cover" />
                     </div>
                     <div className="flex-1 min-w-0 pr-1">
-                      <div className="flex items-center gap-1.5 leading-tight">
-                        <span className="text-[11px] font-black text-stone-900 truncate max-w-[120px]">{msg.name}</span>
-                        <span className="text-[10px] font-bold text-stone-400 shrink-0">{msg.dob ? calculateAge(msg.dob) : ''}</span>
-                        <span className="text-[9px] px-1.5 py-0.5 bg-stone-100 text-stone-500 rounded-full font-bold ml-auto shrink-0 truncate max-w-[70px]">{msg.city}</span>
+                      <div className="flex items-center gap-2 leading-tight">
+                        <span className="text-[12px] font-black text-stone-900 truncate">{bannerMessages[bannerIndex]?.name}</span>
+                        <span className="text-[10px] font-bold text-stone-400 shrink-0">{bannerMessages[bannerIndex]?.dob ? calculateAge(bannerMessages[bannerIndex]?.dob) : ''}</span>
+                        <span className="text-[9px] px-2 py-0.5 bg-stone-100 text-stone-500 rounded-full font-bold ml-auto shrink-0">{bannerMessages[bannerIndex]?.city}</span>
                       </div>
-                      <p className="text-xs text-stone-600 font-medium truncate mt-0.5 pr-2">{msg.message}</p>
+                      <p className="text-xs text-stone-600 font-medium truncate mt-1 pr-2">{bannerMessages[bannerIndex]?.message}</p>
                     </div>
                   </motion.div>
-                )).slice(0, 1)} {/* Currently showing 1 at a time sliding rapidly as a ticker, since area is small */}
+                )}
               </AnimatePresence>
             </div>
           </div>
@@ -1935,7 +1933,10 @@ const BachecaPage = () => {
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
                     <div className="absolute bottom-0 left-0 right-0 p-3">
                       <p className="text-white text-xs font-black truncate">{profile.name}{profile.dob && calculateAge(profile.dob) > 0 ? `, ${calculateAge(profile.dob)}` : ''}</p>
-                      {profile.city && <p className="text-white/70 text-[9px] font-semibold truncate flex items-center gap-0.5"><MapPin className="w-2.5 h-2.5" />{profile.city}</p>}
+                      {profile.city && <p className="text-white/70 text-[9px] font-semibold truncate flex items-center gap-0.5 mb-0.5"><MapPin className="w-2.5 h-2.5" />{profile.city}</p>}
+                      <p className="text-white/60 text-[9px] font-bold truncate">
+                        {profile.gender} • {profile.orientation?.join(', ')}
+                      </p>
                     </div>
                   </div>
                 </Link>
