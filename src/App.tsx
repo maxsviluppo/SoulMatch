@@ -64,17 +64,102 @@ const normalizeUser = (u: any): any => ({
   ...u,
   orientation: parseArrField(u?.orientation),
   looking_for_gender: parseArrField(u?.looking_for_gender),
-  photos: (() => {
-    if (!u?.photos) return [];
-    if (Array.isArray(u.photos)) return u.photos;
-    try { return JSON.parse(u.photos); } catch { return []; }
-  })(),
-  conosciamoci_meglio: (() => {
-    if (!u?.conosciamoci_meglio) return {};
-    if (typeof u.conosciamoci_meglio === 'object') return u.conosciamoci_meglio;
-    try { return JSON.parse(u.conosciamoci_meglio); } catch { return {}; }
-  })(),
+  photos: parseArrField(u?.photos),
+  conosciamoci_meglio: (typeof u?.conosciamoci_meglio === 'string') ? JSON.parse(u.conosciamoci_meglio) : (u?.conosciamoci_meglio || {})
 });
+
+// ── Shared Bottom Navigation Bar ──────────────────────────────────────────
+const AppBottomNav = ({ activeTab, customCenter }: { activeTab?: 'home' | 'bacheca' | 'feed' | 'soulmatch' | 'soullink' | 'profile', customCenter?: React.ReactNode }) => {
+  const navigate = useNavigate();
+  const [pendingCount, setPendingCount] = useState(0);
+
+  useEffect(() => {
+    let currentUserId: string | null = null;
+    try {
+      const saved = localStorage.getItem('soulmatch_user');
+      if (saved) {
+        const user = JSON.parse(saved);
+        currentUserId = user.id;
+      }
+    } catch (e) { }
+
+    if (!currentUserId) return;
+
+    const fetchPending = async () => {
+      try {
+        const { count } = await supabase
+          .from('soul_links')
+          .select('*', { count: 'exact', head: true })
+          .eq('receiver_id', currentUserId)
+          .eq('status', 'pending');
+        setPendingCount(count || 0);
+      } catch (e) {
+        console.error("Fetch pending links error:", e);
+      }
+    };
+
+    fetchPending();
+
+    const channel = supabase
+      .channel('navbar-notifications')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'soul_links', filter: `receiver_id=eq.${currentUserId}` }, () => {
+        fetchPending();
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, []);
+
+  return (
+    <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/90 backdrop-blur-xl border-t border-stone-100 shadow-2xl px-4 pb-6 pt-3">
+      <div className="max-w-md mx-auto flex items-center justify-between gap-1">
+
+        {/* Home */}
+        <Link to="/" className={cn("flex flex-col items-center gap-1 transition-all flex-1", activeTab === 'home' ? "text-rose-600" : "text-stone-400 hover:text-rose-500")}>
+          <Home className="w-5 h-5" />
+          <span className="text-[8px] font-black uppercase tracking-widest">Home</span>
+        </Link>
+
+        {/* Bacheca */}
+        <Link to="/bacheca" className={cn("flex flex-col items-center gap-1 transition-all flex-1", activeTab === 'bacheca' ? "text-rose-600" : "text-stone-400 hover:text-rose-500")}>
+          <Users className="w-5 h-5" />
+          <span className="text-[8px] font-black uppercase tracking-widest">Bacheca</span>
+        </Link>
+
+        {/* Custom Center or Feed */}
+        {customCenter ? (
+          <div className="flex-1 flex justify-center">
+            {customCenter}
+          </div>
+        ) : (
+          <Link to="/feed" className={cn("flex flex-col items-center gap-1 transition-all flex-1", activeTab === 'feed' ? "text-rose-600" : "text-stone-400 hover:text-rose-500")}>
+            <div className={cn("w-12 h-12 rounded-[18px] flex items-center justify-center -mt-4 shadow-lg transition-all active:scale-95", activeTab === 'feed' ? "bg-rose-600 text-white shadow-rose-200" : "bg-white text-stone-400 border border-stone-100")}>
+              <LayoutGrid className="w-6 h-6" />
+            </div>
+            <span className="text-[8px] font-black uppercase tracking-widest mt-1">Feed</span>
+          </Link>
+        )}
+
+        {/* SoulLink */}
+        <Link to="/soul-links" className={cn("flex flex-col items-center gap-1 relative transition-all flex-1", activeTab === 'soullink' ? "text-violet-600" : "text-stone-400 hover:text-violet-500")}>
+          <div className="relative">
+            <Link2 className="w-5 h-5" />
+            {pendingCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-emerald-500 text-white text-[7px] font-black rounded-full flex items-center justify-center border-2 border-white">{pendingCount}</span>
+            )}
+          </div>
+          <span className="text-[8px] font-black uppercase tracking-widest">SoulLink</span>
+        </Link>
+
+        {/* Profile */}
+        <Link to="/profile" className={cn("flex flex-col items-center gap-1 transition-all flex-1", activeTab === 'profile' ? "text-rose-600" : "text-stone-400 hover:text-rose-500")}>
+          <User className="w-5 h-5" />
+          <span className="text-[8px] font-black uppercase tracking-widest">Profilo</span>
+        </Link>
+      </div>
+    </div>
+  );
+};
 
 // --- Components ---
 
@@ -542,37 +627,49 @@ const HomePage = () => {
         {/* Single CTA */}
         <div className="px-4 space-y-4">
           <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}>
-            <Link
-              to={isLoggedIn ? "/bacheca" : "/register"}
-              className="w-full flex items-center justify-between gap-4 bg-gradient-to-r from-rose-600 to-rose-500 text-white py-4 px-6 rounded-[22px] font-black shadow-xl shadow-rose-300/50 hover:shadow-rose-400/60 transition-all"
-            >
-              {/* Left icon */}
-              <div className="w-10 h-10 bg-white/15 rounded-[14px] flex items-center justify-center shrink-0">
-                <Heart className="w-5 h-5 fill-current" />
+            {!isLoggedIn ? (
+              <Link
+                to="/register"
+                className="w-full flex items-center justify-between gap-4 bg-gradient-to-r from-rose-600 to-rose-500 text-white py-4 px-6 rounded-[22px] font-black shadow-xl shadow-rose-300/50 hover:shadow-rose-400/60 transition-all"
+              >
+                <div className="w-10 h-10 bg-white/15 rounded-[14px] flex items-center justify-center shrink-0">
+                  <Heart className="w-5 h-5 fill-current" />
+                </div>
+                <div className="flex-1 text-left">
+                  <p className="text-base font-black uppercase tracking-widest leading-none">Inizia Ora</p>
+                  <p className="text-rose-200 text-[10px] font-semibold mt-0.5">Gratis — nessuna carta</p>
+                </div>
+                <div className="w-10 h-10 bg-white/15 rounded-[14px] flex items-center justify-center shrink-0">
+                  <ArrowRight className="w-5 h-5" />
+                </div>
+              </Link>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                <Link
+                  to="/bacheca"
+                  className="w-full flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-rose-500 to-rose-600 text-white py-5 px-4 rounded-[22px] font-black shadow-lg shadow-rose-300/40 hover:shadow-rose-400/60 transition-all"
+                >
+                  <Users className="w-6 h-6" />
+                  <span className="text-xs uppercase tracking-widest">Bacheca</span>
+                </Link>
+                <Link
+                  to="/feed"
+                  className="w-full flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-rose-500 to-rose-600 text-white py-5 px-4 rounded-[22px] font-black shadow-lg shadow-rose-300/40 hover:shadow-rose-400/60 transition-all"
+                >
+                  <LayoutGrid className="w-6 h-6" />
+                  <span className="text-xs uppercase tracking-widest">Feed</span>
+                </Link>
               </div>
-              {/* Label */}
-              <div className="flex-1 text-left">
-                <p className="text-base font-black uppercase tracking-widest leading-none">
-                  {isLoggedIn ? "Vai alla Bacheca" : "Inizia Ora"}
-                </p>
-                <p className="text-rose-200 text-[10px] font-semibold mt-0.5">
-                  {isLoggedIn ? "I tuoi match ti aspettano" : "Gratis — nessuna carta"}
-                </p>
-              </div>
-              {/* Right arrow bubble */}
-              <div className="w-10 h-10 bg-white/15 rounded-[14px] flex items-center justify-center shrink-0">
-                <ArrowRight className="w-5 h-5" />
-              </div>
-            </Link>
+            )}
           </motion.div>
 
           {!isLoggedIn && (
             <div className="grid grid-cols-2 gap-3 mt-4">
-              <button onClick={() => alert("Login con Google non ancora implementato.")} className="flex items-center justify-center gap-2 bg-white border border-stone-200 text-stone-700 py-3 rounded-[16px] font-black text-[11px] hover:border-stone-300 hover:bg-stone-50 transition-all uppercase tracking-widest shadow-sm">
+              <button onClick={() => window.location.href = '/register'} className="flex items-center justify-center gap-2 bg-white border border-stone-200 text-stone-700 py-3 rounded-[16px] font-black text-[11px] hover:border-stone-300 hover:bg-stone-50 transition-all uppercase tracking-widest shadow-sm">
                 <svg className="w-4 h-4" viewBox="0 0 24 24"><path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" /><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" /><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" /><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" /></svg>
                 Google
               </button>
-              <button onClick={() => alert("Login con Apple non ancora implementato.")} className="flex items-center justify-center gap-2 bg-stone-900 text-white py-3 rounded-[16px] font-black text-[11px] hover:bg-stone-800 transition-all uppercase tracking-widest shadow-sm shadow-stone-400/20">
+              <button onClick={() => window.location.href = '/register'} className="flex items-center justify-center gap-2 bg-stone-900 text-white py-3 rounded-[16px] font-black text-[11px] hover:bg-stone-800 transition-all uppercase tracking-widest shadow-sm shadow-stone-400/20">
                 <svg className="w-5 h-5 mb-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.05 2.95.72 3.84 1.94-3.25 1.89-2.71 5.92.51 7.15-.75 1.57-1.66 3.01-3 4.5v-.08zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" /></svg>
                 Apple
               </button>
@@ -763,6 +860,7 @@ const HomePage = () => {
 
       {/* Footer */}
       <AppFooter />
+      <AppBottomNav activeTab="home" />
     </div>
   );
 };
@@ -804,28 +902,42 @@ const ProfileDetailPage = () => {
     } catch (e) { }
 
     const fetchProfile = async () => {
-      // Get user with like/heart counts
-      const { data: userProfile, error } = await supabase
-        .from('users')
-        .select(`
-          *,
-          interactions!to_user_id(type)
-        `)
-        .eq('id', id)
-        .single();
+      if (!id) return;
 
-      if (error) console.error("ProfileDetail fetch error:", error);
+      // Safety: check if ID is UUID. Simulated IDs like "5" will fail in UUID columns.
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 
-      if (userProfile && !error) {
-        const profileWithCounts = {
-          ...userProfile,
-          likes_count: (userProfile.interactions as any[] || []).filter(i => i.type === 'like').length,
-          hearts_count: (userProfile.interactions as any[] || []).filter(i => i.type === 'heart').length
-        };
-        setProfile(normalizeUser(profileWithCounts));
+      if (!isUUID) {
+        setProfile(null);
+        setLoading(false);
+        return;
       }
-      else {
-        console.warn("No detail profile found for ID:", id);
+
+      try {
+        const { data: userProfile, error } = await supabase
+          .from('users')
+          .select(`
+            *,
+            interactions!to_user_id(type)
+          `)
+          .eq('id', id)
+          .single();
+
+        if (error) console.error("ProfileDetail fetch error:", error);
+
+        if (userProfile && !error) {
+          const profileWithCounts = {
+            ...userProfile,
+            likes_count: (userProfile.interactions as any[] || []).filter(i => i.type === 'like').length,
+            hearts_count: (userProfile.interactions as any[] || []).filter(i => i.type === 'heart').length
+          };
+          setProfile(normalizeUser(profileWithCounts));
+        }
+        else {
+          console.warn("No detail profile found for ID:", id);
+        }
+      } catch (e) {
+        console.error("ProfileDetail fetch exception:", e);
       }
       setLoading(false);
     };
@@ -952,11 +1064,12 @@ const ProfileDetailPage = () => {
       .single();
 
     if (updatedProfile) {
-      setProfile({
+      const profileWithCounts = {
         ...updatedProfile,
         likes_count: (updatedProfile.interactions as any[] || []).filter(i => i.type === 'like').length,
         hearts_count: (updatedProfile.interactions as any[] || []).filter(i => i.type === 'heart').length
-      });
+      };
+      setProfile(normalizeUser(profileWithCounts));
     }
     fetchInteractionState(currentUser.id);
 
@@ -1115,7 +1228,7 @@ const ProfileDetailPage = () => {
             <div>
 
               <h1 className="text-3xl font-serif font-black text-stone-900 leading-tight drop-shadow-sm">
-                {profile.name}{calculateAge(profile.dob) > 0 ? <span className="font-light text-2xl text-stone-500">, {calculateAge(profile.dob)}</span> : null}
+                {profile.name}{profile.dob && calculateAge(profile.dob) > 0 ? <span className="font-light text-2xl text-stone-500">, {calculateAge(profile.dob)}</span> : null}
               </h1>
               {profile.city && (
                 <p className="flex items-center gap-1 text-stone-500 text-sm font-semibold mt-0.5">
@@ -1123,7 +1236,7 @@ const ProfileDetailPage = () => {
                 </p>
               )}
               <p className="text-stone-400 text-xs font-bold mt-1 uppercase tracking-widest">
-                {profile.gender} • {profile.orientation?.join(', ')}
+                {profile.gender} • {(profile.orientation || []).join(', ')}
               </p>
               {!!profile.is_paid && (
                 <div className="mt-3 inline-flex items-center gap-1.5 bg-amber-50 text-amber-600 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-amber-200 shadow-sm">
@@ -1143,7 +1256,7 @@ const ProfileDetailPage = () => {
             "w-10 h-10 rounded-[14px] flex items-center justify-center transition-all",
             userInteractions.includes('like') ? "bg-emerald-100 text-emerald-600" : "bg-stone-50 text-stone-400 group-hover:bg-emerald-50 group-hover:text-emerald-500"
           )}>
-            <ThumbsUp className={cn("w-5 h-5", userInteractions.includes('like') && "fill-current")} />
+            <ThumbsUp className="w-5 h-5" />
           </div>
           <span className="text-lg font-black text-stone-900">{profile.likes_count || 0}</span>
           <span className={cn("text-[9px] font-bold uppercase tracking-widest", userInteractions.includes('like') ? "text-emerald-600" : "text-stone-400")}>Like</span>
@@ -1311,11 +1424,13 @@ const ProfileDetailPage = () => {
         {profile.hobbies && (
           <div className="bg-white rounded-[24px] border border-stone-100 p-5 shadow-sm">
             <h2 className="text-base font-serif font-black text-stone-900 mb-3">Interessi</h2>
-            <div className="flex flex-wrap gap-2">
-              {profile.hobbies.split(',').map((h, i) => h.trim() && (
-                <span key={i} className="px-3 py-1 bg-stone-100 text-stone-700 rounded-full text-xs font-semibold">{h.trim()}</span>
-              ))}
-            </div>
+            {profile.hobbies && (
+              <div className="flex flex-wrap gap-2">
+                {profile.hobbies.split(',').map((h: string, i: number) => h.trim() && (
+                  <span key={i} className="px-3 py-1 bg-stone-100 text-stone-700 rounded-full text-xs font-semibold">{h.trim()}</span>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -1324,7 +1439,7 @@ const ProfileDetailPage = () => {
           <h2 className="text-base font-serif font-black text-stone-900 mb-2 flex items-center gap-2">
             <Search className="w-4 h-4 text-rose-500" /> Cosa Cerca
           </h2>
-          <p className="text-xs text-stone-500 font-semibold mb-1">Preferenza: <span className="text-stone-800">{profile.looking_for_gender}</span></p>
+          <p className="text-xs text-stone-500 font-semibold mb-1">Preferenza: <span className="text-stone-800">{(profile.looking_for_gender || []).join(', ')}</span></p>
           <p className="text-xs text-stone-600 leading-relaxed">{profile.looking_for_other || 'In cerca di una connessione autentica e momenti speciali.'}</p>
         </div>
 
@@ -1350,21 +1465,10 @@ const ProfileDetailPage = () => {
         </div>
       </div>
 
-      {/* ── BOTTOM NAV BAR (iOS style) ── */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/90 backdrop-blur-xl border-t border-stone-100 shadow-2xl px-6 pb-6 pt-3">
-        <div className="max-w-sm mx-auto flex items-center justify-around">
-
-          {/* Home */}
-          <button
-            onClick={() => navigate('/')}
-            className="flex flex-col items-center gap-1 text-stone-400 hover:text-rose-600 active:scale-90 transition-all"
-          >
-            <Home className="w-6 h-6" />
-            <span className="text-[9px] font-black uppercase tracking-widest">Home</span>
-          </button>
-
-          {/* Centre — CTA message button, elevated */}
-          {chatStatus === 'pending' ? (
+      <AppBottomNav
+        activeTab="profile"
+        customCenter={
+          chatStatus === 'pending' ? (
             <div className="flex flex-col items-center gap-1">
               <div className="w-14 h-14 -mt-6 rounded-[22px] bg-emerald-500 flex items-center justify-center shadow-xl shadow-emerald-400/40 text-white">
                 <CheckCircle className="w-6 h-6" />
@@ -1383,20 +1487,9 @@ const ProfileDetailPage = () => {
                 {chatStatus === 'approved' ? 'Chat' : 'Scrivi'}
               </span>
             </button>
-          )}
-
-          {/* Bacheca */}
-          <button
-            onClick={() => navigate('/bacheca')}
-            className="flex flex-col items-center gap-1 text-stone-400 hover:text-rose-600 active:scale-90 transition-all"
-          >
-            <Users className="w-6 h-6" />
-            <span className="text-[9px] font-black uppercase tracking-widest">Bacheca</span>
-          </button>
-
-        </div>
-      </div>
-
+          )
+        }
+      />
 
       {/* ── MESSAGE MODAL ── */}
       <AnimatePresence>
@@ -1458,8 +1551,6 @@ const BachecaPage = () => {
   const [showSoulMatch, setShowSoulMatch] = useState(false);
   const [soulmatchToast, setSoulmatchToast] = useState(false);
   const [selectedGenders, setSelectedGenders] = useState<string[]>([]);
-  const [bannerMessages, setBannerMessages] = useState<any[]>([]);
-  const [bannerIndex, setBannerIndex] = useState(0);
 
   const SM_COOLDOWN_KEY = 'soulmatch_last_used';
   const COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24h
@@ -1474,6 +1565,8 @@ const BachecaPage = () => {
 
   const isSoulMatchOnCooldown = () => getSoulMatchCooldownRemaining() > 0;
 
+  const [showSoulMatchConfirm, setShowSoulMatchConfirm] = useState(false);
+
   const formatCooldown = (): string => {
     const ms = getSoulMatchCooldownRemaining();
     const h = Math.floor(ms / 3600000);
@@ -1487,12 +1580,13 @@ const BachecaPage = () => {
       setTimeout(() => setSoulmatchToast(false), 4000);
       return;
     }
-    setShowSoulMatch(true);
+    setShowSoulMatchConfirm(true);
   };
 
   const confirmSoulMatch = () => {
     localStorage.setItem(SM_COOLDOWN_KEY, Date.now().toString());
-    // toast stays open, modal shows matches
+    setShowSoulMatchConfirm(false);
+    setShowSoulMatch(true);
   };
 
   const fetchProfiles = async () => {
@@ -1543,21 +1637,11 @@ const BachecaPage = () => {
       navigate('/register');
     }
 
-    fetch('/api/banner-messages').then(r => r.json()).then(setBannerMessages).catch(() => { });
-
     // Save scroll position on unmount
     return () => {
       sessionStorage.setItem('bacheca_scroll', window.scrollY.toString());
     };
   }, []);
-
-  useEffect(() => {
-    if (bannerMessages.length === 0) return;
-    const interval = setInterval(() => {
-      setBannerIndex(prev => (prev + 1 >= bannerMessages.length ? 0 : prev + 1));
-    }, 4000);
-    return () => clearInterval(interval);
-  }, [bannerMessages]);
 
   // Restore scroll position after profiles are loaded
   useEffect(() => {
@@ -1567,6 +1651,13 @@ const BachecaPage = () => {
         setTimeout(() => {
           window.scrollTo(0, parseInt(savedScroll));
         }, 50);
+      }
+
+      // Check if we came from Feed to trigger SoulMatch
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('soulmatch') === 'true') {
+        window.history.replaceState({}, '', window.location.pathname);
+        handleSoulMatchPress();
       }
     }
   }, [loading, profiles]);
@@ -1687,7 +1778,6 @@ const BachecaPage = () => {
     const existing = cardReactions[profileId];
     if (existing === type) return; // already reacted with this type
     setCardReactions(prev => ({ ...prev, [profileId]: type }));
-    playTapSound();
     try {
       const { error } = await supabase
         .from('interactions')
@@ -1773,27 +1863,28 @@ const BachecaPage = () => {
         {/* Filter bar */}
         <div className="space-y-4">
 
-          <div className="flex items-center gap-2">
-            <div className="flex-1 flex gap-2 overflow-x-auto scrollbar-hide">
-              <button
-                onClick={() => setShowAdvanced(!showAdvanced)}
-                className={cn(
-                  'flex items-center gap-2 px-4 py-2.5 rounded-[16px] border text-xs font-black uppercase tracking-widest transition-all shrink-0',
-                  showAdvanced ? 'bg-stone-900 text-white border-stone-900' : 'bg-white text-stone-500 border-stone-200'
-                )}
-              >
-                <Filter className="w-3.5 h-3.5" />
-                Filtri
-                {(filterAge[0] !== 18 || filterAge[1] !== 99 || filterCity !== 'Tutte') && (
-                  <span className="w-2 h-2 bg-rose-600 rounded-full" />
-                )}
-              </button>
-            </div>
+          <div className="flex items-center justify-between gap-2">
+            <button
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              className={cn(
+                'flex items-center gap-2 px-4 py-2.5 rounded-[16px] border text-xs font-black uppercase tracking-widest transition-all shrink-0',
+                showAdvanced ? 'bg-stone-900 text-white border-stone-900' : 'bg-white text-stone-500 border-stone-200'
+              )}
+            >
+              <Filter className="w-3.5 h-3.5" />
+              Filtri
+              {(filterAge[0] !== 18 || filterAge[1] !== 99 || filterCity !== 'Tutte') && (
+                <span className="w-2 h-2 bg-rose-600 rounded-full" />
+              )}
+            </button>
+            <span className="text-[10px] text-stone-400 font-bold uppercase tracking-widest bg-stone-50 px-3 py-1 rounded-full border border-stone-100">
+              {filteredProfiles.length} profili
+            </span>
           </div>
 
           <AnimatePresence>
             {showAdvanced && (
-              <motion.div initial={{ opacity: 0, height: 0, marginTop: 0 }} animate={{ opacity: 1, height: 'auto', marginTop: 16 }} exit={{ opacity: 0, height: 0, overflow: 'hidden' }}
+              <motion.div initial={{ opacity: 0, height: 0, marginTop: 16 }} animate={{ opacity: 1, height: 'auto', marginTop: 16 }} exit={{ opacity: 0, height: 0, overflow: 'hidden' }}
                 className="bg-white rounded-[24px] border border-stone-100 p-5 shadow-sm space-y-6"
               >
                 {/* Orizzontal Genders Toggle slider */}
@@ -1859,44 +1950,7 @@ const BachecaPage = () => {
           </AnimatePresence>
         </div>
 
-        {/* ── FLOATING BANNER (ISOLA BANNER) ── */}
-        {bannerMessages.length > 0 && (
-          <div className="relative -mx-4 px-4 z-40 mb-2">
-            <div className="bg-white/95 backdrop-blur-md rounded-[24px] p-3.5 shadow-xl shadow-rose-900/10 border border-white flex flex-col justify-center relative overflow-hidden h-[84px] ring-1 ring-black/[0.03]">
-              <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b from-rose-400 to-rose-600 rounded-l-[24px]" />
-              <AnimatePresence mode="popLayout" initial={false}>
-                {bannerMessages.length > 0 && (
-                  <motion.div
-                    key={bannerMessages[bannerIndex]?.id || 'empty'}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20, position: 'absolute' }}
-                    transition={{ duration: 0.5, ease: "circOut" }}
-                    className="flex items-center gap-3.5 w-full pl-2"
-                  >
-                    <div className="w-12 h-12 rounded-full overflow-hidden shrink-0 ring-4 ring-rose-50 shadow-sm bg-stone-100 border border-white">
-                      <img src={bannerMessages[bannerIndex]?.photo_url || `https://picsum.photos/seed/${bannerMessages[bannerIndex]?.name}/100`} className="w-full h-full object-cover" />
-                    </div>
-                    <div className="flex-1 min-w-0 pr-1">
-                      <div className="flex items-center gap-2 leading-tight">
-                        <span className="text-[12px] font-black text-stone-900 truncate">{bannerMessages[bannerIndex]?.name}</span>
-                        <span className="text-[10px] font-bold text-stone-400 shrink-0">{bannerMessages[bannerIndex]?.dob ? calculateAge(bannerMessages[bannerIndex]?.dob) : ''}</span>
-                        <span className="text-[9px] px-2 py-0.5 bg-stone-100 text-stone-500 rounded-full font-bold ml-auto shrink-0">{bannerMessages[bannerIndex]?.city}</span>
-                      </div>
-                      <p className="text-xs text-stone-600 font-medium truncate mt-1 pr-2">{bannerMessages[bannerIndex]?.message}</p>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          </div>
-        )}
 
-        {/* Section title */}
-        <div className="flex items-center justify-between px-1">
-          <h2 className="text-lg font-serif font-black text-stone-900">Scopri</h2>
-          <span className="text-[10px] text-stone-400 font-bold uppercase tracking-widest">{filteredProfiles.length} profili</span>
-        </div>
 
         {/* Profile grid */}
         {loading ? (
@@ -1906,7 +1960,7 @@ const BachecaPage = () => {
         ) : filteredProfiles.length === 0 ? (
           <div className="text-center py-16 bg-white rounded-[28px] border border-stone-100 px-6">
             <div className="w-14 h-14 bg-stone-50 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Search className="w-7 h-7 text-stone-200" />
+              <Search className="w-8 h-8 text-stone-200" />
             </div>
             <h3 className="text-sm font-black text-stone-900 mb-1">Nessun profilo compatibile</h3>
             <p className="text-[11px] text-stone-400 mb-6 leading-relaxed">
@@ -1935,7 +1989,7 @@ const BachecaPage = () => {
                       <p className="text-white text-xs font-black truncate">{profile.name}{profile.dob && calculateAge(profile.dob) > 0 ? `, ${calculateAge(profile.dob)}` : ''}</p>
                       {profile.city && <p className="text-white/70 text-[9px] font-semibold truncate flex items-center gap-0.5 mb-0.5"><MapPin className="w-2.5 h-2.5" />{profile.city}</p>}
                       <p className="text-white/60 text-[9px] font-bold truncate">
-                        {profile.gender} • {profile.orientation?.join(', ')}
+                        {profile.gender} • {(profile.orientation || []).join(', ')}
                       </p>
                     </div>
                   </div>
@@ -1952,7 +2006,7 @@ const BachecaPage = () => {
                     )}
                     title="Cuore"
                   >
-                    <Heart className={cn('w-4 h-4', cardReactions[profile.id] === 'heart' && 'fill-current')} />
+                    <Heart className={cn("w-4 h-4", cardReactions[profile.id] === 'heart' && 'fill-current')} />
                   </button>
                   <button
                     onClick={e => handleQuickReaction(profile.id, 'like', e)}
@@ -1964,7 +2018,7 @@ const BachecaPage = () => {
                     )}
                     title="Like"
                   >
-                    <ThumbsUp className={cn('w-4 h-4', cardReactions[profile.id] === 'like' && 'fill-current')} />
+                    <ThumbsUp className={cn("w-4 h-4", cardReactions[profile.id] === 'like' && 'fill-current')} />
                   </button>
                 </div>
               </div>
@@ -1973,18 +2027,9 @@ const BachecaPage = () => {
         )}
       </div>
 
-      {/* ── BOTTOM NAV BAR ── */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/90 backdrop-blur-xl border-t border-stone-100 shadow-2xl px-6 pb-6 pt-3">
-        <div className="max-w-sm mx-auto flex items-center justify-around">
-
-          <Link to="/"
-            className="flex flex-col items-center gap-1 text-stone-400 hover:text-rose-600 active:scale-90 transition-all"
-          >
-            <Home className="w-6 h-6" />
-            <span className="text-[9px] font-black uppercase tracking-widest">Home</span>
-          </Link>
-
-          {/* Centre: SoulMatch button */}
+      <AppBottomNav
+        activeTab="bacheca"
+        customCenter={
           <button
             onClick={handleSoulMatchPress}
             className="flex flex-col items-center gap-1 relative"
@@ -2002,25 +2047,8 @@ const BachecaPage = () => {
               isSoulMatchOnCooldown() ? "text-stone-400" : "text-rose-600"
             )}>SoulMatch</span>
           </button>
-
-          {/* SoulLink button */}
-          <Link to="/soul-links"
-            className="flex flex-col items-center gap-1 text-stone-400 hover:text-violet-600 active:scale-90 transition-all"
-          >
-            <div className="relative">
-              <Link2 className="w-6 h-6" />
-            </div>
-            <span className="text-[9px] font-black uppercase tracking-widest">SoulLink</span>
-          </Link>
-
-          <Link to="/profile"
-            className="flex flex-col items-center gap-1 text-stone-400 hover:text-rose-600 active:scale-90 transition-all"
-          >
-            <User className="w-6 h-6" />
-            <span className="text-[9px] font-black uppercase tracking-widest">Profilo</span>
-          </Link>
-        </div>
-      </div>
+        }
+      />
 
       {/* ── COOLDOWN TOAST ── */}
       <AnimatePresence>
@@ -2065,8 +2093,18 @@ const BachecaPage = () => {
               <div className="w-10" />
             </div>
 
-            {/* Confirmation notice (first time) */}
-            <SoulMatchConfirmBanner onConfirm={confirmSoulMatch} />
+            {/* Rankings header */}
+            <div className="mx-4 mt-6 bg-rose-600 text-white rounded-[24px] p-5 shadow-xl shadow-rose-300/30 flex items-start gap-3">
+              <div className="w-10 h-10 bg-white/20 rounded-[14px] flex items-center justify-center shrink-0 mt-0.5">
+                <Heart className="w-5 h-5 fill-current" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-sm font-black uppercase tracking-widest mb-1">✨ I Tuoi Match Ideali</h3>
+                <p className="text-[11px] text-rose-100 leading-relaxed">
+                  Ecco i <strong className="text-white">10 profili più compatibili</strong> in base alle tue preferenze correnti.
+                </p>
+              </div>
+            </div>
 
             {/* Top-10 compatible profiles */}
             <div className="max-w-md mx-auto px-4 pt-4 pb-28 space-y-4">
@@ -2199,6 +2237,162 @@ const SoulMatchConfirmBanner = ({ onConfirm }: { onConfirm: () => void }) => {
   );
 };
 
+// ── Feed Page ──
+const FeedPage = () => {
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+
+  const [profiles, setProfiles] = useState<UserProfile[]>([]);
+  const [bannerMessages, setBannerMessages] = useState<any[]>([]);
+  const [bannerIndex, setBannerIndex] = useState(0);
+  const [heroIndex, setHeroIndex] = useState(0);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('soulmatch_user');
+      if (saved) {
+        setCurrentUser(normalizeUser(JSON.parse(saved)));
+      } else {
+        navigate('/register');
+      }
+    } catch (e) {
+      navigate('/register');
+    }
+
+    const fetchData = async () => {
+      const { data } = await supabase.from('users').select('*').limit(50);
+      if (data) {
+        const processed = data.map((u: any) => normalizeUser(u)).filter((p: any) => (p.photos && p.photos.length > 0) || p.photo_url);
+        setProfiles(processed);
+      }
+      setLoading(false);
+    };
+    fetchData();
+
+    fetch('/api/banner-messages').then(r => r.json()).then(setBannerMessages).catch(() => { });
+  }, [navigate]);
+
+  useEffect(() => {
+    if (bannerMessages.length === 0) return;
+    const interval = setInterval(() => {
+      setBannerIndex(prev => (prev + 1 >= bannerMessages.length ? 0 : prev + 1));
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [bannerMessages]);
+
+  const heroProfiles = profiles.slice(0, Math.min(5, profiles.length));
+  useEffect(() => {
+    if (heroProfiles.length < 2) return;
+    const timer = setInterval(() => setHeroIndex(i => (i + 1) % heroProfiles.length), 4000);
+    return () => clearInterval(timer);
+  }, [heroProfiles.length]);
+
+  const heroProfile = heroProfiles[heroIndex];
+
+  return (
+    <div className="min-h-screen bg-[#F8F4EF] pt-16 pb-28 relative overflow-x-hidden">
+      {/* ── HERO SLIDER ── */}
+      {!loading && heroProfile && (
+        <div className="relative w-full h-[42vh] min-h-[260px] overflow-hidden mb-6">
+          <AnimatePresence mode="sync">
+            <motion.img
+              key={heroProfile.id}
+              src={(heroProfile.photos?.[0]) || heroProfile.photo_url || `https://picsum.photos/seed/${heroProfile.name}/600/800`}
+              initial={{ opacity: 0, scale: 1.05 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.8 }}
+              className="absolute inset-0 w-full h-full object-cover object-top border-b border-stone-200"
+            />
+          </AnimatePresence>
+          <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-[#F8F4EF]" />
+          <div className="absolute bottom-0 left-0 right-0 px-5 pb-5 flex items-end justify-between z-10">
+            <div>
+              <h2 className="text-2xl font-serif font-black text-stone-900 drop-shadow-sm">
+                {heroProfile.name}{heroProfile.dob && calculateAge(heroProfile.dob) > 0 ? <span className="font-light text-xl text-stone-500">, {calculateAge(heroProfile.dob)}</span> : null}
+              </h2>
+              {heroProfile.city && (
+                <p className="text-stone-500 text-xs font-semibold flex items-center gap-1">
+                  <MapPin className="w-3 h-3" />{heroProfile.city}
+                </p>
+              )}
+            </div>
+            <Link
+              to={`/profile-detail/${heroProfile.id}`}
+              className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center shadow-lg border border-white/30 text-white"
+            >
+              <ArrowRight className="w-5 h-5" />
+            </Link>
+          </div>
+          {heroProfiles.length > 1 && (
+            <div className="absolute top-4 right-5 flex gap-1.5 z-20">
+              {heroProfiles.map((_, i) => (
+                <button key={i} onClick={() => setHeroIndex(i)}
+                  className={cn('w-1.5 h-1.5 rounded-full transition-all', i === heroIndex ? 'bg-white w-4' : 'bg-white/40')}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── FLOATING BANNER (ISOLA BANNER) ── */}
+      {bannerMessages.length > 0 && (
+        <div className="relative px-4 z-40 mb-8 mt-[-30px]">
+          <div className="bg-white/95 backdrop-blur-md rounded-[24px] p-3.5 shadow-xl shadow-rose-900/10 border border-white flex flex-col justify-center relative overflow-hidden h-[84px] ring-1 ring-black/[0.03]">
+            <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b from-rose-400 to-rose-600 rounded-l-[24px]" />
+            <AnimatePresence mode="popLayout" initial={false}>
+              {bannerMessages.length > 0 && (
+                <motion.div
+                  key={bannerMessages[bannerIndex]?.id || 'empty'}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20, position: 'absolute' }}
+                  transition={{ duration: 0.5, ease: "circOut" }}
+                  className="flex items-center gap-3.5 w-full pl-2"
+                >
+                  <div className="w-12 h-12 rounded-full overflow-hidden shrink-0 ring-4 ring-rose-50 shadow-sm bg-stone-100 border border-white">
+                    <img src={bannerMessages[bannerIndex]?.photo_url || `https://picsum.photos/seed/${bannerMessages[bannerIndex]?.name}/100`} className="w-full h-full object-cover" />
+                  </div>
+                  <div className="flex-1 min-w-0 pr-1">
+                    <div className="flex items-center gap-2 leading-tight">
+                      <span className="text-[12px] font-black text-stone-900 truncate">{bannerMessages[bannerIndex]?.name}</span>
+                      <span className="text-[10px] font-bold text-stone-400 shrink-0">{bannerMessages[bannerIndex]?.dob ? calculateAge(bannerMessages[bannerIndex]?.dob) : ''}</span>
+                      <span className="text-[9px] px-2 py-0.5 bg-stone-100 text-stone-500 rounded-full font-bold ml-auto shrink-0">{bannerMessages[bannerIndex]?.city}</span>
+                    </div>
+                    <p className="text-xs text-stone-600 font-medium truncate mt-1 pr-2">{bannerMessages[bannerIndex]?.message}</p>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
+      )}
+
+      {/* ── FEED POSTS ── */}
+      <div className="px-4">
+        {currentUser?.id && <FeedComponent userId={null} isOwner={false} global={true} />}
+      </div>
+
+      <AppBottomNav
+        activeTab="feed"
+        customCenter={
+          <button
+            onClick={() => navigate('/bacheca?soulmatch=true')}
+            className="flex flex-col items-center gap-1 relative"
+          >
+            <div className="w-14 h-14 -mt-6 rounded-[22px] bg-rose-600 flex items-center justify-center shadow-xl shadow-rose-400/40 text-white active:scale-90 transition-all">
+              <Heart className="w-6 h-6 fill-current" />
+            </div>
+            <span className="text-[9px] font-black uppercase tracking-widest text-rose-600">SoulMatch</span>
+          </button>
+        }
+      />
+    </div>
+  );
+};
+
 // ── SoulLinks Page ──────────────────────────────────────────────────────
 const SoulLinksPage = () => {
   const navigate = useNavigate();
@@ -2215,16 +2409,16 @@ const SoulLinksPage = () => {
     const { data: sentData } = await supabase
       .from('soul_links')
       .select(`
-        id, sender_id, receiver_id, status, created_at,
-        receiver:users!receiver_id(id, name, surname, photos, photo_url, city, is_online)
+      id, sender_id, receiver_id, status, created_at,
+      receiver:users!receiver_id(id, name, surname, photos, photo_url, city, is_online)
       `)
       .eq('sender_id', userId);
 
     const { data: receivedData } = await supabase
       .from('soul_links')
       .select(`
-        id, sender_id, receiver_id, status, created_at,
-        sender:users!sender_id(id, name, surname, photos, photo_url, city, is_online)
+      id, sender_id, receiver_id, status, created_at,
+      sender:users!sender_id(id, name, surname, photos, photo_url, city, is_online)
       `)
       .eq('receiver_id', userId);
 
@@ -2254,9 +2448,9 @@ const SoulLinksPage = () => {
       const { data: postsData } = await supabase
         .from('posts')
         .select(`
-          *,
-          user:users(name, photos, photo_url)
-        `)
+      *,
+      user:users(name, photos, photo_url)
+      `)
         .in('user_id', friendIds)
         .order('created_at', { ascending: false })
         .limit(30);
@@ -2288,7 +2482,35 @@ const SoulLinksPage = () => {
     } catch (e) {
       navigate('/register');
     }
-  }, []);
+
+    // Realtime subscription for SoulLinks
+    if (currentUser?.id) {
+      const channel = supabase
+        .channel('soul-links-realtime')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'soul_links',
+            filter: `receiver_id=eq.${currentUser.id}`
+          },
+          () => fetchSoulLinks(currentUser.id)
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'soul_links',
+            filter: `sender_id=eq.${currentUser.id}`
+          },
+          () => fetchSoulLinks(currentUser.id)
+        )
+        .subscribe();
+      return () => { supabase.removeChannel(channel); };
+    }
+  }, [currentUser?.id, navigate]);
 
   const handleAccept = async (slId: string) => {
     const { error } = await supabase
@@ -2377,7 +2599,7 @@ const SoulLinksPage = () => {
         </div>
       </div>
 
-      <div className="max-w-md mx-auto px-4 pt-4 space-y-4">
+      <div className="max-w-md mx-auto px-4 pt-6 space-y-4">
 
         {/* ── TAB: FEED ── */}
         {activeTab === 'feed' && (
@@ -2629,29 +2851,7 @@ const SoulLinksPage = () => {
         )}
       </div>
 
-      {/* ── BOTTOM NAV ── */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/90 backdrop-blur-xl border-t border-stone-100 shadow-2xl px-6 pb-6 pt-3">
-        <div className="max-w-sm mx-auto flex items-center justify-around">
-          <Link to="/" className="flex flex-col items-center gap-1 text-stone-400 hover:text-rose-600 active:scale-90 transition-all">
-            <Home className="w-6 h-6" />
-            <span className="text-[9px] font-black uppercase tracking-widest">Home</span>
-          </Link>
-          <Link to="/bacheca" className="flex flex-col items-center gap-1 text-stone-400 hover:text-rose-600 active:scale-90 transition-all">
-            <Users className="w-6 h-6" />
-            <span className="text-[9px] font-black uppercase tracking-widest">Bacheca</span>
-          </Link>
-          <div className="flex flex-col items-center gap-1">
-            <div className="w-14 h-14 -mt-6 rounded-[22px] bg-violet-600 flex items-center justify-center shadow-xl shadow-violet-400/40">
-              <Link2 className="w-6 h-6 text-white" />
-            </div>
-            <span className="text-[9px] font-black uppercase tracking-widest text-violet-600">SoulLink</span>
-          </div>
-          <Link to="/profile" className="flex flex-col items-center gap-1 text-stone-400 hover:text-rose-600 active:scale-90 transition-all">
-            <User className="w-6 h-6" />
-            <span className="text-[9px] font-black uppercase tracking-widest">Profilo</span>
-          </Link>
-        </div>
-      </div>
+      <AppBottomNav activeTab="soullink" />
     </div>
   );
 };
@@ -3590,7 +3790,7 @@ const RegisterPage = () => {
         navigate('/bacheca');
       } else {
         console.log("No profile record found in 'users' table. Redirecting to complete registration.");
-        setToast({ message: "Bentornato! Il tuo account esiste ma il profilo non è completo. Per favore completa i dati mancanti.", type: 'info' });
+        setToast({ message: "Bentornato! Il tuo account esiste ma il profilo non è completo. Per favora completa i dati mancanti.", type: 'info' });
         setIsLogin(false);
         setStep(2);
       }
@@ -3598,6 +3798,16 @@ const RegisterPage = () => {
       console.error("Exception during login process:", e);
       setToast({ message: "Errore imprevisto durante l'accesso.", type: 'error' });
     }
+  };
+
+  const handleOAuthLogin = async (provider: 'google' | 'apple') => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo: window.location.origin + '/bacheca'
+      }
+    });
+    if (error) setToast({ message: "Errore login " + provider + ": " + error.message, type: 'error' });
   };
 
   const handleNextToStep2 = () => {
@@ -3831,11 +4041,11 @@ const RegisterPage = () => {
                     {isLogin ? 'Accedi' : 'Continua'}
                   </button>
                   <div className="grid grid-cols-2 gap-3 mt-4">
-                    <button type="button" onClick={() => alert("Login con Google non implementato")} className="flex items-center justify-center gap-2 bg-white border border-stone-200 text-stone-700 py-3 rounded-xl font-black text-xs hover:border-stone-300 hover:bg-stone-50 transition-all transform active:scale-95 shadow-sm">
+                    <button type="button" onClick={() => handleOAuthLogin('google')} className="flex items-center justify-center gap-2 bg-white border border-stone-200 text-stone-700 py-3 rounded-xl font-black text-xs hover:border-stone-300 hover:bg-stone-50 transition-all transform active:scale-95 shadow-sm">
                       <svg className="w-4 h-4" viewBox="0 0 24 24"><path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" /><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" /><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" /><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" /></svg>
                       Google
                     </button>
-                    <button type="button" onClick={() => alert("Login con Apple non implementato")} className="flex items-center justify-center gap-2 bg-stone-900 text-white py-3 rounded-xl font-black text-xs hover:bg-stone-800 transition-all transform active:scale-95 shadow-sm">
+                    <button type="button" onClick={() => handleOAuthLogin('apple')} className="flex items-center justify-center gap-2 bg-stone-900 text-white py-3 rounded-xl font-black text-xs hover:bg-stone-800 transition-all transform active:scale-95 shadow-sm">
                       <svg className="w-5 h-5 mb-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.05 2.95.72 3.84 1.94-3.25 1.89-2.71 5.92.51 7.15-.75 1.57-1.66 3.01-3 4.5v-.08zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" /></svg>
                       Apple
                     </button>
@@ -3990,7 +4200,7 @@ const RegisterPage = () => {
                     <label className="text-xs font-bold text-stone-700 ml-1">Foto Profilo (Max 5)</label>
                     <div className="grid grid-cols-5 gap-2">
                       {formData.photos?.map((url, i) => (
-                        <div key={i} className="aspect-square rounded-lg overflow-hidden border border-stone-200 relative group">
+                        <div key={i} className="aspect-square rounded-lg overflow-hidden relative group">
                           <img src={url} className="w-full h-full object-cover" />
                           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                             <label className="p-1.5 bg-white rounded-full text-stone-600 cursor-pointer hover:text-rose-600 shadow-sm">
@@ -4010,7 +4220,7 @@ const RegisterPage = () => {
                       ))}
                       {(formData.photos?.length || 0) < 5 && (
                         <label className="aspect-square rounded-lg border-2 border-dashed border-stone-200 flex items-center justify-center cursor-pointer hover:bg-stone-50">
-                          <UserPlus className="w-4 h-4 text-stone-400" />
+                          <UserPlus className="w-4 h-4" />
                           <input type="file" multiple accept="image/*" className="hidden" onChange={handlePhotoUpload} />
                         </label>
                       )}
@@ -4026,7 +4236,7 @@ const RegisterPage = () => {
                     </p>
                     <label className={cn(
                       "w-full p-3 rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors",
-                      formData.id_document_url ? "border-emerald-200 bg-emerald-50" : "border-stone-200 hover:bg-stone-100"
+                      formData.id_document_url ? "border-emerald-200 bg-emerald-50" : "border-stone-200 hover:bg-stone-50"
                     )}>
                       {formData.id_document_url ? (
                         <>
@@ -4350,7 +4560,7 @@ const RegisterPage = () => {
   );
 };
 
-const FeedComponent = ({ userId, isOwner }: { userId: any, isOwner?: boolean }) => {
+const FeedComponent = ({ userId, isOwner, global = false }: { userId: any, isOwner?: boolean, global?: boolean }) => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [newPostDesc, setNewPostDesc] = useState('');
   const [newPostPhotos, setNewPostPhotos] = useState<string[]>([]);
@@ -4391,16 +4601,20 @@ const FeedComponent = ({ userId, isOwner }: { userId: any, isOwner?: boolean }) 
       const viewer = localStorage.getItem('soulmatch_user') ? JSON.parse(localStorage.getItem('soulmatch_user')!) : null;
       const viewerId = viewer?.id;
 
-      // Fetch posts with author info and interaction counts
-      const { data: postsData, error } = await supabase
+      let query = supabase
         .from('posts')
         .select(`
-                    *,
-                    user:users (name, photos, photo_url),
-                    post_interactions!post_interactions_post_id_fkey(type)
-                    `)
-        .eq('user_id', userId)
+                  *,
+                  user:users (name, photos, photo_url, gender, orientation),
+                  post_interactions!post_interactions_post_id_fkey(type)
+                  `)
         .order('created_at', { ascending: false });
+
+      if (!global) {
+        query = query.eq('user_id', userId);
+      }
+
+      const { data: postsData, error } = await query;
 
       if (postsData && !error) {
         // Fetch current viewer's interactions for these posts
@@ -4414,10 +4628,12 @@ const FeedComponent = ({ userId, isOwner }: { userId: any, isOwner?: boolean }) 
           viewerInteractions = interactionData || [];
         }
 
-        const processed = postsData.map((p: any) => ({
+        const processed = (postsData as any[]).map(p => ({
           ...p,
           author_name: p.user?.name,
           author_photo: p.user?.photos?.[0] || p.user?.photo_url,
+          author_gender: p.user?.gender,
+          author_orientation: parseArrField(p.user?.orientation),
           likes_count: (p.post_interactions as any[] || []).filter(i => i.type === 'like').length,
           hearts_count: (p.post_interactions as any[] || []).filter(i => i.type === 'heart').length,
           has_liked: viewerInteractions.some(i => i.post_id === p.id && i.type === 'like'),
@@ -4593,7 +4809,16 @@ const FeedComponent = ({ userId, isOwner }: { userId: any, isOwner?: boolean }) 
                 </div>
                 <div>
                   <h4 className="text-sm font-black text-stone-900 leading-none mb-1">{post.author_name}</h4>
-                  <p className="text-[10px] text-stone-400 font-bold uppercase tracking-widest">
+                  <div className="flex flex-wrap items-center gap-1.5 mb-1 text-[9px] font-bold uppercase tracking-widest text-stone-500">
+                    <span>{post.author_gender}</span>
+                    {post.author_orientation && post.author_orientation.length > 0 && (
+                      <>
+                        <span className="text-stone-300">•</span>
+                        <span>{post.author_orientation.join(', ')}</span>
+                      </>
+                    )}
+                  </div>
+                  <p className="text-[9px] text-stone-400 font-bold uppercase tracking-widest">
                     {new Date(post.created_at).toLocaleDateString()} • {new Date(post.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </p>
                 </div>
@@ -5723,13 +5948,22 @@ const ProfilePage = () => {
               <span className="text-[8px] font-black uppercase tracking-widest">Bacheca</span>
             </button>
 
+            {/* Feed */}
+            <button
+              onClick={() => navigate('/feed')}
+              className="flex flex-col items-center gap-1 text-stone-400 hover:text-rose-600 active:scale-90 transition-all"
+            >
+              <LayoutGrid className="w-5 h-5" />
+              <span className="text-[8px] font-black uppercase tracking-widest">Feed</span>
+            </button>
+
             {/* Centre button – Modifica (elevated) */}
             <button
               onClick={() => navigate('/edit-profile')}
               className="flex flex-col items-center gap-1"
               title="Modifica profilo"
             >
-              <div className="w-[52px] h-[52px] -mt-5 rounded-[18px] bg-rose-600 flex items-center justify-center shadow-xl shadow-rose-400/40 text-white active:scale-90 transition-all">
+              <div className="w-[50px] h-[50px] -mt-5 rounded-[18px] bg-rose-600 flex items-center justify-center shadow-xl shadow-rose-400/40 text-white active:scale-90 transition-all">
                 <Settings2 className="w-5 h-5" />
               </div>
               <span className="text-[8px] font-black uppercase tracking-widest text-rose-600 mt-0.5">Modifica</span>
@@ -6220,6 +6454,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/bacheca" element={<BachecaPage />} />
+        <Route path="/feed" element={<FeedPage />} />
         <Route path="/soul-links" element={<SoulLinksPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/profile" element={<ProfilePage />} />
