@@ -10,6 +10,7 @@ import {
   CreditCard,
   CheckCircle,
   MessageSquare,
+  MessageCircle,
   MapPin,
   Calendar,
   Briefcase,
@@ -34,15 +35,14 @@ import {
   RefreshCw,
   Plus,
   X,
+  Send,
   LogOut,
   ShieldCheck,
   Share2,
   AlertTriangle,
   Link2,
   UserCheck,
-  XCircle,
-  MessageCircle,
-  Send
+  XCircle
 } from 'lucide-react';
 import { cn, calculateAge, calculateMatchScore, fileToBase64, playTapSound } from './utils';
 import { UserProfile, ChatRequest, Post, SoulLink } from './types';
@@ -884,6 +884,111 @@ const HomePage = () => {
 };
 
 
+const LiveChatModal = ({ profile, currentUser, onClose }: { profile: any, currentUser: any, onClose: () => void }) => {
+  const [messages, setMessages] = useState<any[]>([]);
+  const [text, setText] = useState('');
+  const messagesEndRef = React.useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const fetchMsgs = async () => {
+      const { data } = await supabase
+        .from('room_messages')
+        .select('*')
+        .or(`and(sender_id.eq.${currentUser.id},receiver_id.eq.${profile.id}),and(sender_id.eq.${profile.id},receiver_id.eq.${currentUser.id})`)
+        .order('created_at', { ascending: true })
+        .limit(100);
+      if (data) setMessages(data);
+    };
+    fetchMsgs();
+
+    const channel = supabase.channel('room_messages_channel')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'room_messages' }, (payload) => {
+        const msg = payload.new;
+        if ((msg.sender_id === currentUser.id && msg.receiver_id === profile.id) ||
+          (msg.sender_id === profile.id && msg.receiver_id === currentUser.id)) {
+          setMessages(prev => [...prev, msg]);
+        }
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [profile.id, currentUser.id]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const handleSend = async () => {
+    if (!text.trim()) return;
+    const msgText = text;
+    setText('');
+    await supabase.from('room_messages').insert([
+      { sender_id: currentUser.id, receiver_id: profile.id, text: msgText }
+    ]);
+  };
+
+  return (
+    <div className="fixed inset-0 z-[120] bg-white flex flex-col pt-safe">
+      {/* Header */}
+      <div className="flex items-center gap-3 p-4 border-b border-stone-100 shadow-sm relative z-10 bg-white">
+        <button onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-stone-50 transition-colors">
+          <ChevronRight className="w-6 h-6 rotate-180 text-stone-600" />
+        </button>
+        <div className="flex items-center gap-3 flex-1">
+          <div className="w-10 h-10 rounded-[14px] overflow-hidden shrink-0 border border-stone-100 bg-stone-50">
+            <img src={profile.photo_url || `https://picsum.photos/seed/${profile.name}/100`} className="w-full h-full object-cover" />
+          </div>
+          <div className="flex flex-col">
+            <div className="font-bold text-stone-900 leading-none">{profile.name}</div>
+            <div className="text-[10px] text-emerald-500 font-bold uppercase tracking-widest mt-1 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Online ora
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 bg-[#F8F4EF]">
+        <div className="text-center mb-4">
+          <span className="text-[10px] bg-white/60 text-stone-400 px-3 py-1 rounded-full font-bold uppercase tracking-widest border border-stone-200/50 shadow-sm inline-block">
+            Inizio Chat Sicura. Solo messaggi diretti.
+          </span>
+        </div>
+        {messages.map(m => (
+          <div key={m.id} className={cn(
+            "max-w-[80%] rounded-2xl px-4 py-3 text-[13px] font-medium leading-relaxed font-sans shadow-sm",
+            m.sender_id === currentUser.id
+              ? "bg-rose-600 text-white self-end rounded-br-[4px]"
+              : "bg-white text-stone-800 self-start border border-stone-100 rounded-bl-[4px]"
+          )}>
+            {m.text}
+          </div>
+        ))}
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Input */}
+      <div className="p-4 border-t border-stone-100 bg-white flex gap-2 pb-safe shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.05)]">
+        <input
+          value={text}
+          onChange={e => setText(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && handleSend()}
+          className="flex-1 bg-stone-50 rounded-[20px] px-5 py-3.5 text-sm outline-none border border-stone-200 focus:border-rose-300 focus:ring-4 focus:ring-rose-500/10 transition-all font-medium text-stone-800 placeholder:font-normal"
+          placeholder={`Scrivi a ${profile.name}...`}
+        />
+        <button
+          onClick={handleSend}
+          disabled={!text.trim()}
+          className="w-14 h-14 bg-rose-600 rounded-[20px] flex items-center justify-center text-white shadow-lg shadow-rose-600/30 disabled:opacity-50 disabled:shadow-none shrink-0 transition-all active:scale-95"
+        >
+          <Send className="w-5 h-5 -ml-0.5" />
+        </button>
+      </div>
+    </div>
+  );
+};
+
+
 const ProfileDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -893,6 +998,7 @@ const ProfileDetailPage = () => {
   const [userInteractions, setUserInteractions] = useState<string[]>([]);
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
   const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
+  const [isLiveChatOpen, setIsLiveChatOpen] = useState(false);
   const [messageText, setMessageText] = useState('');
   const [soulLinkStatus, setSoulLinkStatus] = useState<'none' | 'pending_sent' | 'pending_received' | 'accepted' | 'rejected'>('none');
   const [soulLinkId, setSoulLinkId] = useState<string | null>(null);
@@ -1107,37 +1213,12 @@ const ProfileDetailPage = () => {
       return;
     }
 
-    // Check if user is online for instant chat
     if (!profile?.is_online) {
-      setToast({ message: "L'utente non è online. Puoi solo inviare un messaggio offline (in basso).", type: 'info' });
+      setToast({ message: "L'utente non è online e non puoi avviare una chat. Inviagli un messaggio!", type: 'info' });
       return;
     }
 
-    if (chatStatus === 'approved') {
-      setToast({ message: "Chat già attiva!", type: 'success' });
-      return;
-    }
-
-    if (chatStatus === 'pending') {
-      setToast({ message: "Richiesta già inviata!", type: 'info' });
-      return;
-    }
-
-    // Send instant chat request to Supabase
-    const { error } = await supabase
-      .from('chat_requests')
-      .insert([{
-        from_user_id: currentUser.id,
-        to_user_id: profile?.id,
-        message: "Richiesta di chat istantanea"
-      }]);
-
-    if (!error) {
-      setChatStatus('pending');
-      setToast({ message: "Richiesta di chat istantanea inviata!", type: 'success' });
-    } else {
-      setToast({ message: "Errore durante l'invio della richiesta.", type: 'error' });
-    }
+    setIsLiveChatOpen(true);
   };
 
   const handleOpenMessageModal = () => {
@@ -1552,6 +1633,16 @@ const ProfileDetailPage = () => {
               </div>
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {isLiveChatOpen && profile && currentUser && (
+          <LiveChatModal
+            profile={profile}
+            currentUser={currentUser}
+            onClose={() => setIsLiveChatOpen(false)}
+          />
         )}
       </AnimatePresence>
     </div>
@@ -4089,14 +4180,10 @@ const RegisterPage = () => {
                   >
                     {isLogin ? 'Accedi' : 'Continua'}
                   </button>
-                  <div className="grid grid-cols-2 gap-3 mt-4">
-                    <button type="button" onClick={() => handleOAuthLogin('google')} className="flex items-center justify-center gap-2 bg-white border border-stone-200 text-stone-700 py-3 rounded-xl font-black text-xs hover:border-stone-300 hover:bg-stone-50 transition-all transform active:scale-95 shadow-sm">
+                  <div className="mt-4">
+                    <button type="button" onClick={() => handleOAuthLogin('google')} className="flex items-center justify-center gap-2 bg-white border border-stone-200 text-stone-700 w-full py-4 rounded-xl font-black text-xs hover:border-stone-300 hover:bg-stone-50 transition-all transform active:scale-95 shadow-sm">
                       <svg className="w-4 h-4" viewBox="0 0 24 24"><path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" /><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" /><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" /><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" /></svg>
-                      Google
-                    </button>
-                    <button type="button" onClick={() => handleOAuthLogin('apple')} className="flex items-center justify-center gap-2 bg-stone-900 text-white py-3 rounded-xl font-black text-xs hover:bg-stone-800 transition-all transform active:scale-95 shadow-sm">
-                      <svg className="w-5 h-5 mb-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.05 2.95.72 3.84 1.94-3.25 1.89-2.71 5.92.51 7.15-.75 1.57-1.66 3.01-3 4.5v-.08zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" /></svg>
-                      Apple
+                      Continua con Google
                     </button>
                   </div>
                   <p className="text-center text-xs text-stone-500 font-medium">
@@ -5539,10 +5626,103 @@ const EditProfilePage = () => {
   );
 };
 
+const ChatRequestItem = ({
+  req,
+  index,
+  bounceNotif,
+  handleDeleteChatRequest,
+  replyingTo,
+  setReplyingTo,
+  replyText,
+  setReplyText,
+  handleSendReply,
+  isSendingReply
+}: any) => {
+  const [dragX, setDragX] = useState(0);
+  return (
+    <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="flex flex-col gap-2 relative">
+      {/* Sfondo cestino dietro per lo swipe */}
+      <div className="absolute inset-y-0 right-0 w-24 bg-rose-500 rounded-[24px] flex flex-col items-center justify-center text-white shadow-sm -z-10 pr-4 overflow-hidden">
+        <motion.div
+          style={{
+            opacity: Math.min(Math.abs(dragX) / 80, 1),
+            scale: Math.min(0.5 + Math.abs(dragX) / 100, 1.1)
+          }}
+          className="flex flex-col items-center"
+        >
+          <Trash2 className="w-5 h-5 mb-0.5" />
+          <span className="text-[9px] font-black uppercase tracking-widest">Elimina</span>
+        </motion.div>
+      </div>
+
+      <motion.div
+        drag="x"
+        dragConstraints={{ left: -100, right: 0 }}
+        dragElastic={0.1}
+        onDrag={(e, info) => setDragX(info.offset.x)}
+        animate={index === 0 && bounceNotif ? { x: -12 } : { x: 0 }}
+        transition={index === 0 && bounceNotif ? { type: "spring", stiffness: 400, damping: 10 } : {}}
+        onDragEnd={(e, info) => {
+          setDragX(0);
+          if (info.offset.x < -45) {
+            handleDeleteChatRequest(req.id);
+          }
+        }}
+        className="bg-white rounded-[24px] border border-stone-100 p-4 flex items-center justify-between gap-3 shadow-sm z-10"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-[16px] overflow-hidden border border-stone-100 shadow-sm shrink-0">
+            <img src={req.photo_url || `https://picsum.photos/seed/${req.from_user_id}/100`} className="w-full h-full object-cover" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <h4 className="text-sm font-black text-stone-900 leading-none">{req.name}</h4>
+              <span className="text-[8px] font-bold text-stone-400 bg-stone-50 px-2 py-0.5 rounded-full uppercase tracking-widest whitespace-nowrap">
+                {new Date(req.created_at).toLocaleString([], { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}
+              </span>
+            </div>
+            <p className="text-[11px] text-stone-500 font-medium line-clamp-2">{req.message || "Ti ha notato e vuole conoscerti!"}</p>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          {replyingTo !== req.id ? (
+            <button onClick={() => setReplyingTo(req.id)} className="w-9 h-9 bg-rose-50 border border-rose-100 text-rose-500 rounded-[14px] flex items-center justify-center hover:bg-rose-100 transition-colors">
+              <MessageSquare className="w-4 h-4" />
+            </button>
+          ) : (
+            <button onClick={() => setReplyingTo(null)} className="w-9 h-9 bg-stone-100 text-stone-500 rounded-[14px] flex items-center justify-center hover:bg-stone-200 transition-colors">
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      </motion.div>
+      <AnimatePresence>
+        {replyingTo === req.id && (
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+            <div className="bg-white p-3 rounded-[20px] border border-rose-100 flex gap-2 mx-2 mt-1 shadow-md">
+              <input
+                type="text" autoFocus value={replyText}
+                onChange={(e) => setReplyText(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSendReply(req.from_user_id)}
+                placeholder="Scrivi la tua risposta..."
+                className="flex-1 bg-stone-50 text-sm outline-none px-3 py-2 rounded-xl placeholder:text-stone-300"
+              />
+              <button onClick={() => handleSendReply(req.from_user_id)} disabled={!replyText.trim() || isSendingReply} className="w-10 h-10 bg-rose-600 text-white rounded-xl flex items-center justify-center disabled:opacity-30">
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+};
+
 const ProfilePage = () => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [chatRequests, setChatRequests] = useState<ChatRequest[]>([]);
+  const [liveChatsCount, setLiveChatsCount] = useState(0);
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
   const [activeTab, setActiveTab] = useState<'notifications' | 'gallery' | 'feed'>('notifications');
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -5617,6 +5797,25 @@ const ProfilePage = () => {
           photo_url: r.from_user?.photos?.[0] || r.from_user?.photo_url
         }));
         setChatRequests(processedRequests);
+      }
+
+      // Count unique users who sent a live chat message to this user
+      const { count: liveCount, error: liveErr } = await supabase
+        .from('room_messages')
+        .select('sender_id', { count: 'exact', head: true })
+        .eq('receiver_id', userId);
+
+      if (!liveErr && liveCount !== null) {
+        // Since we can't easily count distinct in supabase select count without RPC, we just count messages or we do it locally
+        // A simple query to just get all messages sent to user, then count unique senders:
+        const { data: msgs } = await supabase
+          .from('room_messages')
+          .select('sender_id')
+          .eq('receiver_id', userId);
+        if (msgs) {
+          const uniqueSenders = new Set(msgs.map(m => m.sender_id));
+          setLiveChatsCount(uniqueSenders.size);
+        }
       }
 
       // Fetch banner data (Local API)
@@ -5834,14 +6033,15 @@ const ProfilePage = () => {
       </div>
 
       {/* ── STATS ROW ── */}
-      <div className="mx-4 mt-3 bg-white rounded-[28px] shadow-sm border border-stone-100 grid grid-cols-4 divide-x divide-stone-100 overflow-hidden">
+      <div className="mx-4 mt-3 bg-white rounded-[28px] shadow-sm border border-stone-100 flex justify-between overflow-hidden">
         {[
           { icon: ThumbsUp, val: user.likes_count || 0, label: 'Like', color: 'text-blue-500' },
           { icon: Heart, val: user.hearts_count || 0, label: 'Cuori', color: 'text-rose-500' },
           { icon: Camera, val: user.photos?.length || 0, label: 'Foto', color: 'text-emerald-500' },
-          { icon: MessageSquare, val: chatRequests.length, label: 'Msg', color: 'text-amber-500' }
+          { icon: MessageSquare, val: liveChatsCount, label: 'Chat', color: 'text-sky-500' },
+          { icon: MessageCircle, val: chatRequests.length, label: 'Messaggi', color: 'text-amber-500' }
         ].map((s, i) => (
-          <div key={i} className="flex flex-col items-center py-4 gap-1">
+          <div key={i} className="flex-1 flex flex-col items-center py-4 gap-1 border-r border-stone-100 last:border-0 border-dashed">
             <span className="text-xl font-black text-stone-900">{s.val}</span>
             <s.icon className={cn("w-4 h-4", s.color)} />
             <span className="text-[9px] text-stone-400 font-bold uppercase tracking-widest">{s.label}</span>
@@ -5942,7 +6142,7 @@ const ProfilePage = () => {
       {/* ── TAB BAR ── */}
       <div className="mx-4 mt-5 bg-white rounded-[24px] shadow-sm border border-stone-100 flex p-1.5">
         {[
-          { id: 'notifications', label: 'Notifiche', icon: Bell, badge: hasViewedNotifs ? 0 : chatRequests.length },
+          { id: 'notifications', label: 'Messaggi', icon: Bell, badge: hasViewedNotifs ? 0 : chatRequests.length },
           { id: 'gallery', label: 'Galleria', icon: Camera, badge: 0 },
           { id: 'feed', label: 'Post', icon: ImageIcon, badge: 0 }
         ].map((tab) => (
@@ -5986,70 +6186,19 @@ const ProfilePage = () => {
               ) : (
                 <div className="space-y-4">
                   {chatRequests.map((req, index) => (
-                    <motion.div key={req.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="flex flex-col gap-2 relative">
-                      {/* Sfondo cestino dietro per lo swipe */}
-                      <div className="absolute inset-y-0 right-0 w-24 bg-rose-500 rounded-[24px] flex flex-col items-center justify-center text-white shadow-sm -z-10 pr-4">
-                        <Trash2 className="w-5 h-5 mb-0.5" />
-                        <span className="text-[9px] font-black uppercase tracking-widest">Elimina</span>
-                      </div>
-
-                      <motion.div
-                        drag="x"
-                        dragConstraints={{ left: -90, right: 0 }}
-                        animate={index === 0 && bounceNotif ? { x: -8 } : { x: 0 }}
-                        transition={index === 0 && bounceNotif ? { type: "spring", stiffness: 400, damping: 10 } : {}}
-                        onDragEnd={(e, info) => {
-                          if (info.offset.x < -45) {
-                            handleDeleteChatRequest(req.id);
-                          }
-                        }}
-                        className="bg-white rounded-[24px] border border-stone-100 p-4 flex items-center justify-between gap-3 shadow-sm z-10"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-12 h-12 rounded-[16px] overflow-hidden border border-stone-100 shadow-sm shrink-0">
-                            <img src={req.photo_url || `https://picsum.photos/seed/${req.from_user_id}/100`} className="w-full h-full object-cover" />
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2 mb-1">
-                              <h4 className="text-sm font-black text-stone-900 leading-none">{req.name}</h4>
-                              <span className="text-[8px] font-bold text-stone-400 bg-stone-50 px-2 py-0.5 rounded-full uppercase tracking-widest whitespace-nowrap">
-                                {new Date(req.created_at).toLocaleString([], { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}
-                              </span>
-                            </div>
-                            <p className="text-[11px] text-stone-500 font-medium line-clamp-2">{req.message || "Ti ha notato e vuole conoscerti!"}</p>
-                          </div>
-                        </div>
-                        <div className="flex gap-2">
-                          {replyingTo !== req.id ? (
-                            <button onClick={() => setReplyingTo(req.id)} className="w-9 h-9 bg-rose-50 border border-rose-100 text-rose-500 rounded-[14px] flex items-center justify-center hover:bg-rose-100 transition-colors">
-                              <MessageSquare className="w-4 h-4" />
-                            </button>
-                          ) : (
-                            <button onClick={() => setReplyingTo(null)} className="w-9 h-9 bg-stone-100 text-stone-500 rounded-[14px] flex items-center justify-center hover:bg-stone-200 transition-colors">
-                              <X className="w-4 h-4" />
-                            </button>
-                          )}
-                        </div>
-                      </motion.div>
-                      <AnimatePresence>
-                        {replyingTo === req.id && (
-                          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                            <div className="bg-white p-3 rounded-[20px] border border-rose-100 flex gap-2 mx-2 mt-1 shadow-md">
-                              <input
-                                type="text" autoFocus value={replyText}
-                                onChange={(e) => setReplyText(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && handleSendReply(req.from_user_id)}
-                                placeholder="Scrivi la tua risposta..."
-                                className="flex-1 bg-stone-50 text-sm outline-none px-3 py-2 rounded-xl placeholder:text-stone-300"
-                              />
-                              <button onClick={() => handleSendReply(req.from_user_id)} disabled={!replyText.trim() || isSendingReply} className="w-10 h-10 bg-rose-600 text-white rounded-xl flex items-center justify-center disabled:opacity-30">
-                                <ArrowRight className="w-4 h-4" />
-                              </button>
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </motion.div>
+                    <ChatRequestItem
+                      key={req.id}
+                      req={req}
+                      index={index}
+                      bounceNotif={bounceNotif}
+                      handleDeleteChatRequest={handleDeleteChatRequest}
+                      replyingTo={replyingTo}
+                      setReplyingTo={setReplyingTo}
+                      replyText={replyText}
+                      setReplyText={setReplyText}
+                      handleSendReply={handleSendReply}
+                      isSendingReply={isSendingReply}
+                    />
                   ))}
                 </div>
               )}
