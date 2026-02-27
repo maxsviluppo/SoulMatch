@@ -1145,10 +1145,7 @@ const ProfileDetailPage = () => {
       setToast({ message: "Devi essere iscritto!", type: 'error' });
       return;
     }
-    if (!currentUser.is_paid) {
-      setToast({ message: "Funzione Premium riservata!", type: 'info' });
-      return;
-    }
+    // Allow opening modal for check, the limit check is in sendChatMessage
     setIsMessageModalOpen(true);
   };
 
@@ -1168,10 +1165,10 @@ const ProfileDetailPage = () => {
       }
     }
 
-    // Close modal immediately for better UX
-    setIsMessageModalOpen(false);
     const textToSend = messageText;
     setMessageText('');
+    // Close modal after setting state to avoid flickering
+    setIsMessageModalOpen(false);
 
     try {
       const { error } = await supabase
@@ -4620,14 +4617,32 @@ const FeedComponent = ({ userId, isOwner, global = false }: { userId: any, isOwn
   const [expandedComments, setExpandedComments] = useState<string[]>([]);
   const [commentTexts, setCommentTexts] = useState<Record<string, string>>({});
   const [postComments, setPostComments] = useState<Record<string, any[]>>({});
+  const navigate = useNavigate();
+  const [postToDelete, setPostToDelete] = useState<string | null>(null);
+
+  const deletePost = async (postId: string) => {
+    try {
+      await supabase.from('posts').delete().eq('id', postId);
+      setPosts(prev => prev.filter(p => p.id !== postId));
+      setPostToDelete(null);
+    } catch (e) { }
+  };
+
+  const [isPostingComment, setIsPostingComment] = useState<Record<string, boolean>>({});
 
   const fetchComments = async (postId: string) => {
-    const { data } = await supabase
-      .from('post_comments')
-      .select('*, user:users(name, photos, photo_url)')
-      .eq('post_id', postId)
-      .order('created_at', { ascending: true });
-    if (data) setPostComments(prev => ({ ...prev, [postId]: data }));
+    try {
+      const { data, error } = await supabase
+        .from('post_comments')
+        .select('*, user:users(name, photos, photo_url)')
+        .eq('post_id', postId)
+        .order('created_at', { ascending: true });
+
+      if (error) console.error("Error fetching comments:", error);
+      if (data) setPostComments(prev => ({ ...prev, [postId]: data }));
+    } catch (e) {
+      console.error("fetchComments exception:", e);
+    }
   };
 
   const toggleComments = (postId: string) => {
@@ -4639,13 +4654,35 @@ const FeedComponent = ({ userId, isOwner, global = false }: { userId: any, isOwn
 
   const submitComment = async (postId: string) => {
     const text = commentTexts[postId]?.trim();
-    if (!text) return;
+    if (!text || isPostingComment[postId]) return;
+
     const viewer = localStorage.getItem('soulmatch_user') ? JSON.parse(localStorage.getItem('soulmatch_user')!) : null;
-    if (!viewer?.id) return;
-    await supabase.from('post_comments').insert([{ post_id: postId, user_id: viewer.id, text }]);
-    setCommentTexts(prev => ({ ...prev, [postId]: '' }));
-    fetchComments(postId);
-    fetchPosts();
+    if (!viewer?.id) {
+      alert("Devi aver effettuato l'accesso per commentare.");
+      return;
+    }
+
+    setIsPostingComment(prev => ({ ...prev, [postId]: true }));
+    try {
+      const { error } = await supabase.from('post_comments').insert([{
+        post_id: postId,
+        user_id: viewer.id,
+        text
+      }]);
+
+      if (error) {
+        console.error("Comment submit error:", error);
+        alert("Errore nell'invio del commento: " + error.message);
+      } else {
+        setCommentTexts(prev => ({ ...prev, [postId]: '' }));
+        await fetchComments(postId);
+        // Do not call fetchPosts here to avoid full reload, just refresh count if needed
+      }
+    } catch (e) {
+      console.error("Comment submit exception:", e);
+    } finally {
+      setIsPostingComment(prev => ({ ...prev, [postId]: false }));
+    }
   };
 
   const fetchPosts = async () => {
@@ -4860,12 +4897,15 @@ const FeedComponent = ({ userId, isOwner, global = false }: { userId: any, isOwn
               viewport={{ once: true }}
               className="bg-white rounded-[40px] overflow-hidden shadow-sm border border-stone-50 group hover:shadow-md transition-shadow duration-500"
             >
-              <div className="p-5 flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl overflow-hidden border-2 border-stone-50 ring-4 ring-stone-50/50">
+              <div className="p-5 flex items-center gap-4 relative">
+                <div
+                  onClick={() => navigate(`/profile-detail/${post.user_id}`)}
+                  className="w-12 h-12 shrink-0 rounded-2xl overflow-hidden border-2 border-stone-50 ring-4 ring-stone-50/50 cursor-pointer hover:opacity-80 transition-opacity"
+                >
                   <img src={post.author_photo || `https://picsum.photos/seed/${post.author_name}/100`} className="w-full h-full object-cover" />
                 </div>
-                <div>
-                  <h4 className="text-sm font-black text-stone-900 leading-none mb-1">{post.author_name}</h4>
+                <div onClick={() => navigate(`/profile-detail/${post.user_id}`)} className="cursor-pointer">
+                  <h4 className="text-sm font-black text-stone-900 leading-none mb-1 hover:text-rose-600 transition-colors">{post.author_name}</h4>
                   <div className="flex flex-wrap items-center gap-1.5 mb-1 text-[9px] font-bold uppercase tracking-widest text-stone-500">
                     <span>{post.author_gender}</span>
                     {post.author_orientation && post.author_orientation.length > 0 && (
@@ -4879,6 +4919,14 @@ const FeedComponent = ({ userId, isOwner, global = false }: { userId: any, isOwn
                     {new Date(post.created_at).toLocaleDateString()} • {new Date(post.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </p>
                 </div>
+                {isOwner && (
+                  <button
+                    onClick={() => setPostToDelete(post.id)}
+                    className="ml-auto w-9 h-9 shrink-0 flex items-center justify-center bg-stone-50 text-stone-300 hover:text-rose-500 hover:bg-rose-50 rounded-full transition-all active:scale-90"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
               </div>
 
               {post.photos.length > 0 && (
@@ -4929,7 +4977,7 @@ const FeedComponent = ({ userId, isOwner, global = false }: { userId: any, isOwn
                     {post.hearts_count}
                   </button>
                   {/* Comment toggle */}
-                  <button
+                  < button
                     onClick={() => toggleComments(post.id)}
                     className={cn(
                       "ml-auto flex items-center gap-2 text-xs font-black tracking-widest uppercase transition-all",
@@ -4978,22 +5026,41 @@ const FeedComponent = ({ userId, isOwner, global = false }: { userId: any, isOwn
                           />
                           <button
                             onClick={() => submitComment(post.id)}
-                            disabled={!commentTexts[post.id]?.trim()}
-                            className="w-9 h-9 bg-rose-600 text-white rounded-xl flex items-center justify-center disabled:opacity-30"
+                            disabled={!commentTexts[post.id]?.trim() || isPostingComment[post.id]}
+                            className="w-9 h-9 bg-rose-600 text-white rounded-xl flex items-center justify-center disabled:opacity-30 transition-all active:scale-95"
                           >
-                            <ArrowRight className="w-4 h-4" />
+                            {isPostingComment[post.id] ? (
+                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                              <ArrowRight className="w-4 h-4" />
+                            )}
                           </button>
                         </div>
                       </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
-              </div>
-            </motion.div>
+              </div >
+            </motion.div >
           ))
         )}
-      </div>
-    </div>
+      </div >
+      {postToDelete && (
+        <div className="fixed inset-0 z-[100] bg-black/40 flex items-center justify-center p-4">
+          <div className="bg-white rounded-[24px] p-6 w-full max-w-[300px] shadow-2xl flex flex-col items-center text-center">
+            <div className="w-12 h-12 bg-rose-50 rounded-full flex items-center justify-center mb-4">
+              <Trash2 className="w-5 h-5 text-rose-500" />
+            </div>
+            <h3 className="text-sm font-black text-stone-900 mb-2">Elimina post</h3>
+            <p className="text-xs text-stone-500 font-medium mb-6">Sei sicuro di voler eliminare definitivamente questo post?</p>
+            <div className="flex gap-2 w-full">
+              <button onClick={() => setPostToDelete(null)} className="flex-1 py-3 bg-stone-100 text-stone-500 text-[10px] font-black uppercase tracking-widest rounded-[14px] hover:bg-stone-200">Annulla</button>
+              <button onClick={() => deletePost(postToDelete)} className="flex-1 py-3 bg-rose-600 text-white text-[10px] font-black uppercase tracking-widest rounded-[14px] hover:bg-rose-700">Elimina</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div >
   );
 };
 
@@ -5487,6 +5554,23 @@ const ProfilePage = () => {
   const [isWritingBanner, setIsWritingBanner] = useState(false);
   const navigate = useNavigate();
 
+  const [hasViewedNotifs, setHasViewedNotifs] = useState(false);
+  const [bounceNotif, setBounceNotif] = useState(false);
+
+  useEffect(() => {
+    const bounceInterval = setInterval(() => {
+      setBounceNotif(true);
+      setTimeout(() => setBounceNotif(false), 600);
+    }, 10000);
+    return () => clearInterval(bounceInterval);
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'notifications') {
+      setHasViewedNotifs(true);
+    }
+  }, [activeTab]);
+
   const fetchData = async (userId: string) => {
     try {
       const { data: profileData, error: profileErr } = await supabase
@@ -5520,7 +5604,8 @@ const ProfilePage = () => {
                       *,
                       from_user:users!from_user_id(name, surname, photo_url, photos)
                       `)
-        .eq('to_user_id', userId);
+        .eq('to_user_id', userId)
+        .order('created_at', { ascending: false });
 
       if (requestsErr) console.error("Requests fetch error:", requestsErr);
 
@@ -5575,7 +5660,17 @@ const ProfilePage = () => {
       if (user?.id) fetchData(user.id);
     }
   };
+  const handleDeleteChatRequest = async (requestId: string) => {
+    const { error } = await supabase
+      .from('chat_requests')
+      .delete()
+      .eq('id', requestId);
 
+    if (!error) {
+      setToast({ message: 'Messaggio eliminato', type: 'info' });
+      if (user?.id) fetchData(user.id);
+    }
+  };
   const handleSendReply = async (recipientId: string) => {
     if (!replyText.trim() || !user) return;
     setIsSendingReply(true);
@@ -5847,9 +5942,9 @@ const ProfilePage = () => {
       {/* ── TAB BAR ── */}
       <div className="mx-4 mt-5 bg-white rounded-[24px] shadow-sm border border-stone-100 flex p-1.5">
         {[
-          { id: 'notifications', label: 'Notifiche', icon: Bell, badge: chatRequests.length },
+          { id: 'notifications', label: 'Notifiche', icon: Bell, badge: hasViewedNotifs ? 0 : chatRequests.length },
           { id: 'gallery', label: 'Galleria', icon: Camera, badge: 0 },
-          { id: 'feed', label: 'Bacheca', icon: ImageIcon, badge: 0 }
+          { id: 'feed', label: 'Post', icon: ImageIcon, badge: 0 }
         ].map((tab) => (
           <button
             key={tab.id}
@@ -5889,37 +5984,53 @@ const ProfilePage = () => {
                   <p className="text-stone-400 text-sm font-bold">Tutto tranquillo! Nessuna novità.</p>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {chatRequests.map((req) => (
-                    <motion.div key={req.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="flex flex-col gap-2">
-                      <div className="bg-white rounded-[24px] border border-stone-100 p-4 flex items-center justify-between gap-3 shadow-sm">
+                <div className="space-y-4">
+                  {chatRequests.map((req, index) => (
+                    <motion.div key={req.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="flex flex-col gap-2 relative">
+                      {/* Sfondo cestino dietro per lo swipe */}
+                      <div className="absolute inset-y-0 right-0 w-24 bg-rose-500 rounded-[24px] flex flex-col items-center justify-center text-white shadow-sm -z-10 pr-4">
+                        <Trash2 className="w-5 h-5 mb-0.5" />
+                        <span className="text-[9px] font-black uppercase tracking-widest">Elimina</span>
+                      </div>
+
+                      <motion.div
+                        drag="x"
+                        dragConstraints={{ left: -90, right: 0 }}
+                        animate={index === 0 && bounceNotif ? { x: -8 } : { x: 0 }}
+                        transition={index === 0 && bounceNotif ? { type: "spring", stiffness: 400, damping: 10 } : {}}
+                        onDragEnd={(e, info) => {
+                          if (info.offset.x < -45) {
+                            handleDeleteChatRequest(req.id);
+                          }
+                        }}
+                        className="bg-white rounded-[24px] border border-stone-100 p-4 flex items-center justify-between gap-3 shadow-sm z-10"
+                      >
                         <div className="flex items-center gap-3">
                           <div className="w-12 h-12 rounded-[16px] overflow-hidden border border-stone-100 shadow-sm shrink-0">
                             <img src={req.photo_url || `https://picsum.photos/seed/${req.from_user_id}/100`} className="w-full h-full object-cover" />
                           </div>
                           <div>
-                            <div className="flex items-center gap-2">
-                              <h4 className="text-sm font-black text-stone-900">{req.name}</h4>
-                              <span className="bg-rose-100 text-rose-600 text-[7px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest animate-pulse">Nuovo</span>
+                            <div className="flex items-center gap-2 mb-1">
+                              <h4 className="text-sm font-black text-stone-900 leading-none">{req.name}</h4>
+                              <span className="text-[8px] font-bold text-stone-400 bg-stone-50 px-2 py-0.5 rounded-full uppercase tracking-widest whitespace-nowrap">
+                                {new Date(req.created_at).toLocaleString([], { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}
+                              </span>
                             </div>
-                            <p className="text-[11px] text-stone-500 font-medium line-clamp-1">{req.message || "Ti ha notato!"}</p>
+                            <p className="text-[11px] text-stone-500 font-medium line-clamp-2">{req.message || "Ti ha notato e vuole conoscerti!"}</p>
                           </div>
                         </div>
                         <div className="flex gap-2">
                           {replyingTo !== req.id ? (
-                            <button onClick={() => setReplyingTo(req.id)} className="w-9 h-9 bg-stone-50 border border-stone-100 text-rose-500 rounded-[14px] flex items-center justify-center">
+                            <button onClick={() => setReplyingTo(req.id)} className="w-9 h-9 bg-rose-50 border border-rose-100 text-rose-500 rounded-[14px] flex items-center justify-center hover:bg-rose-100 transition-colors">
                               <MessageSquare className="w-4 h-4" />
                             </button>
                           ) : (
-                            <button onClick={() => setReplyingTo(null)} className="w-9 h-9 bg-stone-100 text-stone-500 rounded-[14px] flex items-center justify-center">
+                            <button onClick={() => setReplyingTo(null)} className="w-9 h-9 bg-stone-100 text-stone-500 rounded-[14px] flex items-center justify-center hover:bg-stone-200 transition-colors">
                               <X className="w-4 h-4" />
                             </button>
                           )}
-                          <button onClick={() => handleRequestAction(req.id, 'approved')} className="w-9 h-9 bg-rose-600 text-white rounded-[14px] flex items-center justify-center shadow-md active:scale-90">
-                            <Heart className="w-4 h-4 fill-current" />
-                          </button>
                         </div>
-                      </div>
+                      </motion.div>
                       <AnimatePresence>
                         {replyingTo === req.id && (
                           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
@@ -6393,6 +6504,8 @@ export default function App() {
               console.warn("Sessione non valida o profilo rimosso. Pulizia locale...");
               localStorage.removeItem('soulmatch_user');
               window.dispatchEvent(new Event('user-auth-change'));
+            } else {
+              supabase.from('users').update({ is_online: true }).eq('id', u.id).then();
             }
           }
         } catch (e) {
@@ -6402,6 +6515,33 @@ export default function App() {
       }
     };
     verifyUser();
+
+    const handleVisibilityChange = () => {
+      const saved = localStorage.getItem('soulmatch_user');
+      if (saved) {
+        try {
+          const u = JSON.parse(saved);
+          if (u?.id && document.visibilityState === 'visible') {
+            supabase.from('users').update({ is_online: true }).eq('id', u.id).then();
+          } else if (u?.id && document.visibilityState === 'hidden') {
+            supabase.from('users').update({ is_online: false }).eq('id', u.id).then();
+          }
+        } catch (e) { }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    const handleBeforeUnload = () => {
+      const saved = localStorage.getItem('soulmatch_user');
+      if (saved) {
+        try {
+          const u = JSON.parse(saved);
+          if (u?.id) supabase.from('users').update({ is_online: false }).eq('id', u.id).then();
+        } catch (e) { }
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
 
     const handleGlobalClick = (e: MouseEvent) => {
       // Find if the click or its parents are a button or anchor
@@ -6413,7 +6553,11 @@ export default function App() {
     };
 
     window.addEventListener('mousedown', handleGlobalClick);
-    return () => window.removeEventListener('mousedown', handleGlobalClick);
+    return () => {
+      window.removeEventListener('mousedown', handleGlobalClick);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
   }, []);
 
   return (
