@@ -1554,6 +1554,7 @@ const BachecaPage = () => {
   const [selectedGenders, setSelectedGenders] = useState<string[]>([]);
   const [bannerMessages, setBannerMessages] = useState<any[]>([]);
   const [bannerIndex, setBannerIndex] = useState(0);
+  const [isBannerExpanded, setIsBannerExpanded] = useState(false);
 
   const SM_COOLDOWN_KEY = 'soulmatch_last_used';
   const COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24h
@@ -1968,38 +1969,7 @@ const BachecaPage = () => {
           </AnimatePresence>
         </div>
 
-        {/* ── FLOATING BANNER (ISOLA BANNER) ── */}
-        {bannerMessages.length > 0 && (
-          <div className="relative z-40 mb-2 mt-2">
-            <div className="bg-white/95 backdrop-blur-md rounded-[24px] p-3.5 shadow-xl shadow-rose-900/10 border border-white flex flex-col justify-center relative overflow-hidden h-[84px] ring-1 ring-black/[0.03]">
-              <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b from-rose-400 to-rose-600 rounded-l-[24px]" />
-              <AnimatePresence mode="popLayout" initial={false}>
-                {bannerMessages.length > 0 && (
-                  <motion.div
-                    key={bannerMessages[bannerIndex]?.id || 'empty'}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20, position: 'absolute' }}
-                    transition={{ duration: 0.5, ease: "circOut" }}
-                    className="flex items-center gap-3.5 w-full pl-2"
-                  >
-                    <div className="w-12 h-12 rounded-full overflow-hidden shrink-0 ring-4 ring-rose-50 shadow-sm bg-stone-100 border border-white">
-                      <img src={bannerMessages[bannerIndex]?.photo_url || `https://picsum.photos/seed/${bannerMessages[bannerIndex]?.name}/100`} className="w-full h-full object-cover" />
-                    </div>
-                    <div className="flex-1 min-w-0 pr-1">
-                      <div className="flex items-center gap-2 leading-tight">
-                        <span className="text-[12px] font-black text-stone-900 truncate">{bannerMessages[bannerIndex]?.name}</span>
-                        <span className="text-[10px] font-bold text-stone-400 shrink-0">{bannerMessages[bannerIndex]?.dob ? calculateAge(bannerMessages[bannerIndex]?.dob) : ''}</span>
-                        <span className="text-[9px] px-2 py-0.5 bg-stone-100 text-stone-500 rounded-full font-bold ml-auto shrink-0">{bannerMessages[bannerIndex]?.city}</span>
-                      </div>
-                      <p className="text-xs text-stone-600 font-medium truncate mt-1 pr-2">{bannerMessages[bannerIndex]?.message}</p>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          </div>
-        )}
+        {/* ── ALREADY REPLACED FLOATING BANNER WILL GO BELOW ── */}
 
 
 
@@ -2079,6 +2049,59 @@ const BachecaPage = () => {
       </div>
 
       <AppBottomNav activeTab="bacheca" />
+
+      {/* ── NEW FLOATING MSG WIDGET ── */}
+      {bannerMessages.length > 0 && (
+        <div className={cn(
+          "fixed z-[45] bottom-28 right-0 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] shadow-2xl flex items-center border border-white/40",
+          isBannerExpanded
+            ? "w-[94%] max-w-[360px] bg-white/95 backdrop-blur-xl rounded-l-[32px] p-4"
+            : "w-14 h-14 bg-gradient-to-tr from-rose-500 to-rose-600 rounded-l-[24px] cursor-pointer"
+        )}>
+          {!isBannerExpanded ? (
+            <div
+              onClick={() => setIsBannerExpanded(true)}
+              className="w-full h-full flex flex-col items-center justify-center text-white relative"
+            >
+              <MessageSquare className="w-5 h-5 mb-0.5 opacity-90" />
+              <span className="text-[9px] font-black tracking-widest leading-none">MSG</span>
+              <div className="absolute top-0 right-1 w-3.5 h-3.5 bg-white text-rose-600 rounded-full text-[8px] font-black flex items-center justify-center shadow-sm">{bannerMessages.length}</div>
+            </div>
+          ) : (
+            <div className="w-full flex justify-between items-start gap-2">
+              <div className="flex-1 overflow-x-auto scrollbar-hide flex gap-4 pb-2 pt-1 pl-2 relative">
+                {bannerMessages.map((msg, idx) => (
+                  <div key={idx} className="flex flex-col items-center shrink-0 w-[60px] gap-1 group relative">
+                    <div
+                      onClick={() => navigate(`/profile-detail/${msg.user_id}`)}
+                      className="w-14 h-14 rounded-[20px] p-[2.5px] bg-gradient-to-tr from-amber-300 via-rose-500 to-fuchsia-600 cursor-pointer shadow-md active:scale-95 transition-transform shrink-0"
+                    >
+                      <div className="w-full h-full bg-white rounded-[18px] p-0.5">
+                        <img src={msg.photo_url || `https://picsum.photos/seed/${msg.name}/100`} className="w-full h-full object-cover rounded-[16px]" />
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-black text-stone-700 truncate w-full text-center">{msg.name}</span>
+                    <span className="text-[8px] font-bold text-stone-400 -mt-1">{msg.city}</span>
+
+                    {/* Tooltip bubble for message */}
+                    <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-max max-w-[140px] bg-stone-900 text-white text-[10px] font-medium leading-[1.2] py-2 px-3 rounded-[12px] shadow-xl opacity-0 scale-75 group-hover:opacity-100 group-hover:scale-100 transition-all pointer-events-none origin-bottom z-50 line-clamp-2">
+                      {msg.message}
+                      <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 border-l-[4px] border-r-[4px] border-t-[5px] border-l-transparent border-r-transparent border-t-stone-900 w-0 h-0" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <button
+                onClick={() => setIsBannerExpanded(false)}
+                className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-stone-500 hover:bg-rose-100 hover:text-rose-600 shrink-0 mt-3 mr-1 shadow-sm border border-stone-200 active:scale-90"
+              >
+                <ChevronRight className="w-5 h-5 ml-0.5" />
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── COOLDOWN TOAST ── */}
       <AnimatePresence>
@@ -5912,39 +5935,44 @@ const ProfilePage = () => {
 
           {activeTab === 'gallery' && (
             <motion.div key="tab-gallery" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
-              className="bg-white rounded-[28px] border border-stone-100 p-5 space-y-4 shadow-sm"
+              className="space-y-8"
             >
-              <div className="flex items-center justify-between px-1">
-                <h2 className="text-base font-serif font-black text-stone-900 flex items-center gap-2">
-                  <Camera className="w-5 h-5 text-rose-500" /> <span className="font-montserrat text-red-600 font-black">MY GALLERY</span>
+              <div className="flex items-center justify-between px-2">
+                <h2 className="text-xl font-montserrat font-black text-red-600 flex items-center gap-3">
+                  <div className="w-10 h-10 bg-rose-50 rounded-2xl flex items-center justify-center">
+                    <Camera className="w-5 h-5 text-rose-600" />
+                  </div>
+                  MY GALLERY
                 </h2>
                 <span className="text-[10px] text-stone-400 font-black uppercase tracking-widest">{user.photos?.length || 0}/5</span>
               </div>
-              <div className="grid grid-cols-3 gap-2">
-                {user.photos?.map((url, i) => (
-                  <div key={i} className="aspect-square rounded-[20px] overflow-hidden relative group shadow-md border border-stone-50">
-                    <img src={url} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                      <label className="w-9 h-9 bg-white rounded-xl flex items-center justify-center text-stone-600 cursor-pointer hover:text-rose-600 shadow-lg active:scale-90">
-                        <RefreshCw className="w-4 h-4" />
-                        <input type="file" accept="image/*" className="hidden" onChange={(e) => replaceProfilePhoto(i, e)} />
-                      </label>
-                      <button onClick={() => { if (window.confirm("Eliminare la foto?")) removeProfilePhoto(i); }} className="w-9 h-9 bg-white rounded-xl flex items-center justify-center text-stone-600 hover:text-rose-600 shadow-lg active:scale-90">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+              <div className="bg-white rounded-[28px] border border-stone-100 p-5 shadow-sm">
+                <div className="grid grid-cols-3 gap-2">
+                  {user.photos?.map((url, i) => (
+                    <div key={i} className="aspect-square rounded-[20px] overflow-hidden relative group shadow-md border border-stone-50">
+                      <img src={url} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                        <label className="w-9 h-9 bg-white rounded-xl flex items-center justify-center text-stone-600 cursor-pointer hover:text-rose-600 shadow-lg active:scale-90">
+                          <RefreshCw className="w-4 h-4" />
+                          <input type="file" accept="image/*" className="hidden" onChange={(e) => replaceProfilePhoto(i, e)} />
+                        </label>
+                        <button onClick={() => { if (window.confirm("Eliminare la foto?")) removeProfilePhoto(i); }} className="w-9 h-9 bg-white rounded-xl flex items-center justify-center text-stone-600 hover:text-rose-600 shadow-lg active:scale-90">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                      {i === 0 && <div className="absolute top-2 left-2 bg-rose-600 text-[7px] text-white px-1.5 py-0.5 rounded-md font-black uppercase">Principale</div>}
                     </div>
-                    {i === 0 && <div className="absolute top-2 left-2 bg-rose-600 text-[7px] text-white px-1.5 py-0.5 rounded-md font-black uppercase">Principale</div>}
-                  </div>
-                ))}
-                {(user.photos?.length || 0) < 5 && (
-                  <label className="aspect-square rounded-[20px] border-2 border-dashed border-stone-200 flex flex-col items-center justify-center gap-1.5 cursor-pointer hover:bg-rose-50 hover:border-rose-300 transition-all group">
-                    <div className="w-9 h-9 bg-stone-100 rounded-xl flex items-center justify-center group-hover:bg-rose-100 transition-all">
-                      <Plus className="w-5 h-5 text-stone-400 group-hover:text-rose-500" />
-                    </div>
-                    <span className="text-[9px] font-black text-stone-400 uppercase tracking-widest group-hover:text-rose-400">Aggiungi</span>
-                    <input type="file" multiple accept="image/*" className="hidden" onChange={addProfilePhoto} />
-                  </label>
-                )}
+                  ))}
+                  {(user.photos?.length || 0) < 5 && (
+                    <label className="aspect-square rounded-[20px] border-2 border-dashed border-stone-200 flex flex-col items-center justify-center gap-1.5 cursor-pointer hover:bg-rose-50 hover:border-rose-300 transition-all group">
+                      <div className="w-9 h-9 bg-stone-100 rounded-xl flex items-center justify-center group-hover:bg-rose-100 transition-all">
+                        <Plus className="w-5 h-5 text-stone-400 group-hover:text-rose-500" />
+                      </div>
+                      <span className="text-[9px] font-black text-stone-400 uppercase tracking-widest group-hover:text-rose-400">Aggiungi</span>
+                      <input type="file" multiple accept="image/*" className="hidden" onChange={addProfilePhoto} />
+                    </label>
+                  )}
+                </div>
               </div>
             </motion.div>
           )}
