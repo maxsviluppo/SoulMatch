@@ -171,40 +171,8 @@ if (checkSettings.count === 0) {
   db.prepare("INSERT OR IGNORE INTO site_settings (key, value) VALUES (?, ?)").run('home_slider', JSON.stringify(defaultSlider));
 }
 
-// Seed Data
-const seedUsers = [
-  { name: 'Giulia', surname: 'Bianchi', dob: '1995-05-15', city: 'Roma', gender: 'Donna', orientation: JSON.stringify(['Eterosessuale']), looking_for_gender: JSON.stringify(['Uomo']), is_online: 1, body_type: 'Atletica', photo_url: 'https://picsum.photos/seed/giulia/400/600', photos: JSON.stringify(['https://picsum.photos/seed/giulia1/400/600', 'https://picsum.photos/seed/giulia2/400/600']) },
-  { name: 'Marco', surname: 'Rossi', dob: '1990-08-22', city: 'Milano', gender: 'Uomo', orientation: JSON.stringify(['Eterosessuale']), looking_for_gender: JSON.stringify(['Donna']), is_online: 0, body_type: 'Robusta', photo_url: 'https://picsum.photos/seed/marco/400/600', photos: JSON.stringify(['https://picsum.photos/seed/marco1/400/600']) },
-  { name: 'Elena', surname: 'Verdi', dob: '1998-12-01', city: 'Napoli', gender: 'Donna', orientation: JSON.stringify(['Lesbica']), looking_for_gender: JSON.stringify(['Donna']), is_online: 1, body_type: 'Snella', photo_url: 'https://picsum.photos/seed/elena/400/600', photos: JSON.stringify(['https://picsum.photos/seed/elena1/400/600']) },
-  { name: 'Luca', surname: 'Neri', dob: '1988-03-10', city: 'Torino', gender: 'Uomo', orientation: JSON.stringify(['Gay']), looking_for_gender: JSON.stringify(['Uomo']), is_online: 0, body_type: 'Atletica', photo_url: 'https://picsum.photos/seed/luca/400/600', photos: JSON.stringify(['https://picsum.photos/seed/luca1/400/600']) },
-  { name: 'Sofia', surname: 'Gialli', dob: '1992-07-18', city: 'Firenze', gender: 'Donna', orientation: JSON.stringify(['Bisessuale', 'Fluido']), looking_for_gender: JSON.stringify(['Tutti']), is_online: 1, body_type: 'Curvy', photo_url: 'https://picsum.photos/seed/sofia/400/600', photos: JSON.stringify(['https://picsum.photos/seed/sofia1/400/600']) },
-  { name: 'Andrea', surname: 'Blu', dob: '1994-11-25', city: 'Bologna', gender: 'Altro', orientation: JSON.stringify(['Pansessuale', 'Queer']), looking_for_gender: JSON.stringify(['Tutti']), is_online: 1, body_type: 'Normale', photo_url: 'https://picsum.photos/seed/andrea/400/600', photos: JSON.stringify(['https://picsum.photos/seed/andrea1/400/600']) },
-];
-
 const checkUsers = db.prepare("SELECT count(*) as count FROM users").get() as { count: number };
-if (checkUsers.count === 0) {
-  const insert = db.prepare(`
-    INSERT INTO users (name, surname, dob, city, gender, orientation, looking_for_gender, is_online, body_type, photo_url, photos, is_paid)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
-  `);
-  for (const user of seedUsers) {
-    insert.run(user.name, user.surname, user.dob, user.city, user.gender, user.orientation, user.looking_for_gender, user.is_online, user.body_type, user.photo_url, user.photos);
-  }
-
-  // Seed some interactions
-  const seedInteractions = [
-    { from: 1, to: 2, type: 'like' },
-    { from: 1, to: 3, type: 'heart' },
-    { from: 2, to: 1, type: 'like' },
-    { from: 3, to: 1, type: 'heart' },
-    { from: 4, to: 1, type: 'like' },
-    { from: 5, to: 2, type: 'heart' },
-  ];
-  const insertInteraction = db.prepare("INSERT OR IGNORE INTO interactions (from_user_id, to_user_id, type) VALUES (?, ?, ?)");
-  for (const inter of seedInteractions) {
-    insertInteraction.run(inter.from, inter.to, inter.type);
-  }
-}
+// Removed seed data to ensure only real users are shown during local testing.
 
 async function startServer() {
   const app = express();

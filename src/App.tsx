@@ -69,7 +69,7 @@ const normalizeUser = (u: any): any => ({
 });
 
 // ── Shared Bottom Navigation Bar ──────────────────────────────────────────
-const AppBottomNav = ({ activeTab, customCenter }: { activeTab?: 'home' | 'bacheca' | 'feed' | 'soulmatch' | 'soullink' | 'profile', customCenter?: React.ReactNode }) => {
+const AppBottomNav = ({ activeTab }: { activeTab?: 'home' | 'bacheca' | 'feed' | 'soulmatch' | 'soullink' | 'profile' }) => {
   const navigate = useNavigate();
   const [pendingCount, setPendingCount] = useState(0);
 
@@ -111,50 +111,50 @@ const AppBottomNav = ({ activeTab, customCenter }: { activeTab?: 'home' | 'bache
   }, []);
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/90 backdrop-blur-xl border-t border-stone-100 shadow-2xl px-4 pb-6 pt-3">
-      <div className="max-w-md mx-auto flex items-center justify-between gap-1">
+    <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/90 backdrop-blur-xl border-t border-stone-100 shadow-2xl px-2 pb-6 pt-3">
+      <div className="max-w-md mx-auto flex items-center justify-between gap-0.5">
 
         {/* Home */}
         <Link to="/" className={cn("flex flex-col items-center gap-1 transition-all flex-1", activeTab === 'home' ? "text-rose-600" : "text-stone-400 hover:text-rose-500")}>
-          <Home className="w-5 h-5" />
-          <span className="text-[8px] font-black uppercase tracking-widest">Home</span>
+          <Home className="w-4 h-4" />
+          <span className="text-[7px] font-black uppercase tracking-wider leading-none mt-0.5">Home</span>
         </Link>
 
         {/* Bacheca */}
         <Link to="/bacheca" className={cn("flex flex-col items-center gap-1 transition-all flex-1", activeTab === 'bacheca' ? "text-rose-600" : "text-stone-400 hover:text-rose-500")}>
-          <Users className="w-5 h-5" />
-          <span className="text-[8px] font-black uppercase tracking-widest">Bacheca</span>
+          <Users className="w-4 h-4" />
+          <span className="text-[7px] font-black uppercase tracking-wider leading-none mt-0.5">Bacheca</span>
         </Link>
 
-        {/* Custom Center or Feed */}
-        {customCenter ? (
-          <div className="flex-1 flex justify-center">
-            {customCenter}
-          </div>
-        ) : (
-          <Link to="/feed" className={cn("flex flex-col items-center gap-1 transition-all flex-1", activeTab === 'feed' ? "text-rose-600" : "text-stone-400 hover:text-rose-500")}>
-            <div className={cn("w-12 h-12 rounded-[18px] flex items-center justify-center -mt-4 shadow-lg transition-all active:scale-95", activeTab === 'feed' ? "bg-rose-600 text-white shadow-rose-200" : "bg-white text-stone-400 border border-stone-100")}>
-              <LayoutGrid className="w-6 h-6" />
-            </div>
-            <span className="text-[8px] font-black uppercase tracking-widest mt-1">Feed</span>
-          </Link>
-        )}
+        {/* Feed */}
+        <Link to="/feed" className={cn("flex flex-col items-center gap-1 transition-all flex-1", activeTab === 'feed' ? "text-rose-600" : "text-stone-400 hover:text-rose-500")}>
+          <LayoutGrid className="w-4 h-4" />
+          <span className="text-[7px] font-black uppercase tracking-wider leading-none mt-0.5">Feed</span>
+        </Link>
 
         {/* SoulLink */}
-        <Link to="/soul-links" className={cn("flex flex-col items-center gap-1 relative transition-all flex-1", activeTab === 'soullink' ? "text-violet-600" : "text-stone-400 hover:text-violet-500")}>
+        <Link to="/soul-links" className={cn("flex flex-col items-center gap-1 relative transition-all flex-1", activeTab === 'soullink' ? "text-rose-600" : "text-stone-400 hover:text-rose-500")}>
           <div className="relative">
-            <Link2 className="w-5 h-5" />
+            <Link2 className="w-4 h-4" />
             {pendingCount > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-emerald-500 text-white text-[7px] font-black rounded-full flex items-center justify-center border-2 border-white">{pendingCount}</span>
+              <span className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-emerald-500 text-white text-[6px] font-black rounded-full flex items-center justify-center border border-white">{pendingCount}</span>
             )}
           </div>
-          <span className="text-[8px] font-black uppercase tracking-widest">SoulLink</span>
+          <span className="text-[7px] font-black uppercase tracking-wider leading-none mt-0.5">SoulLink</span>
+        </Link>
+
+        {/* SoulMatch (Heart Button) - Move to 5th Position */}
+        <Link to="/bacheca?soulmatch=true" className={cn("flex flex-col items-center gap-1 transition-all flex-1")}>
+          <div className={cn("w-10 h-10 rounded-[14px] flex items-center justify-center -mt-4 shadow-lg transition-all active:scale-95 bg-rose-600 text-white shadow-rose-200")}>
+            <Heart className="w-5 h-5 fill-current" />
+          </div>
+          <span className="text-[7px] font-black uppercase tracking-wider text-rose-600 mt-1">SoulMatch</span>
         </Link>
 
         {/* Profile */}
         <Link to="/profile" className={cn("flex flex-col items-center gap-1 transition-all flex-1", activeTab === 'profile' ? "text-rose-600" : "text-stone-400 hover:text-rose-500")}>
-          <User className="w-5 h-5" />
-          <span className="text-[8px] font-black uppercase tracking-widest">Profilo</span>
+          <User className="w-4 h-4" />
+          <span className="text-[7px] font-black uppercase tracking-wider leading-none mt-0.5">Profilo</span>
         </Link>
       </div>
     </div>
@@ -769,7 +769,7 @@ const HomePage = () => {
                 <div className="w-4 h-4 bg-rose-600 rounded-full flex items-center justify-center">
                   <Heart className="w-2 h-2 text-white fill-current" />
                 </div>
-                <span className="text-[10px] font-black text-rose-600">Bacheca</span>
+                <span className="text-[10px] font-montserrat font-black text-rose-600">Bacheca</span>
               </div>
             </div>
 
@@ -1540,6 +1540,7 @@ const ProfileDetailPage = () => {
 
 const BachecaPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   // filterGender removed - matching is now automatic from user profile preferences
@@ -1551,6 +1552,8 @@ const BachecaPage = () => {
   const [showSoulMatch, setShowSoulMatch] = useState(false);
   const [soulmatchToast, setSoulmatchToast] = useState(false);
   const [selectedGenders, setSelectedGenders] = useState<string[]>([]);
+  const [bannerMessages, setBannerMessages] = useState<any[]>([]);
+  const [bannerIndex, setBannerIndex] = useState(0);
 
   const SM_COOLDOWN_KEY = 'soulmatch_last_used';
   const COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24h
@@ -1630,6 +1633,7 @@ const BachecaPage = () => {
         setCurrentUser(user);
         setSelectedGenders((user.looking_for_gender || []).map((g: string) => g.toLowerCase()));
         fetchProfiles();
+        fetch('/api/banner-messages').then(r => r.json()).then(setBannerMessages).catch(() => { });
       } else {
         navigate('/register');
       }
@@ -1643,6 +1647,14 @@ const BachecaPage = () => {
     };
   }, []);
 
+  useEffect(() => {
+    if (bannerMessages.length === 0) return;
+    const interval = setInterval(() => {
+      setBannerIndex(prev => (prev + 1 >= bannerMessages.length ? 0 : prev + 1));
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [bannerMessages]);
+
   // Restore scroll position after profiles are loaded
   useEffect(() => {
     if (!loading && profiles.length > 0) {
@@ -1654,13 +1666,13 @@ const BachecaPage = () => {
       }
 
       // Check if we came from Feed to trigger SoulMatch
-      const params = new URLSearchParams(window.location.search);
-      if (params.get('soulmatch') === 'true') {
+      const params = new URLSearchParams(location.search);
+      if (params.get('soulmatch')) {
         window.history.replaceState({}, '', window.location.pathname);
         handleSoulMatchPress();
       }
     }
-  }, [loading, profiles]);
+  }, [loading, profiles, location.search]);
 
   const genderOptions = ['Uomo', 'Donna', 'Non-binario', 'Transgender', 'Genderfluid', 'Queer', 'Altro'];
   const orientationOptions = ['Eterosessuale', 'Gay', 'Lesbica', 'Bisessuale', 'Pansessuale', 'Queer', 'Altro'];
@@ -1858,7 +1870,13 @@ const BachecaPage = () => {
 
 
 
-      <div className="max-w-md mx-auto px-4 space-y-5 mt-6">
+      <div className="max-w-md mx-auto px-4 space-y-5 mt-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-rose-50 rounded-[16px] flex items-center justify-center">
+            <Users className="w-5 h-5 text-rose-600" />
+          </div>
+          <h1 className="text-xl font-montserrat font-black text-rose-600">Bacheca</h1>
+        </div>
 
         {/* Filter bar */}
         <div className="space-y-4">
@@ -1950,6 +1968,39 @@ const BachecaPage = () => {
           </AnimatePresence>
         </div>
 
+        {/* ── FLOATING BANNER (ISOLA BANNER) ── */}
+        {bannerMessages.length > 0 && (
+          <div className="relative z-40 mb-2 mt-2">
+            <div className="bg-white/95 backdrop-blur-md rounded-[24px] p-3.5 shadow-xl shadow-rose-900/10 border border-white flex flex-col justify-center relative overflow-hidden h-[84px] ring-1 ring-black/[0.03]">
+              <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b from-rose-400 to-rose-600 rounded-l-[24px]" />
+              <AnimatePresence mode="popLayout" initial={false}>
+                {bannerMessages.length > 0 && (
+                  <motion.div
+                    key={bannerMessages[bannerIndex]?.id || 'empty'}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20, position: 'absolute' }}
+                    transition={{ duration: 0.5, ease: "circOut" }}
+                    className="flex items-center gap-3.5 w-full pl-2"
+                  >
+                    <div className="w-12 h-12 rounded-full overflow-hidden shrink-0 ring-4 ring-rose-50 shadow-sm bg-stone-100 border border-white">
+                      <img src={bannerMessages[bannerIndex]?.photo_url || `https://picsum.photos/seed/${bannerMessages[bannerIndex]?.name}/100`} className="w-full h-full object-cover" />
+                    </div>
+                    <div className="flex-1 min-w-0 pr-1">
+                      <div className="flex items-center gap-2 leading-tight">
+                        <span className="text-[12px] font-black text-stone-900 truncate">{bannerMessages[bannerIndex]?.name}</span>
+                        <span className="text-[10px] font-bold text-stone-400 shrink-0">{bannerMessages[bannerIndex]?.dob ? calculateAge(bannerMessages[bannerIndex]?.dob) : ''}</span>
+                        <span className="text-[9px] px-2 py-0.5 bg-stone-100 text-stone-500 rounded-full font-bold ml-auto shrink-0">{bannerMessages[bannerIndex]?.city}</span>
+                      </div>
+                      <p className="text-xs text-stone-600 font-medium truncate mt-1 pr-2">{bannerMessages[bannerIndex]?.message}</p>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </div>
+        )}
+
 
 
         {/* Profile grid */}
@@ -2027,28 +2078,7 @@ const BachecaPage = () => {
         )}
       </div>
 
-      <AppBottomNav
-        activeTab="bacheca"
-        customCenter={
-          <button
-            onClick={handleSoulMatchPress}
-            className="flex flex-col items-center gap-1 relative"
-          >
-            <div className={cn(
-              "w-14 h-14 -mt-6 rounded-[22px] flex items-center justify-center shadow-xl transition-all active:scale-90",
-              isSoulMatchOnCooldown()
-                ? "bg-stone-300 shadow-stone-200/60"
-                : "bg-rose-600 shadow-rose-400/40 hover:bg-rose-700"
-            )}>
-              <Heart className="w-6 h-6 text-white fill-current" />
-            </div>
-            <span className={cn(
-              "text-[9px] font-black uppercase tracking-widest",
-              isSoulMatchOnCooldown() ? "text-stone-400" : "text-rose-600"
-            )}>SoulMatch</span>
-          </button>
-        }
-      />
+      <AppBottomNav activeTab="bacheca" />
 
       {/* ── COOLDOWN TOAST ── */}
       <AnimatePresence>
@@ -2375,20 +2405,7 @@ const FeedPage = () => {
         {currentUser?.id && <FeedComponent userId={null} isOwner={false} global={true} />}
       </div>
 
-      <AppBottomNav
-        activeTab="feed"
-        customCenter={
-          <button
-            onClick={() => navigate('/bacheca?soulmatch=true')}
-            className="flex flex-col items-center gap-1 relative"
-          >
-            <div className="w-14 h-14 -mt-6 rounded-[22px] bg-rose-600 flex items-center justify-center shadow-xl shadow-rose-400/40 text-white active:scale-90 transition-all">
-              <Heart className="w-6 h-6 fill-current" />
-            </div>
-            <span className="text-[9px] font-black uppercase tracking-widest text-rose-600">SoulMatch</span>
-          </button>
-        }
-      />
+      <AppBottomNav activeTab="feed" />
     </div>
   );
 };
@@ -2549,20 +2566,20 @@ const SoulLinksPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8F4EF] pt-16 pb-28 relative overflow-x-hidden">
+    <div className="min-h-screen bg-[#F8F4EF] pt-11 pb-28 relative overflow-x-hidden">
       <AnimatePresence>
         {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       </AnimatePresence>
 
       {/* ── HEADER ── */}
-      <div className="sticky top-16 z-30 bg-white/90 backdrop-blur-xl border-b border-stone-100 px-5 py-4 shadow-sm">
+      <div className="sticky top-11 z-30 bg-white/90 backdrop-blur-xl border-b border-stone-100 px-5 py-4 shadow-sm">
         <div className="max-w-md mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-violet-100 rounded-[16px] flex items-center justify-center">
               <Link2 className="w-5 h-5 text-violet-600" />
             </div>
             <div>
-              <h1 className="text-base font-serif font-black text-stone-900">I miei SoulLink</h1>
+              <h1 className="text-base font-montserrat font-black text-indigo-600">SoulLink</h1>
               <p className="text-[9px] font-bold uppercase tracking-widest text-stone-400">
                 {loading ? '...' : `${friends.length} connessioni`}
               </p>
@@ -2599,7 +2616,7 @@ const SoulLinksPage = () => {
         </div>
       </div>
 
-      <div className="max-w-md mx-auto px-4 pt-6 space-y-4">
+      <div className="max-w-md mx-auto px-4 pt-16 space-y-4">
 
         {/* ── TAB: FEED ── */}
         {activeTab === 'feed' && (
@@ -4728,11 +4745,11 @@ const FeedComponent = ({ userId, isOwner, global = false }: { userId: any, isOwn
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between px-2">
-        <h2 className="text-xl font-serif font-black text-stone-900 flex items-center gap-3">
+        <h2 className="text-xl font-montserrat font-black text-emerald-600 flex items-center gap-3">
           <div className="w-10 h-10 bg-emerald-50 rounded-2xl flex items-center justify-center">
-            <LayoutGrid className="w-5 h-5 text-emerald-500" />
+            <LayoutGrid className="w-5 h-5 text-emerald-600" />
           </div>
-          {isOwner ? "La Mia Bacheca" : "Bacheca Feed"}
+          {isOwner ? "La Mia Bacheca" : "Feed"}
         </h2>
       </div>
 
@@ -5647,6 +5664,24 @@ const ProfilePage = () => {
         {/* Gradient overlay: transparent at top, full colour at bottom */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-[#F8F4EF]" />
 
+        {/* Floating Actions */}
+        <div className="absolute top-4 right-4 flex flex-col gap-2 z-20">
+          <button
+            onClick={() => navigate('/edit-profile')}
+            className="w-10 h-10 bg-white/80 backdrop-blur-md rounded-full flex items-center justify-center text-stone-600 shadow-lg active:scale-90 transition-all border border-white"
+            title="Modifica profilo"
+          >
+            <Settings2 className="w-5 h-5" />
+          </button>
+          <button
+            onClick={() => setShowLogoutConfirm(true)}
+            className="w-10 h-10 bg-white/80 backdrop-blur-md rounded-full flex items-center justify-center text-rose-600 shadow-lg active:scale-90 transition-all border border-white"
+            title="Esci"
+          >
+            <LogOut className="w-5 h-5" />
+          </button>
+        </div>
+
 
         {/* Name + badge floated over gradient */}
         <div className="absolute bottom-0 left-0 right-0 px-6 pb-4 z-10">
@@ -5924,72 +5959,7 @@ const ProfilePage = () => {
         </AnimatePresence>
       </div>
 
-      {/* ── BOTTOM NAV BAR (fixed, iOS style) ── */}
-      <div className="fixed bottom-0 left-0 right-0 z-40">
-        {/* backdrop blur pill */}
-        <div className="bg-white/90 backdrop-blur-xl border-t border-stone-100 shadow-2xl px-4 pb-6 pt-3">
-          <div className="max-w-sm mx-auto flex items-center justify-around">
-
-            {/* Home */}
-            <button
-              onClick={() => navigate('/')}
-              className="flex flex-col items-center gap-1 text-stone-400 hover:text-rose-600 active:scale-90 transition-all"
-            >
-              <Home className="w-5 h-5" />
-              <span className="text-[8px] font-black uppercase tracking-widest">Home</span>
-            </button>
-
-            {/* Bacheca */}
-            <button
-              onClick={() => navigate('/bacheca')}
-              className="flex flex-col items-center gap-1 text-stone-400 hover:text-rose-600 active:scale-90 transition-all"
-            >
-              <Users className="w-5 h-5" />
-              <span className="text-[8px] font-black uppercase tracking-widest">Bacheca</span>
-            </button>
-
-            {/* Feed */}
-            <button
-              onClick={() => navigate('/feed')}
-              className="flex flex-col items-center gap-1 text-stone-400 hover:text-rose-600 active:scale-90 transition-all"
-            >
-              <LayoutGrid className="w-5 h-5" />
-              <span className="text-[8px] font-black uppercase tracking-widest">Feed</span>
-            </button>
-
-            {/* Centre button – Modifica (elevated) */}
-            <button
-              onClick={() => navigate('/edit-profile')}
-              className="flex flex-col items-center gap-1"
-              title="Modifica profilo"
-            >
-              <div className="w-[50px] h-[50px] -mt-5 rounded-[18px] bg-rose-600 flex items-center justify-center shadow-xl shadow-rose-400/40 text-white active:scale-90 transition-all">
-                <Settings2 className="w-5 h-5" />
-              </div>
-              <span className="text-[8px] font-black uppercase tracking-widest text-rose-600 mt-0.5">Modifica</span>
-            </button>
-
-            {/* SoulLink */}
-            <button
-              onClick={() => navigate('/soul-links')}
-              className="flex flex-col items-center gap-1 text-stone-400 hover:text-violet-600 active:scale-90 transition-all"
-            >
-              <Link2 className="w-5 h-5" />
-              <span className="text-[8px] font-black uppercase tracking-widest">SoulLink</span>
-            </button>
-
-            {/* Esci */}
-            <button
-              onClick={() => setShowLogoutConfirm(true)}
-              className="flex flex-col items-center gap-1 text-stone-400 hover:text-rose-600 active:scale-90 transition-all"
-            >
-              <LogOut className="w-5 h-5" />
-              <span className="text-[8px] font-black uppercase tracking-widest">Esci</span>
-            </button>
-
-          </div>
-        </div>
-      </div>
+      <AppBottomNav activeTab="profile" />
 
       {/* ── LOGOUT MODAL ── */}
       <AnimatePresence>
