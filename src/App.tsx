@@ -1230,14 +1230,14 @@ const ProfileDetailPage = () => {
               <h1 className="text-3xl font-serif font-black text-stone-900 leading-tight drop-shadow-sm">
                 {profile.name}{profile.dob && calculateAge(profile.dob) > 0 ? <span className="font-light text-2xl text-stone-500">, {calculateAge(profile.dob)}</span> : null}
               </h1>
+              <p className="text-stone-400 text-xs font-bold mt-1 uppercase tracking-widest">
+                {profile.gender} • {(profile.orientation || []).join(', ')}
+              </p>
               {profile.city && (
                 <p className="flex items-center gap-1 text-stone-500 text-sm font-semibold mt-0.5">
                   <MapPin className="w-3.5 h-3.5" />{profile.city}{profile.province ? `, ${profile.province}` : ''}
                 </p>
               )}
-              <p className="text-stone-400 text-xs font-bold mt-1 uppercase tracking-widest">
-                {profile.gender} • {(profile.orientation || []).join(', ')}
-              </p>
               {!!profile.is_paid && (
                 <div className="mt-3 inline-flex items-center gap-1.5 bg-amber-50 text-amber-600 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-amber-200 shadow-sm">
                   <Sparkles className="w-3 h-3" /> Membro Premium
@@ -4749,7 +4749,12 @@ const FeedComponent = ({ userId, isOwner, global = false }: { userId: any, isOwn
           <div className="w-10 h-10 bg-emerald-50 rounded-2xl flex items-center justify-center">
             <LayoutGrid className="w-5 h-5 text-emerald-600" />
           </div>
-          {isOwner ? "La Mia Bacheca" : "Feed"}
+          {isOwner ? (
+            <div className="flex flex-col">
+              <span>I MIEI POST</span>
+              <span className="text-[10px] text-stone-400 font-semibold mt-1 uppercase tracking-widest leading-none">durata 30 giorni</span>
+            </div>
+          ) : "Feed"}
         </h2>
       </div>
 
@@ -5673,13 +5678,6 @@ const ProfilePage = () => {
           >
             <Settings2 className="w-5 h-5" />
           </button>
-          <button
-            onClick={() => setShowLogoutConfirm(true)}
-            className="w-10 h-10 bg-white/80 backdrop-blur-md rounded-full flex items-center justify-center text-rose-600 shadow-lg active:scale-90 transition-all border border-white"
-            title="Esci"
-          >
-            <LogOut className="w-5 h-5" />
-          </button>
         </div>
 
 
@@ -5918,7 +5916,7 @@ const ProfilePage = () => {
             >
               <div className="flex items-center justify-between px-1">
                 <h2 className="text-base font-serif font-black text-stone-900 flex items-center gap-2">
-                  <Camera className="w-5 h-5 text-rose-500" /> La Mia Galleria
+                  <Camera className="w-5 h-5 text-rose-500" /> <span className="font-montserrat text-red-600 font-black">MY GALLERY</span>
                 </h2>
                 <span className="text-[10px] text-stone-400 font-black uppercase tracking-widest">{user.photos?.length || 0}/5</span>
               </div>
