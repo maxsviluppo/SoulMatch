@@ -40,7 +40,9 @@ import {
   AlertTriangle,
   Link2,
   UserCheck,
-  XCircle
+  XCircle,
+  MessageCircle,
+  Send
 } from 'lucide-react';
 import { cn, calculateAge, calculateMatchScore, fileToBase64, playTapSound } from './utils';
 import { UserProfile, ChatRequest, Post, SoulLink } from './types';
@@ -72,6 +74,14 @@ const normalizeUser = (u: any): any => ({
 const AppBottomNav = ({ activeTab }: { activeTab?: 'home' | 'bacheca' | 'feed' | 'soulmatch' | 'soullink' | 'profile' }) => {
   const navigate = useNavigate();
   const [pendingCount, setPendingCount] = useState(0);
+  const [isHeartAnimated, setIsHeartAnimated] = useState(false);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setIsHeartAnimated(prev => !prev);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     let currentUserId: string | null = null;
@@ -143,12 +153,20 @@ const AppBottomNav = ({ activeTab }: { activeTab?: 'home' | 'bacheca' | 'feed' |
           <span className="text-[7px] font-black uppercase tracking-wider leading-none mt-0.5">SoulLink</span>
         </Link>
 
-        {/* SoulMatch (Heart Button) - Move to 5th Position */}
-        <Link to="/bacheca?soulmatch=true" className={cn("flex flex-col items-center gap-1 transition-all flex-1")}>
-          <div className={cn("w-10 h-10 rounded-[14px] flex items-center justify-center -mt-4 shadow-lg transition-all active:scale-95 bg-rose-600 text-white shadow-rose-200")}>
-            <Heart className="w-5 h-5 fill-current" />
+        {/* SoulMatch (Heart Button) - Animated */}
+        <Link to="/bacheca?soulmatch=true" className={cn("flex flex-col items-center gap-1 transition-all flex-1", activeTab === 'soulmatch' ? "text-rose-600" : (!isHeartAnimated ? "text-stone-400 hover:text-rose-500" : ""))}>
+          <div className={cn(
+            "flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)]",
+            isHeartAnimated
+              ? "w-10 h-10 rounded-[14px] -mt-4 shadow-lg bg-rose-600 text-white shadow-rose-200"
+              : "w-4 h-4 bg-transparent mt-0"
+          )}>
+            <Heart className={cn("transition-all duration-700", isHeartAnimated ? "w-5 h-5 fill-current" : "w-4 h-4")} />
           </div>
-          <span className="text-[7px] font-black uppercase tracking-wider text-rose-600 mt-1">SoulMatch</span>
+          <span className={cn(
+            "text-[7px] font-black uppercase tracking-wider leading-none mt-0.5 transition-all duration-700",
+            isHeartAnimated ? "text-rose-600 mt-1" : ""
+          )}>SoulMatch</span>
         </Link>
 
         {/* Profile */}
@@ -1248,30 +1266,30 @@ const ProfileDetailPage = () => {
         </div>
       </div>
 
-      {/* ── ACTION STRIP (4 cols) ── */}
-      <div className="mx-4 mt-3 bg-white rounded-[28px] shadow-sm border border-stone-100 grid grid-cols-4 divide-x divide-stone-100 overflow-hidden">
+      {/* ── ACTION STRIP (5 cols GLASMORPHISM) ── */}
+      <div className="mx-4 mt-3 bg-white/40 backdrop-blur-xl rounded-[28px] shadow-xl shadow-stone-900/5 border border-white/60 grid grid-cols-5 overflow-visible relative z-10 py-1">
         {/* Like */}
-        <button onClick={() => handleInteract('like')} className="flex flex-col items-center py-4 gap-1 group">
+        <button onClick={() => handleInteract('like')} className="flex flex-col items-center py-3 gap-1 group">
           <div className={cn(
-            "w-10 h-10 rounded-[14px] flex items-center justify-center transition-all",
-            userInteractions.includes('like') ? "bg-emerald-100 text-emerald-600" : "bg-stone-50 text-stone-400 group-hover:bg-emerald-50 group-hover:text-emerald-500"
+            "w-10 h-10 rounded-full flex items-center justify-center transition-all bg-white/60 shadow-sm border border-white/80",
+            userInteractions.includes('like') ? "text-emerald-500 scale-110" : "text-stone-400 group-hover:bg-emerald-50 group-hover:text-emerald-500 group-hover:scale-110"
           )}>
-            <ThumbsUp className="w-5 h-5" />
+            <ThumbsUp className={cn("w-4 h-4", userInteractions.includes('like') && "fill-current")} />
           </div>
-          <span className="text-lg font-black text-stone-900">{profile.likes_count || 0}</span>
-          <span className={cn("text-[9px] font-bold uppercase tracking-widest", userInteractions.includes('like') ? "text-emerald-600" : "text-stone-400")}>Like</span>
+          <span className="text-sm font-black text-stone-900">{profile.likes_count || 0}</span>
+          <span className={cn("text-[8px] font-black uppercase tracking-widest", userInteractions.includes('like') ? "text-emerald-600" : "text-stone-400")}>Like</span>
         </button>
 
         {/* Heart */}
         <button onClick={() => handleInteract('heart')} className="flex flex-col items-center py-3 gap-1 group">
           <div className={cn(
-            "w-12 h-12 rounded-full flex items-center justify-center transition-all shadow-md",
-            userInteractions.includes('heart') ? "bg-rose-600 text-white scale-105" : "bg-rose-50 text-rose-500 group-hover:scale-105"
+            "w-10 h-10 rounded-full flex items-center justify-center transition-all bg-white/60 shadow-sm border border-white/80",
+            userInteractions.includes('heart') ? "text-rose-500 scale-110" : "text-stone-400 group-hover:bg-rose-50 group-hover:text-rose-500 group-hover:scale-110"
           )}>
-            <Heart className={cn("w-6 h-6", userInteractions.includes('heart') && "fill-current")} />
+            <Heart className={cn("w-4 h-4", userInteractions.includes('heart') && "fill-current")} />
           </div>
-          <span className="text-lg font-black text-stone-900">{profile.hearts_count || 0}</span>
-          <span className={cn("text-[9px] font-bold uppercase tracking-widest", userInteractions.includes('heart') ? "text-rose-600" : "text-stone-400")}>Cuori</span>
+          <span className="text-sm font-black text-stone-900">{profile.hearts_count || 0}</span>
+          <span className={cn("text-[8px] font-black uppercase tracking-widest", userInteractions.includes('heart') ? "text-rose-600" : "text-stone-400")}>Cuori</span>
         </button>
 
         {/* SoulLink */}
@@ -1282,50 +1300,55 @@ const ProfileDetailPage = () => {
                 soulLinkStatus === 'accepted' ? handleRemoveSoulLink :
                   () => { }
           }
-          className="flex flex-col items-center py-4 gap-1 group"
+          className="flex flex-col items-center py-3 gap-1 group relative"
         >
           <div className={cn(
-            "w-10 h-10 rounded-[14px] flex items-center justify-center transition-all relative",
-            soulLinkStatus === 'accepted' ? "bg-violet-100 text-violet-600" :
-              soulLinkStatus === 'pending_sent' ? "bg-amber-100 text-amber-600" :
-                soulLinkStatus === 'pending_received' ? "bg-emerald-100 text-emerald-600" :
-                  "bg-stone-50 text-stone-400 group-hover:bg-violet-50 group-hover:text-violet-500"
+            "w-10 h-10 rounded-full flex items-center justify-center transition-all relative bg-white/60 shadow-sm border border-white/80 group-hover:scale-110",
+            soulLinkStatus === 'accepted' ? "text-violet-500" :
+              soulLinkStatus === 'pending_sent' ? "text-amber-500" :
+                soulLinkStatus === 'pending_received' ? "text-emerald-500" : "text-stone-400"
           )}>
-            <Link2 className="w-5 h-5" />
+            <Link2 className="w-4 h-4" />
             {soulLinkStatus === 'pending_received' && (
-              <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white animate-pulse" />
+              <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white animate-pulse" />
             )}
           </div>
-          <span className="text-lg font-black text-stone-900">&nbsp;</span>
-          <span className={cn("text-[9px] font-bold uppercase tracking-widest",
+          <span className="text-sm font-black text-stone-900">&nbsp;</span>
+          <span className={cn("text-[8px] font-black uppercase tracking-widest text-center leading-none px-1",
             soulLinkStatus === 'accepted' ? "text-violet-600" :
               soulLinkStatus === 'pending_sent' ? "text-amber-600" :
-                soulLinkStatus === 'pending_received' ? "text-emerald-600" :
-                  "text-stone-400"
+                soulLinkStatus === 'pending_received' ? "text-emerald-600" : "text-stone-400"
           )}>
-            {soulLinkStatus === 'accepted' ? 'Connessi' :
+            {soulLinkStatus === 'accepted' ? 'Amici' :
               soulLinkStatus === 'pending_sent' ? 'Attesa' :
-                soulLinkStatus === 'pending_received' ? 'Accetta' :
-                  'SoulLink'}
+                soulLinkStatus === 'pending_received' ? 'Accetta' : 'SoulLink'}
           </span>
         </button>
 
+        {/* Message / Scrivi */}
+        <button onClick={handleOpenMessageModal} className="flex flex-col items-center py-3 gap-1 group relative">
+          <div className="w-10 h-10 rounded-full flex items-center justify-center transition-all bg-white/60 shadow-sm border border-white/80 text-stone-400 group-hover:scale-110 group-hover:text-rose-500">
+            <Send className="w-4 h-4" />
+          </div>
+          <span className="text-sm font-black text-stone-900">&nbsp;</span>
+          <span className="text-[8px] font-black uppercase tracking-widest text-stone-400">Scrivi</span>
+        </button>
+
         {/* Chat */}
-        <button onClick={handleInstantChat} className="flex flex-col items-center py-4 gap-1 group relative">
+        <button onClick={handleInstantChat} className="flex flex-col items-center py-3 gap-1 group relative">
           <div className={cn(
-            "w-10 h-10 rounded-[14px] flex items-center justify-center transition-all relative",
-            chatStatus === 'approved' ? "bg-emerald-100 text-emerald-600" :
-              chatStatus === 'pending' ? "bg-amber-100 text-amber-600" :
-                "bg-stone-50 text-stone-400 group-hover:bg-blue-50 group-hover:text-blue-500"
+            "w-10 h-10 rounded-full flex items-center justify-center transition-all relative bg-white/60 shadow-sm border border-white/80 group-hover:scale-110",
+            chatStatus === 'approved' ? "text-emerald-500" :
+              chatStatus === 'pending' ? "text-amber-500" : "text-stone-400 group-hover:text-blue-500"
           )}>
-            <MessageSquare className="w-5 h-5" />
+            <MessageCircle className="w-4 h-4" />
             <div className={cn(
-              "absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-white",
+              "absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white",
               profile.is_online ? "bg-emerald-500" : "bg-rose-400"
             )} />
           </div>
-          <span className="text-lg font-black text-stone-900">&nbsp;</span>
-          <span className={cn("text-[9px] font-bold uppercase tracking-widest",
+          <span className="text-sm font-black text-stone-900">&nbsp;</span>
+          <span className={cn("text-[8px] font-black uppercase tracking-widest leading-none px-1 text-center",
             chatStatus === 'approved' ? "text-emerald-600" :
               chatStatus === 'pending' ? "text-amber-600" : "text-stone-400")}>
             {chatStatus === 'approved' ? 'Attiva' : chatStatus === 'pending' ? 'Attesa' : 'Chat'}
@@ -1339,7 +1362,7 @@ const ProfileDetailPage = () => {
         {/* Compatibility card */}
         <div className="bg-white rounded-[24px] border border-stone-100 p-5 shadow-sm overflow-hidden relative">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-serif font-black text-stone-900 flex items-center gap-2">
+            <h2 className="text-base font-montserrat font-black text-stone-900 flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-rose-500" /> Compatibilità
             </h2>
             {currentUser && (
@@ -1399,7 +1422,7 @@ const ProfileDetailPage = () => {
         {/* Bio */}
         {profile.description && (
           <div className="bg-white rounded-[24px] border border-stone-100 p-5 shadow-sm">
-            <h2 className="text-base font-serif font-black text-stone-900 mb-2">Bio</h2>
+            <h2 className="text-base font-montserrat font-black text-stone-900 mb-2">Bio</h2>
             <p className="text-stone-600 leading-relaxed text-sm italic">"{profile.description}"</p>
           </div>
         )}
@@ -1436,7 +1459,7 @@ const ProfileDetailPage = () => {
 
         {/* Looking for */}
         <div className="bg-rose-50 rounded-[24px] border border-rose-100 p-5 shadow-sm">
-          <h2 className="text-base font-serif font-black text-stone-900 mb-2 flex items-center gap-2">
+          <h2 className="text-base font-montserrat font-black text-stone-900 mb-2 flex items-center gap-2">
             <Search className="w-4 h-4 text-rose-500" /> Cosa Cerca
           </h2>
           <p className="text-xs text-stone-500 font-semibold mb-1">Preferenza: <span className="text-stone-800">{(profile.looking_for_gender || []).join(', ')}</span></p>
@@ -1446,9 +1469,9 @@ const ProfileDetailPage = () => {
         {/* Gallery */}
         {profile.photos && profile.photos.length > 0 && (
           <div className="bg-white rounded-[24px] border border-stone-100 p-5 shadow-sm">
-            <h2 className="text-base font-serif font-black text-stone-900 mb-3 flex items-center gap-2">
-              <Camera className="w-4 h-4 text-rose-500" /> Galleria
-            </h2>
+            <div className="mb-3 flex items-center justify-center w-12 h-12 bg-rose-50 rounded-[18px]">
+              <Camera className="w-5 h-5 text-rose-500" />
+            </div>
             <div className="grid grid-cols-3 gap-2">
               {profile.photos.map((url, i) => (
                 <div key={i} className="aspect-square rounded-[16px] overflow-hidden border border-stone-100 shadow-sm">
@@ -1649,12 +1672,27 @@ const BachecaPage = () => {
   }, []);
 
   useEffect(() => {
-    if (bannerMessages.length === 0) return;
+    if (bannerMessages.length <= 1) return;
     const interval = setInterval(() => {
-      setBannerIndex(prev => (prev + 1 >= bannerMessages.length ? 0 : prev + 1));
-    }, 4000);
+      setBannerIndex(Math.floor(Math.random() * bannerMessages.length));
+    }, 5000);
     return () => clearInterval(interval);
   }, [bannerMessages]);
+
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent | TouchEvent) => {
+      const bannerEl = document.getElementById('msg-floating-banner');
+      if (isBannerExpanded && bannerEl && !bannerEl.contains(e.target as Node)) {
+        setIsBannerExpanded(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('touchstart', handleOutsideClick);
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('touchstart', handleOutsideClick);
+    };
+  }, [isBannerExpanded]);
 
   // Restore scroll position after profiles are loaded
   useEffect(() => {
@@ -1873,10 +1911,7 @@ const BachecaPage = () => {
 
       <div className="max-w-md mx-auto px-4 space-y-5 mt-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-rose-50 rounded-[16px] flex items-center justify-center">
-            <Users className="w-5 h-5 text-rose-600" />
-          </div>
-          <h1 className="text-xl font-montserrat font-black text-rose-600">Bacheca</h1>
+          {/* Bacheca title removed */}
         </div>
 
         {/* Filter bar */}
@@ -1971,8 +2006,6 @@ const BachecaPage = () => {
 
         {/* ── ALREADY REPLACED FLOATING BANNER WILL GO BELOW ── */}
 
-
-
         {/* Profile grid */}
         {loading ? (
           <div className="grid grid-cols-2 gap-4">
@@ -2052,7 +2085,7 @@ const BachecaPage = () => {
 
       {/* ── NEW FLOATING MSG WIDGET ── */}
       {bannerMessages.length > 0 && (
-        <div className={cn(
+        <div id="msg-floating-banner" className={cn(
           "fixed z-[45] bottom-28 right-0 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] shadow-2xl flex items-center border border-white/40",
           isBannerExpanded
             ? "w-[94%] max-w-[360px] bg-white/95 backdrop-blur-xl rounded-l-[32px] p-4"
@@ -2068,33 +2101,45 @@ const BachecaPage = () => {
               <div className="absolute top-0 right-1 w-3.5 h-3.5 bg-white text-rose-600 rounded-full text-[8px] font-black flex items-center justify-center shadow-sm">{bannerMessages.length}</div>
             </div>
           ) : (
-            <div className="w-full flex justify-between items-start gap-2">
-              <div className="flex-1 overflow-x-auto scrollbar-hide flex gap-4 pb-2 pt-1 pl-2 relative">
-                {bannerMessages.map((msg, idx) => (
-                  <div key={idx} className="flex flex-col items-center shrink-0 w-[60px] gap-1 group relative">
-                    <div
-                      onClick={() => navigate(`/profile-detail/${msg.user_id}`)}
-                      className="w-14 h-14 rounded-[20px] p-[2.5px] bg-gradient-to-tr from-amber-300 via-rose-500 to-fuchsia-600 cursor-pointer shadow-md active:scale-95 transition-transform shrink-0"
-                    >
-                      <div className="w-full h-full bg-white rounded-[18px] p-0.5">
-                        <img src={msg.photo_url || `https://picsum.photos/seed/${msg.name}/100`} className="w-full h-full object-cover rounded-[16px]" />
-                      </div>
-                    </div>
-                    <span className="text-[10px] font-black text-stone-700 truncate w-full text-center">{msg.name}</span>
-                    <span className="text-[8px] font-bold text-stone-400 -mt-1">{msg.city}</span>
-
-                    {/* Tooltip bubble for message */}
-                    <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-max max-w-[140px] bg-stone-900 text-white text-[10px] font-medium leading-[1.2] py-2 px-3 rounded-[12px] shadow-xl opacity-0 scale-75 group-hover:opacity-100 group-hover:scale-100 transition-all pointer-events-none origin-bottom z-50 line-clamp-2">
-                      {msg.message}
-                      <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 border-l-[4px] border-r-[4px] border-t-[5px] border-l-transparent border-r-transparent border-t-stone-900 w-0 h-0" />
+            <div className="w-full flex items-center justify-between gap-1 overflow-hidden">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={bannerMessages[bannerIndex]?.id || bannerIndex}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 10 }}
+                  transition={{ duration: 0.3 }}
+                  className="flex-1 flex items-center gap-2 pl-1 overflow-hidden"
+                >
+                  <div
+                    onClick={() => navigate(`/profile-detail/${bannerMessages[bannerIndex]?.user_id}`)}
+                    className="w-[52px] h-[52px] rounded-[18px] p-[2px] bg-gradient-to-tr from-amber-300 via-rose-500 to-fuchsia-600 cursor-pointer shadow-md active:scale-95 transition-transform shrink-0"
+                  >
+                    <div className="w-full h-full bg-white rounded-[16px] p-0.5">
+                      <img src={bannerMessages[bannerIndex]?.photo_url || `https://picsum.photos/seed/${bannerMessages[bannerIndex]?.name}/100`} className="w-full h-full object-cover rounded-[14px]" />
                     </div>
                   </div>
-                ))}
-              </div>
+
+                  <div className="flex flex-col flex-1 min-w-0 pr-1">
+                    <div className="flex items-baseline gap-1.5 leading-tight mb-0.5">
+                      <span className="text-[11px] font-black text-stone-900 truncate">{bannerMessages[bannerIndex]?.name}</span>
+                      <span className="text-[9px] font-bold text-stone-400 capitalize shrink-0">{bannerMessages[bannerIndex]?.city}</span>
+                    </div>
+
+                    <div className="bg-stone-100 rounded-[10px] p-2 relative shadow-sm border border-stone-50">
+                      {/* Fumetto tail */}
+                      <div className="absolute top-[8px] -left-[4px] w-0 h-0 border-y-[4px] border-y-transparent border-r-[5px] border-r-stone-100" />
+                      <p className="text-[10px] text-stone-700 font-medium leading-[1.15] line-clamp-2 break-words">
+                        {bannerMessages[bannerIndex]?.message}
+                      </p>
+                    </div>
+                  </div>
+                </motion.div>
+              </AnimatePresence>
 
               <button
                 onClick={() => setIsBannerExpanded(false)}
-                className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-stone-500 hover:bg-rose-100 hover:text-rose-600 shrink-0 mt-3 mr-1 shadow-sm border border-stone-200 active:scale-90"
+                className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-stone-400 hover:bg-rose-50 hover:text-rose-600 shrink-0 shadow-sm border border-stone-100 active:scale-90 ml-1"
               >
                 <ChevronRight className="w-5 h-5 ml-0.5" />
               </button>
@@ -2390,39 +2435,6 @@ const FeedPage = () => {
         </div>
       )}
 
-      {/* ── FLOATING BANNER (ISOLA BANNER) ── */}
-      {bannerMessages.length > 0 && (
-        <div className="relative px-4 z-40 mb-8 mt-[-30px]">
-          <div className="bg-white/95 backdrop-blur-md rounded-[24px] p-3.5 shadow-xl shadow-rose-900/10 border border-white flex flex-col justify-center relative overflow-hidden h-[84px] ring-1 ring-black/[0.03]">
-            <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b from-rose-400 to-rose-600 rounded-l-[24px]" />
-            <AnimatePresence mode="popLayout" initial={false}>
-              {bannerMessages.length > 0 && (
-                <motion.div
-                  key={bannerMessages[bannerIndex]?.id || 'empty'}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20, position: 'absolute' }}
-                  transition={{ duration: 0.5, ease: "circOut" }}
-                  className="flex items-center gap-3.5 w-full pl-2"
-                >
-                  <div className="w-12 h-12 rounded-full overflow-hidden shrink-0 ring-4 ring-rose-50 shadow-sm bg-stone-100 border border-white">
-                    <img src={bannerMessages[bannerIndex]?.photo_url || `https://picsum.photos/seed/${bannerMessages[bannerIndex]?.name}/100`} className="w-full h-full object-cover" />
-                  </div>
-                  <div className="flex-1 min-w-0 pr-1">
-                    <div className="flex items-center gap-2 leading-tight">
-                      <span className="text-[12px] font-black text-stone-900 truncate">{bannerMessages[bannerIndex]?.name}</span>
-                      <span className="text-[10px] font-bold text-stone-400 shrink-0">{bannerMessages[bannerIndex]?.dob ? calculateAge(bannerMessages[bannerIndex]?.dob) : ''}</span>
-                      <span className="text-[9px] px-2 py-0.5 bg-stone-100 text-stone-500 rounded-full font-bold ml-auto shrink-0">{bannerMessages[bannerIndex]?.city}</span>
-                    </div>
-                    <p className="text-xs text-stone-600 font-medium truncate mt-1 pr-2">{bannerMessages[bannerIndex]?.message}</p>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        </div>
-      )}
-
       {/* ── FEED POSTS ── */}
       <div className="px-4">
         {currentUser?.id && <FeedComponent userId={null} isOwner={false} global={true} />}
@@ -2602,7 +2614,7 @@ const SoulLinksPage = () => {
               <Link2 className="w-5 h-5 text-violet-600" />
             </div>
             <div>
-              <h1 className="text-base font-montserrat font-black text-indigo-600">SoulLink</h1>
+              <h1 className="text-base font-montserrat font-black text-indigo-600">Amici</h1>
               <p className="text-[9px] font-bold uppercase tracking-widest text-stone-400">
                 {loading ? '...' : `${friends.length} connessioni`}
               </p>
@@ -4767,19 +4779,19 @@ const FeedComponent = ({ userId, isOwner, global = false }: { userId: any, isOwn
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between px-2">
-        <h2 className="text-xl font-montserrat font-black text-emerald-600 flex items-center gap-3">
-          <div className="w-10 h-10 bg-emerald-50 rounded-2xl flex items-center justify-center">
-            <LayoutGrid className="w-5 h-5 text-emerald-600" />
-          </div>
-          {isOwner ? (
+      {isOwner && (
+        <div className="flex items-center justify-between px-2">
+          <h2 className="text-xl font-montserrat font-black text-emerald-600 flex items-center gap-3">
+            <div className="w-10 h-10 bg-emerald-50 rounded-2xl flex items-center justify-center">
+              <LayoutGrid className="w-5 h-5 text-emerald-600" />
+            </div>
             <div className="flex flex-col">
               <span>I MIEI POST</span>
               <span className="text-[10px] text-stone-400 font-semibold mt-1 uppercase tracking-widest leading-none">durata 30 giorni</span>
             </div>
-          ) : "Feed"}
-        </h2>
-      </div>
+          </h2>
+        </div>
+      )}
 
       {isOwner && (
         <motion.div

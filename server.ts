@@ -172,8 +172,20 @@ if (checkSettings.count === 0) {
 }
 
 const checkUsers = db.prepare("SELECT count(*) as count FROM users").get() as { count: number };
-// Removed seed data to ensure only real users are shown during local testing.
+if (checkUsers.count === 0) {
+  const insert = db.prepare(`
+    INSERT INTO users (name, surname, dob, city, gender, orientation, looking_for_gender, is_online, body_type, photo_url, photos, is_paid)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+  `);
+  insert.run(
+    'Laura', 'Bianchi', '1995-05-15', 'Roma', 'Donna', JSON.stringify(['Eterosessuale']), JSON.stringify(['Uomo']), 1, 'Snella',
+    'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=400&auto=format&fit=crop',
+    JSON.stringify(['https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=400&auto=format&fit=crop'])
+  );
 
+  const insertBanner = db.prepare("INSERT INTO banner_messages (user_id, message, name, photo_url, dob, city) VALUES (?, ?, ?, ?, ?, ?)");
+  insertBanner.run(1, "Qualcuno per un caffè a Trastevere questo pomeriggio? ☕", "Laura", "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=400&auto=format&fit=crop", "1995-05-15", "Roma");
+}
 async function startServer() {
   const app = express();
   app.use(express.json({ limit: '50mb' }));
@@ -214,7 +226,15 @@ async function startServer() {
     })(),
   });
 
-  // API Routes
+  app.get("/api/banner-messages", (req, res) => {
+    try {
+      const messages = db.prepare("SELECT * FROM banner_messages ORDER BY created_at DESC").all();
+      res.json(messages);
+    } catch (e) {
+      res.status(500).json({ error: "Failed to fetch banner messages" });
+    }
+  });
+
   app.get("/api/profiles", (req, res) => {
     const profiles = db.prepare(`
       SELECT u.*, 
