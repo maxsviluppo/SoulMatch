@@ -682,14 +682,10 @@ const HomePage = () => {
           </motion.div>
 
           {!isLoggedIn && (
-            <div className="grid grid-cols-2 gap-3 mt-4">
-              <button onClick={() => window.location.href = '/register'} className="flex items-center justify-center gap-2 bg-white border border-stone-200 text-stone-700 py-3 rounded-[16px] font-black text-[11px] hover:border-stone-300 hover:bg-stone-50 transition-all uppercase tracking-widest shadow-sm">
+            <div className="flex justify-center mt-4">
+              <button onClick={() => window.location.href = '/register'} className="flex items-center w-full max-w-[280px] justify-center gap-2 bg-white border border-stone-200 text-stone-700 py-3 rounded-[16px] font-black text-[11px] hover:border-stone-300 hover:bg-stone-50 transition-all uppercase tracking-widest shadow-sm">
                 <svg className="w-4 h-4" viewBox="0 0 24 24"><path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" /><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" /><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" /><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" /></svg>
                 Google
-              </button>
-              <button onClick={() => window.location.href = '/register'} className="flex items-center justify-center gap-2 bg-stone-900 text-white py-3 rounded-[16px] font-black text-[11px] hover:bg-stone-800 transition-all uppercase tracking-widest shadow-sm shadow-stone-400/20">
-                <svg className="w-5 h-5 mb-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.05 2.95.72 3.84 1.94-3.25 1.89-2.71 5.92.51 7.15-.75 1.57-1.66 3.01-3 4.5v-.08zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" /></svg>
-                Apple
               </button>
             </div>
           )}
@@ -1711,32 +1707,37 @@ const BachecaPage = () => {
       const res = await fetch('/api/profiles');
       if (res.ok) {
         const data = await res.json();
-        // Local API already normalizes and includes counts
-        setProfiles(data);
-      } else {
-        // Fallback to Supabase
-        const { data, error } = await supabase
-          .from('users')
-          .select(`
+        // Check array to prevent crash on HTML fallback
+        if (Array.isArray(data)) {
+          setProfiles(data);
+          setLoading(false);
+          return;
+        }
+      }
+    } catch (e) { }
+
+    // Fallback to Supabase se fallisce API Locale
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select(`
             *,
             interactions!to_user_id(type)
           `);
 
-        if (data && !error) {
-          const processed = data.map(u => ({
-            ...normalizeUser(u),
-            likes_count: (u.interactions as any[] || []).filter(i => i.type === 'like').length,
-            hearts_count: (u.interactions as any[] || []).filter(i => i.type === 'heart').length
-          }));
-          setProfiles(processed);
-        }
+      if (data && !error) {
+        const processed = data.map(u => ({
+          ...normalizeUser(u),
+          likes_count: (u.interactions as any[] || []).filter(i => i.type === 'like').length,
+          hearts_count: (u.interactions as any[] || []).filter(i => i.type === 'heart').length
+        }));
+        setProfiles(processed);
       }
     } catch (e) {
       console.error("Profiles fetching failed:", e);
     }
     setLoading(false);
   };
-
   useEffect(() => {
     try {
       const saved = localStorage.getItem('soulmatch_user');
@@ -1745,13 +1746,23 @@ const BachecaPage = () => {
         setCurrentUser(user);
         setSelectedGenders((user.looking_for_gender || []).map((g: string) => g.toLowerCase()));
         fetchProfiles();
-        fetch('/api/banner-messages').then(r => r.json()).then(setBannerMessages).catch(() => { });
       } else {
         navigate('/register');
       }
     } catch (e) {
       navigate('/register');
     }
+
+    // Fetch da Supabase per compatibilita online e fallback API
+    const fetchGlobalBanner = async () => {
+      try {
+        const { data } = await supabase.from('banner_messages').select('*').order('created_at', { ascending: false });
+        if (data && data.length > 0) setBannerMessages(data);
+      } catch (e) {
+        // Fallback a null, il widget non appare
+      }
+    };
+    fetchGlobalBanner();
 
     // Save scroll position on unmount
     return () => {
@@ -2256,6 +2267,12 @@ const BachecaPage = () => {
         )}
       </AnimatePresence>
 
+      {showSoulMatchConfirm && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-stone-900/80 backdrop-blur-sm">
+          <SoulMatchConfirmBanner onConfirm={confirmSoulMatch} />
+        </div>
+      )}
+
       {/* ── SOULMATCH OVERLAY ── */}
       <AnimatePresence>
         {showSoulMatch && (
@@ -2452,11 +2469,17 @@ const FeedPage = () => {
         const processed = data.map((u: any) => normalizeUser(u)).filter((p: any) => (p.photos && p.photos.length > 0) || p.photo_url);
         setProfiles(processed);
       }
-      setLoading(false);
     };
     fetchData();
 
-    fetch('/api/banner-messages').then(r => r.json()).then(setBannerMessages).catch(() => { });
+    // Compatibilità online: prendiamo da Supabase
+    const fetchGlobalBanner = async () => {
+      try {
+        const { data } = await supabase.from('banner_messages').select('*').order('created_at', { ascending: false });
+        if (data && data.length > 0) setBannerMessages(data);
+      } catch (e) { }
+    };
+    fetchGlobalBanner();
   }, [navigate]);
 
   useEffect(() => {
@@ -3072,11 +3095,13 @@ const AdminPage = () => {
         const res = await fetch('/api/profiles');
         if (res.ok) {
           const rawLocal = await res.json();
-          localData = rawLocal.map((u: any) => ({
-            ...u,
-            photo_url: u.photo_url || (u.photos && u.photos[0]) || null,
-            created_at: u.created_at || new Date().toISOString()
-          }));
+          if (Array.isArray(rawLocal)) {
+            localData = rawLocal.map((u: any) => ({
+              ...u,
+              photo_url: u.photo_url || (u.photos && u.photos[0]) || null,
+              created_at: u.created_at || new Date().toISOString()
+            }));
+          }
         }
       } catch (err) { console.log("Local API not available"); }
 
@@ -3940,7 +3965,7 @@ const RegisterPage = () => {
     }
   };
 
-  const handleOAuthLogin = async (provider: 'google' | 'apple') => {
+  const handleOAuthLogin = async (provider: 'google') => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
@@ -4180,8 +4205,8 @@ const RegisterPage = () => {
                   >
                     {isLogin ? 'Accedi' : 'Continua'}
                   </button>
-                  <div className="mt-4">
-                    <button type="button" onClick={() => handleOAuthLogin('google')} className="flex items-center justify-center gap-2 bg-white border border-stone-200 text-stone-700 w-full py-4 rounded-xl font-black text-xs hover:border-stone-300 hover:bg-stone-50 transition-all transform active:scale-95 shadow-sm">
+                  <div className="mt-4 flex justify-center">
+                    <button type="button" onClick={() => handleOAuthLogin('google')} className="flex items-center w-full justify-center gap-2 bg-white border border-stone-200 text-stone-700 py-4 rounded-xl font-black text-xs hover:border-stone-300 hover:bg-stone-50 transition-all transform active:scale-95 shadow-sm">
                       <svg className="w-4 h-4" viewBox="0 0 24 24"><path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" /><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" /><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" /><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" /></svg>
                       Continua con Google
                     </button>
@@ -5818,14 +5843,22 @@ const ProfilePage = () => {
         }
       }
 
-      // Fetch banner data (Local API)
+      // Fetch banner data (Compatibilità Online con Supabase)
       try {
-        const bRes = await fetch(`/api/users/${userId}/banner-data`);
-        if (bRes.ok) {
-          const bData = await bRes.json();
-          setBannerData(bData);
+        const { data, error } = await supabase
+          .from('banner_messages')
+          .select('*')
+          .eq('user_id', userId)
+          .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+        if (data) {
+          setBannerData({ message: data, replies: [] });
         }
-      } catch (e) { console.error("Banner fetch err", e); }
+      } catch (e) {
+        // Ignora errore
+      }
 
       setLoading(false);
     } catch (e) {
@@ -5876,11 +5909,13 @@ const ProfilePage = () => {
     try {
       const { error } = await supabase
         .from('chat_requests')
-        .insert([{
+        .upsert({
           from_user_id: user.id,
           to_user_id: recipientId,
-          message: replyText
-        }]);
+          message: replyText,
+          status: 'approved',
+          created_at: new Date().toISOString()
+        }, { onConflict: 'from_user_id,to_user_id' });
 
       if (!error) {
         setToast({ message: 'Risposta inviata!', type: 'success' });
@@ -6063,7 +6098,7 @@ const ProfilePage = () => {
             <div className="bg-rose-50 rounded-[16px] p-4 border border-rose-100 relative">
               <p className="text-xs font-semibold text-rose-900 italic pr-6 leading-relaxed">"{bannerData.message.message}"</p>
               <button onClick={async () => {
-                await fetch(`/api/banner-messages/${bannerData.message.id}`, { method: 'DELETE' });
+                await supabase.from('banner_messages').delete().eq('id', bannerData.message.id);
                 setBannerData(null);
               }} className="absolute top-3 right-3 text-rose-400 hover:text-rose-600">
                 <X className="w-5 h-5" />
@@ -6105,22 +6140,23 @@ const ProfilePage = () => {
                   <button onClick={async () => {
                     if (!bannerText.trim()) return;
                     setIsWritingBanner(false);
-                    await fetch('/api/banner-messages', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        user_id: user.id,
-                        message: bannerText,
-                        name: user.name,
-                        photo_url: user.photos?.[0] || user.photo_url,
-                        city: user.city,
-                        dob: user.dob
-                      })
-                    });
+                    // Rimuoviamo il vecchio messaggio se esiste (ne permettiamo 1)
+                    await supabase.from('banner_messages').delete().eq('user_id', user.id);
+
+                    const newBanner = {
+                      user_id: user.id,
+                      message: bannerText,
+                      name: user.name,
+                      photo_url: user.photos?.[0] || user.photo_url,
+                      city: user.city,
+                      dob: user.dob
+                    };
+                    const { data, error } = await supabase.from('banner_messages').insert([newBanner]).select().single();
                     setBannerText('');
-                    const bRes = await fetch(`/api/users/${user.id}/banner-data`);
-                    if (bRes.ok) setBannerData(await bRes.json());
-                    setToast({ message: 'Messaggio flash pubblicato in bacheca!', type: 'success' });
+                    if (!error && data) {
+                      setBannerData({ message: data, replies: [] });
+                      setToast({ message: 'Messaggio flash pubblicato in bacheca!', type: 'success' });
+                    }
                   }} className="flex-1 bg-stone-900 text-white py-2.5 rounded-[12px] text-[10px] font-black uppercase tracking-widest shadow-md">
                     Pubblica Flash
                   </button>
