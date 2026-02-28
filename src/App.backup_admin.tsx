@@ -42,10 +42,9 @@ import {
   AlertTriangle,
   Link2,
   UserCheck,
-  XCircle,
-  Lock
+  XCircle
 } from 'lucide-react';
-import { cn, calculateAge, calculateMatchScore, fileToBase64, playTapSound, ITALIAN_CITIES } from './utils';
+import { cn, calculateAge, calculateMatchScore, fileToBase64, playTapSound } from './utils';
 import { UserProfile, ChatRequest, Post, SoulLink } from './types';
 import { supabase } from './supabase';
 
@@ -1816,9 +1815,8 @@ const BachecaPage = () => {
   const genderOptions = ['Uomo', 'Donna', 'Non-binario', 'Transgender', 'Genderfluid', 'Queer', 'Altro'];
   const orientationOptions = ['Eterosessuale', 'Gay', 'Lesbica', 'Bisessuale', 'Pansessuale', 'Queer', 'Altro'];
   const cityOptions = useMemo(() => {
-    const rawCities = profiles.map(p => p.city).filter(Boolean);
-    const normalizedCities = rawCities.map(c => typeof c === 'string' ? c.trim().charAt(0).toUpperCase() + c.trim().slice(1).toLowerCase() : c);
-    return ['Tutte', ...Array.from(new Set(normalizedCities))].sort();
+    const cities = profiles.map(p => p.city).filter(Boolean);
+    return ['Tutte', ...Array.from(new Set(cities))].sort();
   }, [profiles]);
 
   const filteredProfiles = profiles.filter(p => {
@@ -1831,7 +1829,7 @@ const BachecaPage = () => {
     if (!hasPhoto) return false;
 
     // ─── 1. Secondary UI filters (city, age, body type) ───
-    const cityMatch = filterCity === 'Tutte' || (p.city && p.city.trim().toLowerCase() === filterCity.toLowerCase());
+    const cityMatch = filterCity === 'Tutte' || p.city === filterCity;
     const bodyTypeMatch = filterBodyType === 'Tutte' || p.body_type === filterBodyType;
     const age = p.dob ? calculateAge(p.dob) : null;
     const ageMatch = !age || (age >= filterAge[0] && age <= filterAge[1]);
@@ -1931,20 +1929,13 @@ const BachecaPage = () => {
     if (existing === type) return; // already reacted with this type
     setCardReactions(prev => ({ ...prev, [profileId]: type }));
     try {
-      // Elimina prima la reazione precedente (like/heart)
-      await supabase
-        .from('interactions')
-        .delete()
-        .eq('from_user_id', currentUser.id)
-        .eq('to_user_id', profileId);
-
       const { error } = await supabase
         .from('interactions')
-        .insert([{
+        .upsert({
           from_user_id: currentUser.id,
           to_user_id: profileId,
           type: type
-        }]);
+        }, { onConflict: 'from_user_id,to_user_id' });
       if (error) throw error;
     } catch (err) {
       console.error('Quick reaction error:', err);
@@ -4285,13 +4276,14 @@ const RegisterPage = () => {
                     </div>
                     <div /> {/* Spacer to keep it half width */}
                   </div>
-                  <div className="grid grid-cols-1 gap-3">
-                    <div className="space-y-1.5 w-full">
+                  <div className="grid grid-cols-5 gap-3">
+                    <div className="space-y-1.5 col-span-3">
                       <label className="text-xs font-bold text-stone-700 ml-1">Città</label>
-                      <select name="city" value={formData.city} onChange={handleInputChange} className="w-full p-3.5 rounded-xl bg-stone-50 border border-stone-200 text-sm focus:ring-2 focus:ring-rose-500 outline-none appearance-none">
-                        <option value="">Seleziona Città</option>
-                        {ITALIAN_CITIES.map(c => <option key={c} value={c}>{c}</option>)}
-                      </select>
+                      <input name="city" value={formData.city} onChange={handleInputChange} className="w-full p-3.5 rounded-xl bg-stone-50 border border-stone-200 text-sm focus:ring-2 focus:ring-rose-500 outline-none" placeholder="Milano" />
+                    </div>
+                    <div className="space-y-1.5 col-span-2">
+                      <label className="text-xs font-bold text-stone-700 ml-1">Prov</label>
+                      <input name="province" value={formData.province || ''} onChange={handleInputChange} className="w-full p-3.5 rounded-xl bg-stone-50 border border-stone-200 text-sm focus:ring-2 focus:ring-rose-500 outline-none uppercase" placeholder="MI" maxLength={2} />
                     </div>
                   </div>
 
@@ -5214,33 +5206,6 @@ const EPInputField = ({ label, value, onChange, disabled = false, type = 'text',
   </div>
 );
 
-const EPSelectDropdown = ({ label, value, onChange, options, disabled = false, placeholder = '' }: any) => (
-  <div className="space-y-1.5">
-    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-stone-400 ml-1">{label}</label>
-    <div className="relative">
-      <select
-        value={value ?? ''}
-        onChange={(e) => !disabled && onChange(e.target.value)}
-        disabled={disabled}
-        className={cn(
-          'w-full px-4 py-3 rounded-2xl text-sm font-medium transition-all outline-none border appearance-none',
-          disabled
-            ? 'bg-stone-50 border-stone-100 text-stone-400 cursor-not-allowed'
-            : 'bg-white border-stone-100 focus:border-rose-300 focus:ring-4 focus:ring-rose-500/5 text-stone-900'
-        )}
-      >
-        <option value="">{placeholder || 'Seleziona...'}</option>
-        {options.map((opt: string) => (
-          <option key={opt} value={opt}>{opt}</option>
-        ))}
-      </select>
-      <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center">
-        <svg className="w-4 h-4 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-      </div>
-    </div>
-  </div>
-);
-
 const EPTextAreaField = ({ label, value, onChange, placeholder = '' }: any) => (
   <div className="space-y-1.5">
     <label className="text-[10px] font-black uppercase tracking-[0.2em] text-stone-400 ml-1">{label}</label>
@@ -5523,8 +5488,9 @@ const EditProfilePage = () => {
               <div className="w-1 h-6 bg-rose-600 rounded-full" />
               <h2 className="text-sm font-black uppercase tracking-widest text-stone-900">Info Profilo</h2>
             </div>
-            <div className="grid grid-cols-1 gap-4">
-              <EPSelectDropdown label="Città" value={user.city} onChange={(v: string) => updateField('city', v)} options={ITALIAN_CITIES} placeholder="Seleziona Città" />
+            <div className="grid grid-cols-2 gap-4">
+              <EPInputField label="Città" value={user.city} onChange={(v: string) => updateField('city', v)} placeholder="es. Milano" />
+              <EPInputField label="Provincia" value={user.province} onChange={(v: string) => updateField('province', v)} placeholder="es. MI" />
             </div>
             <EPInputField label="Professione" value={user.job} onChange={(v: string) => updateField('job', v)} placeholder="es. Designer, Medico..." />
             <EPTextAreaField label="Bio / Descrizione" value={user.description} onChange={(v: string) => updateField('description', v)} placeholder="Racconta qualcosa di te..." />
@@ -5633,7 +5599,7 @@ const EditProfilePage = () => {
               columns={3}
             />
 
-            <EPSelectDropdown label="Città desiderata" value={user.looking_for_city} onChange={(v: string) => updateField('looking_for_city', v)} options={['Indifferente', ...ITALIAN_CITIES]} placeholder="Seleziona Città (o Indifferente)" />
+            <EPInputField label="Città desiderata" value={user.looking_for_city} onChange={(v: string) => updateField('looking_for_city', v)} placeholder="es. Roma o Indifferente" />
             <EPTextAreaField label="Altre preferenze" value={user.looking_for_other} onChange={(v: string) => updateField('looking_for_other', v)} placeholder="es. Solo non fumatori, amanti dei gatti..." />
           </section>
         </div>
