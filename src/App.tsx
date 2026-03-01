@@ -75,15 +75,6 @@ const normalizeUser = (u: any): any => ({
 const AppBottomNav = ({ activeTab }: { activeTab?: 'home' | 'bacheca' | 'feed' | 'soulmatch' | 'soullink' | 'profile' }) => {
   const navigate = useNavigate();
   const [pendingCount, setPendingCount] = useState(0);
-  const [isHeartAnimated, setIsHeartAnimated] = useState(false);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setIsHeartAnimated(prev => !prev);
-    }, 5000);
-    return () => clearInterval(interval);
-  }, []);
-
   useEffect(() => {
     let currentUserId: string | null = null;
     try {
@@ -127,53 +118,101 @@ const AppBottomNav = ({ activeTab }: { activeTab?: 'home' | 'bacheca' | 'feed' |
 
         {/* Home */}
         <Link to="/" className={cn("flex flex-col items-center gap-1 transition-all flex-1", activeTab === 'home' ? "text-rose-600" : "text-stone-400 hover:text-rose-500")}>
-          <Home className="w-4 h-4" />
-          <span className="text-[7px] font-black uppercase tracking-wider leading-none mt-0.5">Home</span>
+          <div className={cn(
+            "flex items-center justify-center transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]",
+            activeTab === 'home'
+              ? "w-10 h-10 rounded-[14px] -mt-4 shadow-lg bg-rose-600 text-white shadow-rose-200"
+              : "w-4 h-4 bg-transparent mt-0"
+          )}>
+            <Home className={cn("transition-all duration-500", activeTab === 'home' ? "w-5 h-5 text-white" : "w-4 h-4")} />
+          </div>
+          <span className={cn(
+            "text-[7px] font-black uppercase tracking-wider leading-none mt-0.5 transition-all duration-500",
+            activeTab === 'home' ? "text-rose-600 mt-1" : ""
+          )}>Home</span>
         </Link>
 
         {/* Bacheca */}
         <Link to="/bacheca" className={cn("flex flex-col items-center gap-1 transition-all flex-1", activeTab === 'bacheca' ? "text-rose-600" : "text-stone-400 hover:text-rose-500")}>
-          <Users className="w-4 h-4" />
-          <span className="text-[7px] font-black uppercase tracking-wider leading-none mt-0.5">Bacheca</span>
+          <div className={cn(
+            "flex items-center justify-center transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]",
+            activeTab === 'bacheca'
+              ? "w-10 h-10 rounded-[14px] -mt-4 shadow-lg bg-rose-600 text-white shadow-rose-200"
+              : "w-4 h-4 bg-transparent mt-0"
+          )}>
+            <Users className={cn("transition-all duration-500", activeTab === 'bacheca' ? "w-5 h-5 text-white" : "w-4 h-4")} />
+          </div>
+          <span className={cn(
+            "text-[7px] font-black uppercase tracking-wider leading-none mt-0.5 transition-all duration-500",
+            activeTab === 'bacheca' ? "text-rose-600 mt-1" : ""
+          )}>Bacheca</span>
         </Link>
 
         {/* Feed */}
         <Link to="/feed" className={cn("flex flex-col items-center gap-1 transition-all flex-1", activeTab === 'feed' ? "text-rose-600" : "text-stone-400 hover:text-rose-500")}>
-          <LayoutGrid className="w-4 h-4" />
-          <span className="text-[7px] font-black uppercase tracking-wider leading-none mt-0.5">Feed</span>
+          <div className={cn(
+            "flex items-center justify-center transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]",
+            activeTab === 'feed'
+              ? "w-10 h-10 rounded-[14px] -mt-4 shadow-lg bg-rose-600 text-white shadow-rose-200"
+              : "w-4 h-4 bg-transparent mt-0"
+          )}>
+            <LayoutGrid className={cn("transition-all duration-500", activeTab === 'feed' ? "w-5 h-5 text-white" : "w-4 h-4")} />
+          </div>
+          <span className={cn(
+            "text-[7px] font-black uppercase tracking-wider leading-none mt-0.5 transition-all duration-500",
+            activeTab === 'feed' ? "text-rose-600 mt-1" : ""
+          )}>Feed</span>
         </Link>
 
-        {/* SoulLink */}
-        <Link to="/soul-links" className={cn("flex flex-col items-center gap-1 relative transition-all flex-1", activeTab === 'soullink' ? "text-rose-600" : "text-stone-400 hover:text-rose-500")}>
-          <div className="relative">
-            <Link2 className="w-4 h-4" />
+        {/* Amici (SoulLink) */}
+        <Link to="/amici" className={cn("flex flex-col items-center gap-1 relative transition-all flex-1", activeTab === 'soullink' ? "text-rose-600" : "text-stone-400 hover:text-rose-500")}>
+          <div className={cn(
+            "flex items-center justify-center transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] relative",
+            activeTab === 'soullink'
+              ? "w-10 h-10 rounded-[14px] -mt-4 shadow-lg bg-rose-600 text-white shadow-rose-200"
+              : "w-4 h-4 bg-transparent mt-0"
+          )}>
+            <UserCheck className={cn("transition-all duration-500", activeTab === 'soullink' ? "w-5 h-5 text-white" : "w-4 h-4")} />
             {pendingCount > 0 && (
               <span className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-emerald-500 text-white text-[6px] font-black rounded-full flex items-center justify-center border border-white">{pendingCount}</span>
             )}
           </div>
-          <span className="text-[7px] font-black uppercase tracking-wider leading-none mt-0.5">SoulLink</span>
+          <span className={cn(
+            "text-[7px] font-black uppercase tracking-wider leading-none mt-0.5 transition-all duration-500",
+            activeTab === 'soullink' ? "text-rose-600 mt-1" : ""
+          )}>Amici</span>
         </Link>
 
-        {/* SoulMatch (Heart Button) - Animated */}
-        <Link to="/bacheca?soulmatch=true" className={cn("flex flex-col items-center gap-1 transition-all flex-1", activeTab === 'soulmatch' ? "text-rose-600" : (!isHeartAnimated ? "text-stone-400 hover:text-rose-500" : ""))}>
+        {/* SoulMatch (Heart Button) */}
+        <Link to="/soul-match" className={cn("flex flex-col items-center gap-1 transition-all flex-1", activeTab === 'soulmatch' ? "text-rose-600" : "text-stone-400 hover:text-rose-500")}>
           <div className={cn(
-            "flex items-center justify-center transition-all duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)]",
-            isHeartAnimated
+            "flex items-center justify-center transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]",
+            activeTab === 'soulmatch'
               ? "w-10 h-10 rounded-[14px] -mt-4 shadow-lg bg-rose-600 text-white shadow-rose-200"
               : "w-4 h-4 bg-transparent mt-0"
           )}>
-            <Heart className={cn("transition-all duration-700", isHeartAnimated ? "w-5 h-5 fill-current" : "w-4 h-4")} />
+            <Heart className={cn("transition-all duration-500", activeTab === 'soulmatch' ? "w-5 h-5 text-white fill-current" : "w-4 h-4")} />
           </div>
           <span className={cn(
-            "text-[7px] font-black uppercase tracking-wider leading-none mt-0.5 transition-all duration-700",
-            isHeartAnimated ? "text-rose-600 mt-1" : ""
+            "text-[7px] font-black uppercase tracking-wider leading-none mt-0.5 transition-all duration-500",
+            activeTab === 'soulmatch' ? "text-rose-600 mt-1" : ""
           )}>SoulMatch</span>
         </Link>
 
         {/* Profile */}
         <Link to="/profile" className={cn("flex flex-col items-center gap-1 transition-all flex-1", activeTab === 'profile' ? "text-rose-600" : "text-stone-400 hover:text-rose-500")}>
-          <User className="w-4 h-4" />
-          <span className="text-[7px] font-black uppercase tracking-wider leading-none mt-0.5">Profilo</span>
+          <div className={cn(
+            "flex items-center justify-center transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]",
+            activeTab === 'profile'
+              ? "w-10 h-10 rounded-[14px] -mt-4 shadow-lg bg-rose-600 text-white shadow-rose-200"
+              : "w-4 h-4 bg-transparent mt-0"
+          )}>
+            <User className={cn("transition-all duration-500", activeTab === 'profile' ? "w-5 h-5 text-white" : "w-4 h-4")} />
+          </div>
+          <span className={cn(
+            "text-[7px] font-black uppercase tracking-wider leading-none mt-0.5 transition-all duration-500",
+            activeTab === 'profile' ? "text-rose-600 mt-1" : ""
+          )}>Profilo</span>
         </Link>
       </div>
     </div>
@@ -1120,9 +1159,9 @@ const ProfileDetailPage = () => {
     if (!error && data) {
       setSoulLinkId(data.id);
       setSoulLinkStatus('pending_sent');
-      setToast({ message: '✨ SoulLink inviato! Attendi la risposta.', type: 'success' });
+      setToast({ message: '✨ Richiesta inviata! Attendi la risposta.', type: 'success' });
     } else {
-      setToast({ message: 'Errore nell\'invio del SoulLink.', type: 'error' });
+      setToast({ message: 'Errore nell\'invio della richiesta.', type: 'error' });
     }
   };
 
@@ -1135,7 +1174,7 @@ const ProfileDetailPage = () => {
 
     if (!error) {
       setSoulLinkStatus('accepted');
-      setToast({ message: '🎉 SoulLink accettato! Siete ora connessi.', type: 'success' });
+      setToast({ message: '🎉 Ora siete amici!', type: 'success' });
     }
   };
 
@@ -1149,7 +1188,7 @@ const ProfileDetailPage = () => {
     if (!error) {
       setSoulLinkStatus('none');
       setSoulLinkId(null);
-      setToast({ message: 'SoulLink rimosso.', type: 'info' });
+      setToast({ message: 'Amicizia rimossa.', type: 'info' });
     }
   };
 
@@ -1367,7 +1406,7 @@ const ProfileDetailPage = () => {
           <span className={cn("text-[8px] font-black uppercase tracking-widest", userInteractions.includes('heart') ? "text-rose-600" : "text-stone-400")}>Cuori</span>
         </button>
 
-        {/* SoulLink */}
+        {/* Amici */}
         <button
           onClick={
             soulLinkStatus === 'none' ? handleSendSoulLink :
@@ -1383,7 +1422,7 @@ const ProfileDetailPage = () => {
               soulLinkStatus === 'pending_sent' ? "text-amber-500" :
                 soulLinkStatus === 'pending_received' ? "text-emerald-500" : "text-stone-400"
           )}>
-            <Link2 className="w-4 h-4" />
+            <Users className="w-4 h-4" />
             {soulLinkStatus === 'pending_received' && (
               <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white animate-pulse" />
             )}
@@ -1396,7 +1435,7 @@ const ProfileDetailPage = () => {
           )}>
             {soulLinkStatus === 'accepted' ? 'Amici' :
               soulLinkStatus === 'pending_sent' ? 'Attesa' :
-                soulLinkStatus === 'pending_received' ? 'Accetta' : 'SoulLink'}
+                soulLinkStatus === 'pending_received' ? 'Accetta' : 'Amici'}
           </span>
         </button>
 
@@ -2450,6 +2489,211 @@ const SoulMatchConfirmBanner = ({ onConfirm }: { onConfirm: () => void }) => {
 };
 
 // ── Feed Page ──
+// ── SoulMatch Page ──────────────────────────────────────────────────────
+const SoulMatchPage = () => {
+  const [profiles, setProfiles] = useState<UserProfile[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [showRankings, setShowRankings] = useState(() => {
+    return localStorage.getItem('soulmatch_active') === 'true';
+  });
+  const [calculating, setCalculating] = useState(false);
+  const navigate = useNavigate();
+
+  const fetchProfiles = async () => {
+    const { data } = await supabase.from('users').select('*');
+    if (data) {
+      setProfiles(data.map(u => normalizeUser(u)));
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    const saved = localStorage.getItem('soulmatch_user');
+    if (saved) {
+      setCurrentUser(normalizeUser(JSON.parse(saved)));
+      fetchProfiles();
+    } else {
+      navigate('/register');
+    }
+  }, [navigate]);
+
+  const filtered = profiles.filter(p => {
+    if (!currentUser || p.id === currentUser.id) return false;
+    // Exclude if no photo
+    if (!p.photos?.length && !p.photo_url) return false;
+
+    // Base preference check
+    const wantsV = (currentUser.looking_for_gender || []).map(g => g.toLowerCase());
+    const isWildcard = (arr: string[]) => arr.some(v => ['tutti', 'tutte', 'entrambi', 'qualsiasi'].includes(v));
+    const targetGender = p.gender?.toLowerCase() || '';
+
+    return wantsV.length === 0 || isWildcard(wantsV) || wantsV.includes(targetGender);
+  });
+
+  const ranked = [...filtered]
+    .map(p => ({ ...p, _score: calculateMatchScore(currentUser, p) }))
+    .sort((a, b) => b._score - a._score)
+    .slice(0, 10);
+
+  const startCalculation = () => {
+    setCalculating(true);
+    setTimeout(() => {
+      setCalculating(false);
+      setShowRankings(true);
+      localStorage.setItem('soulmatch_active', 'true');
+    }, 2500);
+  };
+
+  return (
+    <div className="min-h-screen bg-[#F8F4EF] pt-20 pb-28 px-4">
+      <div className="max-w-md mx-auto space-y-8">
+        {/* Banner with names */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between px-1">
+            <h2 className="text-xl font-serif font-black text-stone-900">Chi c'è in Bacheca</h2>
+            <span className="text-[10px] font-black bg-stone-100 text-stone-400 px-3 py-1 rounded-full uppercase tracking-widest border border-stone-100">Live</span>
+          </div>
+
+          <div className="bg-white rounded-[32px] p-2 border border-stone-100 shadow-sm overflow-hidden">
+            <div className="flex items-center gap-4 overflow-x-auto scrollbar-hide py-3 px-3">
+              {loading ? (
+                [1, 2, 3, 4, 5].map(i => <div key={i} className="w-14 h-14 bg-stone-50 animate-pulse rounded-[18px] shrink-0" />)
+              ) : filtered.length === 0 ? (
+                <span className="text-[10px] text-stone-400 font-bold px-4">Nessun profilo in bacheca...</span>
+              ) : (
+                filtered.slice(0, 20).map((p, i) => (
+                  <motion.div
+                    key={p.id}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: i * 0.05 }}
+                    onClick={() => navigate(`/profile-detail/${p.id}`)}
+                    className="flex flex-col items-center gap-1.5 shrink-0 cursor-pointer"
+                  >
+                    <div className="w-14 h-14 rounded-[20px] p-[2px] bg-gradient-to-tr from-rose-100 to-rose-200 shadow-sm relative">
+                      <div className="w-full h-full bg-white rounded-[18px] p-0.5">
+                        <img src={p.photos?.[0] || p.photo_url || `https://picsum.photos/seed/${p.name}/100`} className="w-full h-full object-cover rounded-[16px]" />
+                      </div>
+                      {p.is_online && (
+                        <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-white rounded-full" />
+                      )}
+                    </div>
+                    <span className="text-[9px] font-black text-stone-600 truncate w-14 text-center">{p.name}</span>
+                  </motion.div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Launch Button */}
+        {!showRankings && (
+          <div className="py-12 flex flex-col items-center justify-center space-y-6">
+            <div className="text-center space-y-2 px-4">
+              <h1 className="text-3xl font-serif font-black text-stone-900 leading-tight">Trova la tua <br />Anima Gemella.</h1>
+              <p className="text-stone-500 text-sm font-medium leading-relaxed">
+                Il nostro algoritmo AI analizzerà i profili live per trovare i 10 match più affini a te.
+              </p>
+            </div>
+
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={startCalculation}
+              disabled={calculating || filtered.length === 0}
+              className={cn(
+                "w-28 h-28 rounded-full flex flex-col items-center justify-center text-white shadow-2xl relative transition-all",
+                calculating ? "bg-stone-900" : "bg-rose-600 shadow-rose-300/50"
+              )}
+            >
+              <Heart className={cn("w-10 h-10 fill-current mb-0.5", calculating ? "animate-ping" : "animate-pulse")} />
+              <span className="text-[9px] font-black uppercase tracking-widest mt-1">
+                {calculating ? "Analisi..." : "Lancia"}
+              </span>
+
+              {/* Spinning border when calculating */}
+              {calculating && (
+                <div className="absolute inset-0 border-4 border-rose-500 border-t-transparent rounded-full animate-spin" />
+              )}
+            </motion.button>
+
+            {filtered.length === 0 && !loading && (
+              <p className="text-[10px] text-rose-500 font-bold uppercase tracking-widest bg-rose-50 px-4 py-2 rounded-full border border-rose-100 animate-bounce">
+                Registrati o imposta filtri per iniziare!
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Results */}
+        <AnimatePresence>
+          {showRankings && (
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-4"
+            >
+              <div className="flex items-center justify-between px-1">
+                <h3 className="text-lg font-serif font-black text-stone-900">✨ Top 10 Match Ideali</h3>
+                <button onClick={() => { setShowRankings(false); localStorage.removeItem('soulmatch_active'); }} className="text-xs font-black text-rose-600 underline uppercase tracking-widest">Ricomincia</button>
+              </div>
+
+              {ranked.map((p, idx) => (
+                <motion.div
+                  key={p.id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: idx * 0.1 }}
+                  className="bg-white rounded-[24px] border border-stone-100 shadow-sm overflow-hidden"
+                >
+                  <div className="flex items-center gap-4 p-4">
+                    <div className={cn(
+                      "w-8 h-8 rounded-[12px] flex items-center justify-center text-xs font-black shrink-0",
+                      idx === 0 ? "bg-amber-400 text-stone-900" :
+                        idx === 1 ? "bg-stone-300 text-stone-700" :
+                          idx === 2 ? "bg-orange-300 text-stone-700" :
+                            "bg-stone-100 text-stone-500"
+                    )}>
+                      #{idx + 1}
+                    </div>
+                    <div className="w-16 h-16 rounded-[18px] overflow-hidden border border-stone-100 shadow-sm shrink-0">
+                      <img src={p.photos?.[0] || p.photo_url || `https://picsum.photos/seed/${p.name}/200`} className="w-full h-full object-cover" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm font-black text-stone-900 truncate">
+                        {p.name}{calculateAge(p.dob) > 0 ? `, ${calculateAge(p.dob)}` : ''}
+                      </h3>
+                      <div className="mt-2 flex items-center gap-2">
+                        <div className="flex-1 h-1.5 bg-stone-100 rounded-full overflow-hidden">
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${p._score}%` }}
+                            transition={{ delay: idx * 0.1 + 0.5, duration: 1 }}
+                            className={cn('h-full rounded-full', p._score >= 70 ? 'bg-rose-500' : p._score >= 40 ? 'bg-amber-400' : 'bg-stone-300')}
+                          />
+                        </div>
+                        <span className="text-[10px] font-black text-stone-400 shrink-0">{p._score}%</span>
+                      </div>
+                    </div>
+                    <Link
+                      to={`/profile-detail/${p.id}`}
+                      className="w-10 h-10 bg-rose-600 text-white rounded-[14px] flex items-center justify-center shadow-md active:scale-90 shrink-0"
+                    >
+                      <ChevronRight className="w-5 h-5" />
+                    </Link>
+                  </div>
+                </motion.div>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+      <AppBottomNav activeTab="soulmatch" />
+    </div>
+  );
+};
+
 const FeedPage = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -2566,7 +2810,7 @@ const FeedPage = () => {
 };
 
 // ── SoulLinks Page ──────────────────────────────────────────────────────
-const SoulLinksPage = () => {
+const AmiciPage = () => {
   const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [friends, setFriends] = useState<SoulLink[]>([]);
@@ -2691,7 +2935,7 @@ const SoulLinksPage = () => {
       .eq('id', slId);
 
     if (!error) {
-      setToast({ message: '🎉 SoulLink accettato! Siete ora connessi.', type: 'success' });
+      setToast({ message: '🎉 Richiesta accettata! Siete ora amici.', type: 'success' });
       if (currentUser?.id) fetchSoulLinks(currentUser.id);
     }
   };
@@ -2776,35 +3020,6 @@ const SoulLinksPage = () => {
         {/* ── TAB: FEED ── */}
         {activeTab === 'feed' && (
           <>
-            {/* Friends avatar strip */}
-            {friends.length > 0 && (
-              <div className="bg-white rounded-[24px] border border-stone-100 p-4 shadow-sm">
-                <p className="text-[9px] font-black uppercase tracking-widest text-stone-400 mb-3">I tuoi SoulLink — tap per visitare</p>
-                <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-1">
-                  {friends.map(f => (
-                    <button
-                      key={f.id}
-                      onClick={() => navigate(`/profile-detail/${f.other_user?.id}`)}
-                      className="flex flex-col items-center gap-1.5 shrink-0 group"
-                    >
-                      <div className="relative">
-                        <div className="w-14 h-14 rounded-[18px] overflow-hidden border-2 border-violet-200 shadow-sm group-hover:border-violet-400 transition-all ring-2 ring-violet-50">
-                          <img
-                            src={f.other_user?.photos?.[0] || f.other_user?.photo_url || `https://picsum.photos/seed/${f.other_user?.name}/200`}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                        {f.other_user?.is_online && (
-                          <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-400 border-2 border-white rounded-full" />
-                        )}
-                      </div>
-                      <span className="text-[9px] font-black text-stone-600 truncate max-w-[52px]">{f.other_user?.name}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
             {/* Friends posts feed */}
             {loading ? (
               <div className="space-y-4">
@@ -4815,7 +5030,8 @@ const FeedComponent = ({ userId, isOwner, global = false }: { userId: any, isOwn
         .select(`
                   *,
                   user:users (name, photos, photo_url, gender, orientation),
-                  post_interactions!post_interactions_post_id_fkey(type)
+                  post_interactions!post_interactions_post_id_fkey(type),
+                  post_comments(id)
                   `)
         .order('created_at', { ascending: false });
 
@@ -4845,6 +5061,7 @@ const FeedComponent = ({ userId, isOwner, global = false }: { userId: any, isOwn
           author_orientation: parseArrField(p.user?.orientation),
           likes_count: (p.post_interactions as any[] || []).filter(i => i.type === 'like').length,
           hearts_count: (p.post_interactions as any[] || []).filter(i => i.type === 'heart').length,
+          comments_count: (p.post_comments as any[] || []).length,
           has_liked: viewerInteractions.some(i => i.post_id === p.id && i.type === 'like'),
           has_hearted: viewerInteractions.some(i => i.post_id === p.id && i.type === 'heart'),
         }));
@@ -6718,13 +6935,14 @@ export default function App() {
         try {
           const u = normalizeUser(JSON.parse(saved));
           if (u?.id) {
-            const { data, error } = await supabase.from('users').select('id').eq('id', u.id).single();
+            const { data, error } = await supabase.from('users').select('id, is_online').eq('id', u.id).single();
             if (error || !data) {
               console.warn("Sessione non valida o profilo rimosso. Pulizia locale...");
               localStorage.removeItem('soulmatch_user');
               window.dispatchEvent(new Event('user-auth-change'));
             } else {
-              supabase.from('users').update({ is_online: true }).eq('id', u.id).then();
+              // Update online status on start
+              await supabase.from('users').update({ is_online: true, last_seen: new Date().toISOString() }).eq('id', u.id);
             }
           }
         } catch (e) {
@@ -6735,15 +6953,30 @@ export default function App() {
     };
     verifyUser();
 
-    const handleVisibilityChange = () => {
+    // 2. Heartbeat mechanism to keep user online
+    const heartbeatInterval = setInterval(async () => {
       const saved = localStorage.getItem('soulmatch_user');
       if (saved) {
         try {
           const u = JSON.parse(saved);
           if (u?.id && document.visibilityState === 'visible') {
-            supabase.from('users').update({ is_online: true }).eq('id', u.id).then();
-          } else if (u?.id && document.visibilityState === 'hidden') {
-            supabase.from('users').update({ is_online: false }).eq('id', u.id).then();
+            await supabase.from('users').update({ is_online: true, last_seen: new Date().toISOString() }).eq('id', u.id);
+          }
+        } catch (e) { }
+      }
+    }, 45000); // Every 45 seconds
+
+    const handleVisibilityChange = async () => {
+      const saved = localStorage.getItem('soulmatch_user');
+      if (saved) {
+        try {
+          const u = JSON.parse(saved);
+          if (u?.id) {
+            const isVisible = document.visibilityState === 'visible';
+            await supabase.from('users').update({
+              is_online: isVisible,
+              last_seen: new Date().toISOString()
+            }).eq('id', u.id);
           }
         } catch (e) { }
       }
@@ -6756,23 +6989,27 @@ export default function App() {
       if (saved) {
         try {
           const u = JSON.parse(saved);
-          if (u?.id) supabase.from('users').update({ is_online: false }).eq('id', u.id).then();
+          if (u?.id) {
+            // navigator.sendBeacon could be used here for more reliability if we had an endpoint
+            // but for now we try a quick update
+            supabase.from('users').update({ is_online: false }).eq('id', u.id).then();
+          }
         } catch (e) { }
       }
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
 
     const handleGlobalClick = (e: MouseEvent) => {
-      // Find if the click or its parents are a button or anchor
       const target = e.target as HTMLElement;
       const interactive = target.closest('button, a, [role="button"]');
       if (interactive) {
-        // playTapSound(); // Disattivato su richiesta
+        // playTapSound();
       }
     };
 
     window.addEventListener('mousedown', handleGlobalClick);
     return () => {
+      clearInterval(heartbeatInterval);
       window.removeEventListener('mousedown', handleGlobalClick);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('beforeunload', handleBeforeUnload);
@@ -6826,11 +7063,12 @@ export default function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/bacheca" element={<BachecaPage />} />
         <Route path="/feed" element={<FeedPage />} />
-        <Route path="/soul-links" element={<SoulLinksPage />} />
+        <Route path="/amici" element={<AmiciPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/edit-profile" element={<EditProfilePage />} />
         <Route path="/admin" element={<AdminPage />} />
+        <Route path="/soul-match" element={<SoulMatchPage />} />
         <Route path="/profile-detail/:id" element={<ProfileDetailPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/cookie" element={<CookiePage />} />
