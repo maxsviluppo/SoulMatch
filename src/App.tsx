@@ -942,7 +942,11 @@ const LiveChatModal = ({ profile, currentUser, onClose }: { profile: any, curren
         const msg = payload.new;
         if ((msg.sender_id === currentUser.id && msg.receiver_id === profile.id) ||
           (msg.sender_id === profile.id && msg.receiver_id === currentUser.id)) {
-          setMessages(prev => [...prev, msg]);
+          setMessages(prev => {
+            // Prevent duplicates
+            if (prev.some(m => m.id === msg.id)) return prev;
+            return [...prev, msg];
+          });
         }
       })
       .subscribe();
@@ -958,16 +962,44 @@ const LiveChatModal = ({ profile, currentUser, onClose }: { profile: any, curren
     if (!text.trim()) return;
     const msgText = text;
     setText('');
-    await supabase.from('room_messages').insert([
-      { sender_id: currentUser.id, receiver_id: profile.id, text: msgText }
+
+    // Aggiornamento ottimistico: il messaggio appare subito prima di parlare con il DB
+    const tempId = self.crypto.randomUUID();
+    const optimisticMsg = {
+      id: tempId,
+      sender_id: currentUser.id,
+      receiver_id: profile.id,
+      text: msgText,
+      created_at: new Date().toISOString()
+    };
+
+    setMessages(prev => [...prev, optimisticMsg]);
+
+    const { error } = await supabase.from('room_messages').insert([
+      { id: tempId, sender_id: currentUser.id, receiver_id: profile.id, text: msgText }
     ]);
+
+    if (error) {
+      console.error("Errore chat live:", error);
+      alert("Ouch! La tabella 'room_messages' non esiste o non è configurata correttamente nel database. Assicurati di aver eseguito lo script 'add_room_messages.sql' su Supabase!");
+      // Rimuovi messaggio finto
+      setMessages(prev => prev.filter(m => m.id !== tempId));
+    }
+  };
+
+  const handleClose = async () => {
+    // Cancella messaggi al termine della chat secondo richiesta
+    await supabase.from('room_messages')
+      .delete()
+      .or(`and(sender_id.eq.${currentUser.id},receiver_id.eq.${profile.id}),and(sender_id.eq.${profile.id},receiver_id.eq.${currentUser.id})`);
+    onClose();
   };
 
   return (
     <div className="fixed inset-0 z-[120] bg-white flex flex-col pt-safe">
       {/* Header */}
       <div className="flex items-center gap-3 p-4 border-b border-stone-100 shadow-sm relative z-10 bg-white">
-        <button onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-stone-50 transition-colors">
+        <button onClick={handleClose} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-stone-50 transition-colors">
           <ChevronRight className="w-6 h-6 rotate-180 text-stone-600" />
         </button>
         <div className="flex items-center gap-3 flex-1">
@@ -986,8 +1018,8 @@ const LiveChatModal = ({ profile, currentUser, onClose }: { profile: any, curren
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 bg-[#F8F4EF]">
         <div className="text-center mb-4">
-          <span className="text-[10px] bg-white/60 text-stone-400 px-3 py-1 rounded-full font-bold uppercase tracking-widest border border-stone-200/50 shadow-sm inline-block">
-            Inizio Chat Sicura. Solo messaggi diretti.
+          <span className="text-[10px] bg-white/60 text-stone-400 px-3 py-1.5 rounded-full font-bold uppercase tracking-widest border border-stone-200/50 shadow-sm inline-block max-w-[80%] leading-relaxed">
+            Come su Whatsapp, i messaggi restano qui durante la conversazione e verranno cancellati alla chiusura della chat per la tua privacy.
           </span>
         </div>
         {messages.map(m => (
@@ -3144,7 +3176,7 @@ const AmiciPage = () => {
                     )}
                   </div>
                   <div className="min-w-0">
-                    <h3 className="text-sm font-black text-stone-900 truncate">{f.other_user?.name} {f.other_user?.surname}</h3>
+                    <h3 className="text-sm font-black text-stone-900 truncate">{f.other_user?.name}</h3>
                     {f.other_user?.city && (
                       <p className="text-[10px] text-stone-400 font-semibold flex items-center gap-1">
                         <MapPin className="w-3 h-3" />{f.other_user.city}
@@ -5915,20 +5947,18 @@ const ChatRequestItem = ({
   isSendingReply
 }: any) => {
   const [dragX, setDragX] = useState(0);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   return (
     <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="flex flex-col gap-2 relative">
       {/* Sfondo cestino dietro per lo swipe */}
-      <div className="absolute inset-y-0 right-0 w-24 bg-rose-500 rounded-[24px] flex flex-col items-center justify-center text-white shadow-sm -z-10 pr-4 overflow-hidden">
-        <motion.div
-          style={{
-            opacity: Math.min(Math.abs(dragX) / 80, 1),
-            scale: Math.min(0.5 + Math.abs(dragX) / 100, 1.1)
-          }}
-          className="flex flex-col items-center"
+      <div className="absolute top-0 bottom-0 right-0 w-24 bg-rose-600 rounded-[24px] flex flex-col items-center justify-center text-white shadow-sm z-0">
+        <button
+          onClick={(e) => { e.stopPropagation(); handleDeleteChatRequest(req.id); }}
+          className="flex flex-col items-center h-full w-full justify-center active:bg-rose-700 rounded-[24px] pr-2 transition-colors"
         >
           <Trash2 className="w-5 h-5 mb-0.5" />
           <span className="text-[9px] font-black uppercase tracking-widest">Elimina</span>
-        </motion.div>
+        </button>
       </div>
 
       <motion.div
@@ -5936,15 +5966,18 @@ const ChatRequestItem = ({
         dragConstraints={{ left: -100, right: 0 }}
         dragElastic={0.1}
         onDrag={(e, info) => setDragX(info.offset.x)}
-        animate={index === 0 && bounceNotif ? { x: -12 } : { x: 0 }}
-        transition={index === 0 && bounceNotif ? { type: "spring", stiffness: 400, damping: 10 } : {}}
+        animate={{ x: isDeleteOpen ? -85 : (index === 0 && bounceNotif ? -12 : 0) }}
+        transition={isDeleteOpen ? { type: "spring", stiffness: 400, damping: 25 } : (index === 0 && bounceNotif ? { type: "spring", stiffness: 400, damping: 10 } : {})}
         onDragEnd={(e, info) => {
           setDragX(0);
           if (info.offset.x < -45) {
-            handleDeleteChatRequest(req.id);
+            setIsDeleteOpen(true);
+          } else {
+            setIsDeleteOpen(false);
           }
         }}
-        className="bg-white rounded-[24px] border border-stone-100 p-4 flex items-center justify-between gap-3 shadow-sm z-10"
+        onClick={() => { if (isDeleteOpen) setIsDeleteOpen(false); }}
+        className="bg-white rounded-[24px] border border-stone-100 p-4 flex items-center justify-between gap-3 shadow-sm z-10 relative"
       >
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-[16px] overflow-hidden border border-stone-100 shadow-sm shrink-0">
@@ -5998,7 +6031,9 @@ const ProfilePage = () => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [chatRequests, setChatRequests] = useState<ChatRequest[]>([]);
+  const [activeChats, setActiveChats] = useState<any[]>([]);
   const [liveChatsCount, setLiveChatsCount] = useState(0);
+  const [activeChatTarget, setActiveChatTarget] = useState<any>(null);
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
   const [activeTab, setActiveTab] = useState<'notifications' | 'gallery' | 'feed'>('notifications');
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -6082,15 +6117,35 @@ const ProfilePage = () => {
         .eq('receiver_id', userId);
 
       if (!liveErr && liveCount !== null) {
-        // Since we can't easily count distinct in supabase select count without RPC, we just count messages or we do it locally
-        // A simple query to just get all messages sent to user, then count unique senders:
+        // Fetch full active chats
         const { data: msgs } = await supabase
           .from('room_messages')
-          .select('sender_id')
-          .eq('receiver_id', userId);
+          .select(`
+            id, text, created_at, sender_id, receiver_id,
+            sender:users!sender_id(id, name, photos, photo_url, is_online, city),
+            receiver:users!receiver_id(id, name, photos, photo_url, is_online, city)
+          `)
+          .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
+          .order('created_at', { ascending: false });
+
         if (msgs) {
-          const uniqueSenders = new Set(msgs.map(m => m.sender_id));
+          const chatMap = new Map();
+          for (const m of msgs) {
+            const isSender = m.sender_id === userId;
+            const otherUser = isSender ? m.receiver : m.sender;
+            if (!otherUser) continue;
+            if (!chatMap.has(otherUser.id)) {
+              chatMap.set(otherUser.id, {
+                other_user: otherUser,
+                last_msg: m.text,
+                created_at: m.created_at,
+                isSender
+              });
+            }
+          }
+          const uniqueSenders = new Set(msgs.map((m: any) => m.sender_id));
           setLiveChatsCount(uniqueSenders.size);
+          setActiveChats(Array.from(chatMap.values()));
         }
       }
 
@@ -6463,7 +6518,7 @@ const ProfilePage = () => {
 
           {activeTab === 'notifications' && (
             <motion.div key="tab-notif" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
-              {chatRequests.length === 0 ? (
+              {chatRequests.length === 0 && activeChats.length === 0 ? (
                 <div className="bg-white rounded-[28px] border border-stone-100 p-10 flex flex-col items-center gap-4">
                   <div className="w-16 h-16 bg-stone-100 rounded-full flex items-center justify-center">
                     <CheckCircle className="w-8 h-8 text-stone-300" />
@@ -6472,21 +6527,56 @@ const ProfilePage = () => {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {chatRequests.map((req, index) => (
-                    <ChatRequestItem
-                      key={req.id}
-                      req={req}
-                      index={index}
-                      bounceNotif={bounceNotif}
-                      handleDeleteChatRequest={handleDeleteChatRequest}
-                      replyingTo={replyingTo}
-                      setReplyingTo={setReplyingTo}
-                      replyText={replyText}
-                      setReplyText={setReplyText}
-                      handleSendReply={handleSendReply}
-                      isSendingReply={isSendingReply}
-                    />
-                  ))}
+                  {/* Chat Attive (Live Chats) */}
+                  {activeChats.length > 0 && (
+                    <div className="space-y-3">
+                      <h4 className="text-[10px] uppercase font-black tracking-widest text-sky-500 flex items-center gap-1.5 px-2">
+                        <MessageSquare className="w-3.5 h-3.5" /> Chat in corso
+                      </h4>
+                      {activeChats.map((chat, index) => (
+                        <div key={chat.other_user.id} onClick={() => setActiveChatTarget(chat.other_user)} className="bg-white rounded-[24px] border border-sky-100 p-3 flex items-center gap-3 shadow-sm cursor-pointer hover:bg-sky-50 transition-colors">
+                          <div className="relative w-12 h-12 rounded-[16px] overflow-hidden border border-stone-100 shrink-0">
+                            <img src={chat.other_user.photos?.[0] || chat.other_user.photo_url || `https://picsum.photos/seed/${chat.other_user.id}/100`} className="w-full h-full object-cover" />
+                            {chat.other_user.is_online && <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full"></div>}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between mb-1">
+                              <h4 className="text-sm font-black text-stone-900 truncate">{chat.other_user.name}</h4>
+                              <span className="text-[9px] text-stone-400 font-bold uppercase tracking-widest">{new Date(chat.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                            </div>
+                            <p className="text-[11px] text-stone-500 truncate font-medium">{chat.isSender ? 'Tu: ' : ''}{chat.last_msg}</p>
+                          </div>
+                          <div className="w-8 h-8 bg-sky-100 text-sky-600 rounded-full flex items-center justify-center shrink-0">
+                            <ChevronRight className="w-4 h-4" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Messaggi / Richieste */}
+                  {chatRequests.length > 0 && (
+                    <div className="space-y-3 pt-2 border-t border-stone-100/50">
+                      <h4 className="text-[10px] uppercase font-black tracking-widest text-amber-500 flex items-center gap-1.5 px-2">
+                        <MessageCircle className="w-3.5 h-3.5" /> Posta / Richieste
+                      </h4>
+                      {chatRequests.map((req, index) => (
+                        <ChatRequestItem
+                          key={req.id}
+                          req={req}
+                          index={index}
+                          bounceNotif={bounceNotif}
+                          handleDeleteChatRequest={handleDeleteChatRequest}
+                          replyingTo={replyingTo}
+                          setReplyingTo={setReplyingTo}
+                          replyText={replyText}
+                          setReplyText={setReplyText}
+                          handleSendReply={handleSendReply}
+                          isSendingReply={isSendingReply}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </motion.div>
@@ -6593,6 +6683,17 @@ const ProfilePage = () => {
               </div>
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      {/* ── LIVE CHAT MODAL ── */}
+      <AnimatePresence>
+        {activeChatTarget && user && (
+          <LiveChatModal
+            profile={activeChatTarget}
+            currentUser={user}
+            onClose={() => { setActiveChatTarget(null); fetchData(user.id); }}
+          />
         )}
       </AnimatePresence>
     </div >
