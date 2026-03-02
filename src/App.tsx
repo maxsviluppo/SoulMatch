@@ -147,15 +147,39 @@ const AppBottomNav = () => {
           .eq('to_user_id', currentUserId)
           .eq('status', 'pending');
         setChatCount(msgsCount || 0);
-      } catch (e) {
-        console.error("Fetch pending counts error:", e);
-      }
+      } catch (e) { }
     };
 
     fetchPending();
+
+    // Sottoscrizioni Real-time
+    const slChannel = supabase.channel(`nav_sl_${currentUserId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'soul_links', filter: `receiver_id=eq.${currentUserId}` }, fetchPending)
+      .subscribe();
+
+    const crChannel = supabase.channel(`nav_cr_${currentUserId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_requests', filter: `to_user_id=eq.${currentUserId}` }, fetchPending)
+      .subscribe();
+
+    const rmChannel = supabase.channel(`nav_rm_${currentUserId}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'room_messages', filter: `receiver_id=eq.${currentUserId}` }, () => {
+        fetchPending();
+        const chatIcon = document.getElementById('nav-chat-icon');
+        if (chatIcon) {
+          chatIcon.classList.add('animate-bounce');
+          setTimeout(() => chatIcon.classList.remove('animate-bounce'), 2000);
+        }
+      })
+      .subscribe();
+
     const interval = setInterval(fetchPending, 10000);
-    return () => clearInterval(interval);
-  }, []);
+    return () => {
+      clearInterval(interval);
+      supabase.removeChannel(slChannel);
+      supabase.removeChannel(crChannel);
+      supabase.removeChannel(rmChannel);
+    };
+  }, [location.pathname]); // Re-run when path changes to catch login/logout
 
   if (shouldHide) return null;
 
@@ -251,7 +275,10 @@ const AppBottomNav = () => {
                 <div className="relative">
                   <UserCheck className="w-5 h-5 mb-0.5" />
                   {pendingCount > 0 && (
-                    <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-rose-500 text-white text-[7px] font-black rounded-full flex items-center justify-center border-2 border-stone-900 shadow-sm">{pendingCount}</span>
+                    <>
+                      <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-rose-500 rounded-full animate-ping opacity-75" />
+                      <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-rose-500 text-white text-[7px] font-black rounded-full flex items-center justify-center border-2 border-stone-900 shadow-sm z-10">{pendingCount}</span>
+                    </>
                   )}
                 </div>
                 <span className="text-[6px] font-black uppercase tracking-wider">Amici</span>
@@ -267,10 +294,13 @@ const AppBottomNav = () => {
                   activeTab === 'chat' ? "bg-white text-stone-900 shadow-lg" : "text-stone-400 hover:text-white"
                 )}
               >
-                <div className="relative">
+                <div className="relative" id="nav-chat-icon">
                   <MessageCircle className="w-5 h-5 mb-0.5" />
                   {chatCount > 0 && (
-                    <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-rose-500 text-white text-[7px] font-black rounded-full flex items-center justify-center border-2 border-stone-900 shadow-sm">{chatCount}</span>
+                    <>
+                      <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-rose-500 rounded-full animate-ping opacity-75" />
+                      <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-rose-500 text-white text-[7px] font-black rounded-full flex items-center justify-center border-2 border-stone-900 shadow-sm z-10">{chatCount}</span>
+                    </>
                   )}
                 </div>
                 <span className="text-[6px] font-black uppercase tracking-wider">Chat</span>
@@ -2190,13 +2220,15 @@ const BachecaPage = () => {
 
     const isWildcard = (arr: string[]) => arr.some(v => ['tutti', 'tutte', 'entrambi', 'qualsiasi', 'tutti i generi'].includes(v));
 
-    // A. RECIPROCITÀ GENDER MATCH (Pilastro: Attrazione)
+    // A. RECIPROCITÀ GENDER MATCH - Reso più permissivo per la Bacheca
     const targetGender = target.gender?.toLowerCase() || '';
     const viewerGender = viewer.gender?.toLowerCase() || '';
     const viewerWantsTarget = wantsV.length === 0 || isWildcard(wantsV) || wantsV.includes(targetGender);
-    const targetWantsViewer = wantsT.length === 0 || isWildcard(wantsT) || wantsT.includes(viewerGender);
 
-    if (!viewerWantsTarget || !targetWantsViewer) return false;
+    // Mostriamo in bacheca chi NOI cerchiamo. 
+    // La reciprocità la lasciamo come "soft filter" o per il SoulMatch se vuoi, 
+    // ma per ora in bacheca vogliamo vedere chiunque IO possa gradire.
+    if (!viewerWantsTarget) return false;
 
     // B. COMPATIBILITÀ ORIENTAMENTO (Il Motore)
     const checkOri = (myMacro: string, myOris: string[], targetMacro: string) => {
@@ -2736,9 +2768,9 @@ const SoulMatchPage = () => {
     // Exclude if no photo
     if (!p.photos?.length && !p.photo_url) return false;
 
-    // Base preference check
+    // Base preference check - Consistent with Bacheca
     const wantsV = (currentUser.looking_for_gender || []).map(g => g.toLowerCase());
-    const isWildcard = (arr: string[]) => arr.some(v => ['tutti', 'tutte', 'entrambi', 'qualsiasi'].includes(v));
+    const isWildcard = (arr: string[]) => arr.some(v => ['tutti', 'tutte', 'entrambi', 'qualsiasi', 'tutti i generi'].includes(v));
     const targetGender = p.gender?.toLowerCase() || '';
 
     return wantsV.length === 0 || isWildcard(wantsV) || wantsV.includes(targetGender);
@@ -3030,6 +3062,11 @@ const AmiciPage = () => {
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
   const [activeTab, setActiveTab] = useState<'feed' | 'amici' | 'richieste'>('feed');
+  const [messagingFriend, setMessagingFriend] = useState<UserProfile | null>(null);
+  const [quickMsgText, setQuickMsgText] = useState('');
+  const [isSendingQuickMsg, setIsSendingQuickMsg] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<SoulLink | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchSoulLinks = async (userId: string) => {
     // Fetch all soul_links where user is involved
@@ -3163,11 +3200,12 @@ const AmiciPage = () => {
     }
   };
 
-  const handleRemoveFriend = async (friend: SoulLink) => {
-    const slId = friend.id;
-    const name = friend.other_user?.name || 'Utente';
 
-    if (!window.confirm(`Stai eliminando l'amicizia con ${name}. Sei sicuro?`)) return;
+  const handleConfirmDelete = async () => {
+    if (!confirmDelete || !currentUser) return;
+    setIsDeleting(true);
+    const slId = confirmDelete.id;
+    const name = confirmDelete.other_user?.name || 'Utente';
 
     const { error } = await supabase
       .from('soul_links')
@@ -3176,10 +3214,34 @@ const AmiciPage = () => {
 
     if (!error) {
       setToast({ message: `L'amicizia con ${name} è stata eliminata.`, type: 'info' });
-      if (currentUser?.id) fetchSoulLinks(currentUser.id);
+      fetchSoulLinks(currentUser.id);
+      setConfirmDelete(null);
     } else {
       setToast({ message: 'Errore durante la rimozione.', type: 'error' });
     }
+    setIsDeleting(false);
+  };
+
+  const handleSendQuickMsg = async () => {
+    if (!quickMsgText.trim() || !currentUser || !messagingFriend) return;
+    setIsSendingQuickMsg(true);
+    try {
+      const { error } = await supabase.from('chat_requests').insert([{
+        from_user_id: currentUser.id,
+        to_user_id: messagingFriend.id,
+        message: quickMsgText
+      }]);
+      if (!error) {
+        setToast({ message: 'Messaggio inviato!', type: 'success' });
+        setQuickMsgText('');
+        setMessagingFriend(null);
+      } else {
+        setToast({ message: 'Errore nell\'invio del messaggio.', type: 'error' });
+      }
+    } catch (err) {
+      setToast({ message: 'Errore di connessione.', type: 'error' });
+    }
+    setIsSendingQuickMsg(false);
   };
 
   return (
@@ -3316,7 +3378,7 @@ const AmiciPage = () => {
                     onDragEnd={(_, info) => {
                       // Se l'utente ha trascinato abbastanza a sinistra, scatta l'eliminazione
                       if (info.offset.x < -100) {
-                        handleRemoveFriend(f);
+                        setConfirmDelete(f);
                       }
                     }}
                     // Animazione di suggerimento (Peek) SOLO sul primo banner ogni 10 secondi
@@ -3346,7 +3408,10 @@ const AmiciPage = () => {
                       )} />
                     </div>
 
-                    <div className="flex-1 min-w-0 pr-2">
+                    <div
+                      onClick={() => navigate(`/profile-detail/${f.other_user?.id}`)}
+                      className="flex-1 min-w-0 pr-2 cursor-pointer hover:opacity-75 transition-opacity"
+                    >
                       <h3 className="text-base font-black text-stone-900 truncate">{f.other_user?.name}</h3>
                       <div className="mt-0.5 space-y-0.5">
                         {f.other_user?.dob && (
@@ -3362,33 +3427,26 @@ const AmiciPage = () => {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1 shrink-0">
+                    <div className="flex items-center gap-3 shrink-0 pr-1">
                       <button
-                        className="w-9 h-9 bg-rose-50 text-rose-600 rounded-[12px] flex items-center justify-center border border-rose-100 active:scale-90 transition-all hover:bg-rose-100"
+                        className="w-10 h-10 bg-rose-50 text-rose-600 rounded-[14px] flex items-center justify-center border border-rose-100 active:scale-90 transition-all hover:bg-rose-100"
                         title="SoulMatch"
                       >
-                        <Heart className="w-4 h-4 fill-current" />
+                        <Heart className="w-5 h-5 fill-current" />
                       </button>
                       <button
                         onClick={() => navigate(`/live-chat/${f.other_user?.id}`)}
-                        className="w-9 h-9 bg-rose-600 text-white rounded-[12px] flex items-center justify-center shadow-md shadow-rose-200 active:scale-90 transition-all"
+                        className="w-10 h-10 bg-rose-600 text-white rounded-[14px] flex items-center justify-center shadow-md shadow-rose-200 active:scale-90 transition-all"
                         title="Chat Live"
                       >
-                        <MessageCircle className="w-4 h-4 fill-current" />
+                        <MessageCircle className="w-5 h-5 fill-current" />
                       </button>
                       <button
-                        onClick={() => navigate(`/profile-detail/${f.other_user?.id}`)}
-                        className="w-9 h-9 bg-white text-stone-400 rounded-[12px] flex items-center justify-center border border-stone-100 shadow-xs active:scale-90 transition-all hover:bg-stone-50"
+                        onClick={() => setMessagingFriend(normalizeUser(f.other_user!))}
+                        className="w-10 h-10 bg-white text-stone-400 rounded-[14px] flex items-center justify-center border border-stone-100 shadow-xs active:scale-90 transition-all hover:bg-stone-50"
                         title="Messaggi"
                       >
-                        <Send className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => navigate(`/profile-detail/${f.other_user?.id}`)}
-                        className="w-9 h-9 bg-stone-50 text-stone-400 rounded-[12px] flex items-center justify-center hover:bg-stone-100 transition-all border border-stone-100"
-                        title="Profilo"
-                      >
-                        <ArrowRight className="w-4 h-4" />
+                        <Send className="w-4 h-4" />
                       </button>
                     </div>
                   </motion.div>
@@ -3404,6 +3462,109 @@ const AmiciPage = () => {
           </div>
         )}
       </div>
+
+      {/* ── QUICK MESSAGE MODAL ── */}
+      <AnimatePresence>
+        {messagingFriend && (
+          <div className="fixed inset-0 z-[150] flex items-center justify-center bg-stone-900/40 backdrop-blur-sm px-6">
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white w-full max-w-sm rounded-[32px] overflow-hidden shadow-2xl"
+            >
+              <div className="p-6">
+                <div className="flex items-center gap-4 mb-6">
+                  <ProfileAvatar user={messagingFriend} className="w-14 h-14 rounded-2xl" />
+                  <div>
+                    <h3 className="text-lg font-black text-stone-900">A {messagingFriend.name}</h3>
+                    <p className="text-[10px] text-stone-400 font-bold uppercase tracking-widest leading-none">Scrivi il tuo messaggio</p>
+                  </div>
+                </div>
+
+                <textarea
+                  autoFocus
+                  value={quickMsgText}
+                  onChange={(e) => setQuickMsgText(e.target.value)}
+                  placeholder="Ehi, come stai?"
+                  className="w-full h-32 bg-stone-50 border border-stone-100 rounded-2xl p-4 text-sm font-medium resize-none focus:outline-none focus:ring-2 focus:ring-rose-200"
+                />
+
+                <div className="grid grid-cols-2 gap-3 mt-6">
+                  <button
+                    onClick={() => {
+                      setMessagingFriend(null);
+                      setQuickMsgText('');
+                    }}
+                    className="py-4 bg-stone-100 text-stone-500 rounded-2xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all"
+                  >
+                    Annulla
+                  </button>
+                  <button
+                    disabled={!quickMsgText.trim() || isSendingQuickMsg}
+                    onClick={handleSendQuickMsg}
+                    className="py-4 bg-rose-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-rose-200 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {isSendingQuickMsg ? (
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <>
+                        <Send className="w-3.5 h-3.5" />
+                        Invia ora
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ── CUSTOM DELETE CONFIRM MODAL ── */}
+      <AnimatePresence>
+        {confirmDelete && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center bg-stone-900/60 backdrop-blur-sm px-6">
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="bg-white w-full max-w-sm rounded-[32px] overflow-hidden shadow-2xl border border-stone-100"
+            >
+              <div className="p-8 text-center">
+                <div className="w-20 h-20 bg-rose-50 rounded-[24px] flex items-center justify-center mx-auto mb-6 text-rose-600">
+                  <Trash2 className="w-10 h-10" />
+                </div>
+                <h3 className="text-xl font-black text-stone-900 mb-2">Sei sicuro?</h3>
+                <p className="text-sm text-stone-500 font-medium leading-relaxed">
+                  Stai per eliminare l'amicizia con <span className="text-stone-900 font-bold">{confirmDelete.other_user?.name}</span>. Questa azione non può essere annullata.
+                </p>
+
+                <div className="flex flex-col gap-3 mt-8">
+                  <button
+                    disabled={isDeleting}
+                    onClick={handleConfirmDelete}
+                    className="w-full py-4 bg-rose-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-lg shadow-rose-200 active:scale-95 transition-all flex items-center justify-center gap-2"
+                  >
+                    {isDeleting ? (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      "Elimina Amicizia"
+                    )}
+                  </button>
+                  <button
+                    disabled={isDeleting}
+                    onClick={() => setConfirmDelete(null)}
+                    className="w-full py-4 bg-stone-100 text-stone-500 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] active:scale-95 transition-all"
+                  >
+                    Annulla
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
@@ -6077,7 +6238,9 @@ const ChatPage = () => {
   const [replyText, setReplyText] = useState('');
   const [isSendingReply, setIsSendingReply] = useState(false);
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
+  const [activeTab, setActiveTab] = useState<'messaggi' | 'live'>('messaggi');
   const navigate = useNavigate();
+
 
   useEffect(() => {
     try {
@@ -6205,6 +6368,14 @@ const ChatPage = () => {
     setIsSendingReply(true);
 
     try {
+      // Segna come approvati i messaggi in arrivo da questo utente per togliere la notifica
+      await supabase
+        .from('chat_requests')
+        .update({ status: 'approved' })
+        .eq('from_user_id', toUserId)
+        .eq('to_user_id', user.id)
+        .eq('status', 'pending');
+
       const { error } = await supabase.from('chat_requests').insert([{
         from_user_id: user.id,
         to_user_id: toUserId,
@@ -6236,17 +6407,38 @@ const ChatPage = () => {
       <AnimatePresence>
         {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       </AnimatePresence>
-      <div className="px-6 relative z-10 space-y-2 pb-6 flex items-center gap-3">
-        <div className="w-12 h-12 bg-rose-600 rounded-[16px] flex items-center justify-center shadow-lg shadow-rose-200">
-          <MessageCircle className="w-6 h-6 text-white" />
-        </div>
-        <div>
-          <h1 className="text-3xl font-serif font-black text-stone-900 tracking-tight leading-none bg-clip-text text-transparent bg-gradient-to-r from-stone-900 to-stone-500">
-            Chat
-          </h1>
-          <p className="text-stone-500 text-[11px] font-medium tracking-wide">Cronologia & Messaggi</p>
-        </div>
+      <div className="flex justify-center gap-3 mx-4 mb-8 pt-4">
+        {[
+          { id: 'messaggi', label: 'Messaggi', icon: MessageSquare, count: chatRequests.filter(r => r.status === 'pending').length },
+          { id: 'live', label: 'Online', icon: Users, count: friends.filter(f => f.other_user?.is_online).length }
+        ].map(tab => {
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as 'messaggi' | 'live')}
+              className={cn(
+                "flex-1 max-w-[160px] flex items-center justify-center gap-3 px-4 py-3.5 rounded-[28px] shadow-sm transition-all relative overflow-hidden",
+                isActive
+                  ? "bg-stone-900/95 backdrop-blur-xl border border-white/10 text-white scale-100"
+                  : "bg-white border border-stone-100 text-stone-400 scale-95 opacity-80"
+              )}
+            >
+              <tab.icon className={cn("w-6 h-6 shrink-0", isActive ? "text-white" : "text-stone-300")} />
+              <div className="flex flex-col items-center">
+                <span className={cn("text-[11px] font-black uppercase tracking-[0.2em] leading-none", isActive ? "text-white" : "text-stone-500")}>
+                  {tab.label}
+                </span>
+                <span className={cn("text-[9px] font-black mt-1", isActive ? "text-white/40 tracking-[0.2em]" : "text-stone-400 tracking-[0.2em]")}>
+                  {tab.count}
+                </span>
+              </div>
+            </button>
+          );
+        })}
       </div>
+
+
 
       <div className="mx-4 mt-2">
         {chatRequests.length === 0 && activeChats.length === 0 && friends.length === 0 ? (
@@ -6258,73 +6450,149 @@ const ChatPage = () => {
           </div>
         ) : (
           <div className="space-y-6">
-            {/* ── SEZIONE: AMICI (Modello AmiciPage) ── */}
-            {friends.length > 0 && (
-              <div className="space-y-3">
-                <h4 className="text-[10px] uppercase font-black tracking-widest text-violet-500 flex items-center gap-1.5 px-2">
-                  <UserCheck className="w-3.5 h-3.5" /> I tuoi SoulLinks
-                </h4>
-                <div className="flex gap-4 overflow-x-auto pb-2 px-1 scrollbar-hide">
-                  {friends.map(f => (
-                    <motion.div
-                      key={f.id}
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => navigate(`/live-chat/${f.other_user?.id}`)}
-                      className="flex flex-col items-center gap-2 shrink-0 cursor-pointer group"
-                    >
-                      <div className="relative">
-                        <ProfileAvatar
-                          user={f.other_user}
-                          className="w-16 h-16 rounded-[22px] border-2 border-white shadow-md group-hover:border-violet-200 transition-all"
-                          iconSize="w-8 h-8"
-                        />
-                        {f.other_user?.is_online && (
-                          <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-emerald-400 border-[3px] border-white rounded-full shadow-sm" />
-                        )}
-                      </div>
-                      <span className="text-[10px] font-black text-stone-700 max-w-[64px] truncate">{f.other_user?.name}</span>
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
-            )}
 
-            {/* Chat Attive e Messaggi (WhatsApp Style) */}
-            {activeChats.length > 0 && (
-              <div className="space-y-1">
-                <h4 className="text-[10px] uppercase font-black tracking-widest text-emerald-500 flex items-center gap-1.5 px-2 mb-3 mt-4">
-                  <MessageSquare className="w-3.5 h-3.5" /> Conversazioni Recenti
-                </h4>
-                {activeChats.map((chat) => (
-                  <div key={chat.other_user.id} onClick={() => navigate(`/live-chat/${chat.other_user.id}`)} className="bg-white border-b border-stone-50 overflow-hidden cursor-pointer hover:bg-stone-50 transition-colors">
-                    <div className="flex items-center gap-4 p-4">
-                      <div className="w-14 h-14 rounded-full overflow-hidden border border-stone-100 shrink-0 relative">
-                        <ProfileAvatar user={chat.other_user} className="w-full h-full" iconSize="w-6 h-6" />
-                        <div className={cn(
-                          "absolute bottom-0.5 right-0.5 w-3.5 h-3.5 border-2 border-white rounded-full",
-                          chat.other_user.is_online ? "bg-emerald-500" : "bg-stone-300"
-                        )}></div>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex justify-between items-center mb-0.5">
-                          <h3 className="text-[15px] font-black text-stone-900 truncate flex-1">
-                            {chat.other_user.name}
-                          </h3>
-                          <span className="text-[10px] text-stone-400 font-bold uppercase tracking-tight ml-2">
-                            {new Date(chat.created_at).getHours()}:{String(new Date(chat.created_at).getMinutes()).padStart(2, '0')}
-                          </span>
-                        </div>
-                        <p className="text-[13px] text-stone-500 truncate font-medium">
-                          {chat.isSender ? 'Tu: ' : ''}{chat.last_msg}
-                        </p>
+            <AnimatePresence mode="wait">
+              {activeTab === 'messaggi' && (
+                <motion.div
+                  key="messaggi"
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 10 }}
+                  className="space-y-6"
+                >
+
+                  {/* ── SEZIONE: AMICI (Modello AmiciPage) ── */}
+                  {friends.length > 0 && (
+                    <div className="space-y-3">
+                      <h4 className="text-[10px] uppercase font-black tracking-widest text-violet-500 flex items-center gap-1.5 px-2">
+                        <UserCheck className="w-3.5 h-3.5" /> I tuoi SoulLinks
+                      </h4>
+                      <div className="flex gap-4 overflow-x-auto pb-2 px-1 scrollbar-hide">
+                        {friends.map(f => (
+                          <motion.div
+                            key={f.id}
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => navigate(`/live-chat/${f.other_user?.id}`)}
+                            className="flex flex-col items-center gap-2 shrink-0 cursor-pointer group"
+                          >
+                            <div className="relative">
+                              <ProfileAvatar
+                                user={f.other_user}
+                                className="w-16 h-16 rounded-[22px] border-2 border-white shadow-md group-hover:border-violet-200 transition-all"
+                                iconSize="w-8 h-8"
+                              />
+                              {f.other_user?.is_online && (
+                                <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-emerald-400 border-[3px] border-white rounded-full shadow-sm" />
+                              )}
+                              {/* Notifica per messaggio non letto (chat_request pending) */}
+                              {chatRequests.some(r => r.from_user_id === f.other_user?.id && r.status === 'pending') && (
+                                <div className="absolute -top-1 -right-1 w-5 h-5 bg-rose-500 text-white text-[9px] font-black rounded-full flex items-center justify-center border-2 border-white shadow-sm animate-bounce">!</div>
+                              )}
+                            </div>
+                            <span className="text-[10px] font-black text-stone-700 max-w-[64px] truncate">{f.other_user?.name}</span>
+                          </motion.div>
+                        ))}
                       </div>
                     </div>
+                  )}
+
+                  {/* Chat Attive e Messaggi (WhatsApp Style) */}
+                  {activeChats.length > 0 && (
+                    <div className="space-y-1">
+                      <h4 className="text-[10px] uppercase font-black tracking-widest text-emerald-500 flex items-center gap-1.5 px-2 mb-3 mt-4">
+                        <MessageSquare className="w-3.5 h-3.5" /> Conversazioni Recenti
+                      </h4>
+                      {activeChats.map((chat) => (
+                        <div key={chat.other_user.id} onClick={() => navigate(`/live-chat/${chat.other_user.id}`)} className="bg-white border-b border-stone-50 overflow-hidden cursor-pointer hover:bg-stone-50 transition-colors">
+                          <div className="flex items-center gap-4 p-4 relative">
+                            <div className="w-14 h-14 rounded-full overflow-hidden border border-stone-100 shrink-0 relative">
+                              <ProfileAvatar user={chat.other_user} className="w-full h-full" iconSize="w-6 h-6" />
+                              <div className={cn(
+                                "absolute bottom-0.5 right-0.5 w-3.5 h-3.5 border-2 border-white rounded-full",
+                                chat.other_user.is_online ? "bg-emerald-500" : "bg-stone-300"
+                              )}></div>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex justify-between items-center mb-0.5">
+                                <h3 className="text-[15px] font-black text-stone-900 truncate flex-1 flex items-center gap-2">
+                                  {chat.other_user.name}
+                                  {chatRequests.some(r => r.from_user_id === chat.other_user.id && r.status === 'pending') && (
+                                    <span className="w-2 h-2 bg-rose-500 rounded-full animate-pulse shadow-sm shadow-rose-200" />
+                                  )}
+                                </h3>
+                                <span className="text-[10px] text-stone-400 font-bold uppercase tracking-tight ml-2">
+                                  {new Date(chat.created_at).getHours()}:{String(new Date(chat.created_at).getMinutes()).padStart(2, '0')}
+                                </span>
+                              </div>
+                              <p className={cn(
+                                "text-[13px] truncate font-medium",
+                                chatRequests.some(r => r.from_user_id === chat.other_user.id && r.status === 'pending') ? "text-stone-900 font-black" : "text-stone-500"
+                              )}>
+                                {chat.isSender ? 'Tu: ' : ''}{chat.last_msg}
+                              </p>
+                            </div>
+                            {/* Badge dedicato sulla destra */}
+                            {chatRequests.some(r => r.from_user_id === chat.other_user.id && r.status === 'pending') && (
+                              <div className="ml-2 w-5 h-5 bg-rose-600 rounded-full flex items-center justify-center text-white text-[9px] font-black shadow-lg shadow-rose-200">
+                                1
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </motion.div>
+              )}
+
+              {activeTab === 'live' && (
+                <motion.div
+                  key="live"
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 10 }}
+                  className="space-y-6 bg-white p-6 rounded-[28px] border border-stone-100"
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-black text-stone-900 flex items-center gap-2">
+                      <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+                      Utenti Online
+                    </h3>
                   </div>
-                ))}
-              </div>
-            )}
+
+                  {friends.filter(f => f.other_user?.is_online).length === 0 ? (
+                    <div className="text-center py-8">
+                      <div className="w-16 h-16 bg-stone-50 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <Users className="w-8 h-8 text-stone-300" />
+                      </div>
+                      <p className="text-stone-500 font-medium text-sm">Nessun amico online in questo momento.</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-4 gap-y-6 gap-x-2">
+                      {friends.filter(f => f.other_user?.is_online).map(f => (
+                        <div
+                          key={f.id}
+                          onClick={() => navigate(`/live-chat/${f.other_user?.id}`)}
+                          className="flex flex-col items-center gap-2 cursor-pointer group"
+                        >
+                          <div className="relative">
+                            <ProfileAvatar
+                              user={f.other_user}
+                              className="w-16 h-16 rounded-[22px] border-2 border-emerald-400 shadow-md group-hover:scale-105 transition-all"
+                              iconSize="w-8 h-8"
+                            />
+                            <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-400 border-2 border-white rounded-full shadow-sm animate-pulse" />
+                          </div>
+                          <span className="text-[11px] font-black text-stone-800 max-w-[64px] truncate">{f.other_user?.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         )}
       </div>
@@ -6332,6 +6600,7 @@ const ChatPage = () => {
     </div>
   );
 };
+
 
 
 // ── Chat Request Item Component ──
@@ -6545,9 +6814,9 @@ const ProfilePage = () => {
       const { data: profileData, error: profileErr } = await supabase
         .from('users')
         .select(`
-                          *,
-                          interactions!to_user_id(type)
-                          `)
+            *,
+            interactions!to_user_id(type)
+            `)
         .eq('id', userId)
         .single();
 
@@ -6570,9 +6839,9 @@ const ProfilePage = () => {
       const { data: requestsData, error: requestsErr } = await supabase
         .from('chat_requests')
         .select(`
-                          *,
-                          from_user:users!from_user_id(name, surname, photo_url, photos)
-                          `)
+            *,
+            from_user:users!from_user_id(name, surname, photo_url, photos)
+            `)
         .eq('to_user_id', userId)
         .order('created_at', { ascending: false });
 
@@ -6599,10 +6868,10 @@ const ProfilePage = () => {
         const { data: msgs } = await supabase
           .from('room_messages')
           .select(`
-                          id, text, created_at, sender_id, receiver_id,
-                          sender:users!sender_id(id, name, photos, photo_url, is_online, city),
-                          receiver:users!receiver_id(id, name, photos, photo_url, is_online, city)
-                          `)
+            id, text, created_at, sender_id, receiver_id,
+            sender:users!sender_id(id, name, photos, photo_url, is_online, city),
+            receiver:users!receiver_id(id, name, photos, photo_url, is_online, city)
+            `)
           .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
           .order('created_at', { ascending: false });
 
@@ -6692,6 +6961,14 @@ const ProfilePage = () => {
     if (!replyText.trim() || !user) return;
     setIsSendingReply(true);
     try {
+      // Segna come approvato il messaggio originale per togliere la notifica
+      await supabase
+        .from('chat_requests')
+        .update({ status: 'approved' })
+        .eq('from_user_id', recipientId)
+        .eq('to_user_id', user.id)
+        .eq('status', 'pending');
+
       const { error } = await supabase
         .from('chat_requests')
         .upsert({
@@ -7215,7 +7492,7 @@ const AppFooter = () => {
     <footer className="w-full bg-stone-900 text-white mt-12 border-t-4 border-rose-600">
 
 
-      <div className="px-6 pt-2 pb-10 max-w-md mx-auto">
+      <div className="px-6 pt-2 pb-32 max-w-md mx-auto">
         {/* Logo row */}
         <div className="flex items-center gap-3 mb-8">
           <div className="w-10 h-10 bg-rose-600 rounded-[14px] flex items-center justify-center shadow-lg shadow-rose-900/40">
