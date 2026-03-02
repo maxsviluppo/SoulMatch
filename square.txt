@@ -1,0 +1,9 @@
+12:  MessageSquare,
+1001:              icon: MessageSquare,
+5790:                      <MessageSquare className="w-4 h-4" />
+6665:          { id: 'messaggi', label: 'Messaggi', icon: MessageSquare, count: chatRequests.filter(r => r.status === 'pending').length },
+7060:              <MessageSquare className="w-3.5 h-3.5" /> Rispondi
+7565:            <MessageSquare className="w-4 h-4 text-rose-500" />
+7596:                      <MessageSquare className="w-3.5 h-3.5 text-rose-500" />
+7703:                        <MessageSquare className="w-3.5 h-3.5" /> Chat in corso
+8142:    icon={MessageSquare}

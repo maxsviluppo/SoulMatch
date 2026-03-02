@@ -1,0 +1,5 @@
+121:  const hideOn = ['/live-chat', '/register', '/onboarding', '/edit-profile', '/admin'];
+1655:    navigate(`/live-chat/${profile.id}`);
+3532:                            navigate(`/live-chat/${f.other_user?.id}`);
+6894:                                  navigate(`/live-chat/${pu?.id}`);
+8354:        <Route path="/live-chat/:id" element={<LiveChatPage />} />

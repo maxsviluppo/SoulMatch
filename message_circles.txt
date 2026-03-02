@@ -1,0 +1,6 @@
+13:  MessageCircle,
+299:                  <MessageCircle className="w-5 h-5 mb-0.5" />
+1862:            <MessageCircle className="w-4 h-4" />
+3540:                        <MessageCircle className="w-5 h-5 fill-current" />
+3598:                    <MessageCircle className="w-12 h-12 mb-3 text-stone-300" />
+7739:                        <MessageCircle className="w-3.5 h-3.5" /> Posta / Richieste

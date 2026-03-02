@@ -1,0 +1,43 @@
+428:                  onClick={() => navigate(`/profile-detail/${bannerMessages[bannerIndex]?.user_id}`)}
+1176:        navigate('/register');
+1179:      navigate('/register');
+1303:    navigate(-1);
+1320:          onClick={() => navigate(-1)}
+1338:          onClick={() => navigate(`/profile-detail/${profile.id}`)}
+1655:    navigate(`/live-chat/${profile.id}`);
+1725:        <button onClick={() => navigate('/')} className="btn-primary py-4 flex items-center justify-center gap-2">
+1934:                <button onClick={() => navigate('/register')} className="text-[10px] font-black text-rose-600 underline">Crea Profilo Gratis</button>
+2156:        navigate('/register');
+2159:      navigate('/register');
+2815:      navigate('/register');
+2869:                    onClick={() => navigate(`/profile-detail/${p.id}`)}
+3010:        navigate('/register');
+3013:      navigate('/register');
+3258:        navigate('/register');
+3261:      navigate('/register');
+3440:                    onClick={() => navigate('/bacheca')}
+3504:                      onClick={() => navigate(`/profile-detail/${f.other_user?.id}`)}
+3532:                            navigate(`/live-chat/${f.other_user?.id}`);
+4575:          setTimeout(() => navigate('/bacheca'), 1500);
+4644:        navigate('/bacheca');
+4810:        navigate('/bacheca');
+4829:              onClick={() => navigate(-1)}
+5704:                  onClick={() => navigate(`/profile-detail/${post.user_id}`)}
+5709:                <div onClick={() => navigate(`/profile-detail/${post.user_id}`)} className="cursor-pointer">
+5989:        navigate('/register');
+5996:        navigate('/register');
+6035:        setTimeout(() => navigate('/profile'), 1500);
+6042:        setTimeout(() => navigate('/register'), 2000);
+6056:      setTimeout(() => navigate('/profile'), 1500);
+6088:        navigate('/');
+6124:          <button onClick={() => navigate('/profile')} className="w-10 h-10 rounded-2xl flex items-center justify-center bg-white border border-stone-100 text-stone-600 hover:text-rose-600 shadow-sm transition-all">
+6398:        navigate('/register');
+6401:      navigate('/register');
+6894:                                  navigate(`/live-chat/${pu?.id}`);
+7345:        else navigate('/register');
+7346:      } catch (e) { navigate('/register'); }
+7347:    } else navigate('/register');
+7482:        <button onClick={() => navigate('/register')} className="btn-primary py-4">Completa Registrazione</button>
+7487:          navigate('/');
+7516:            onClick={() => navigate('/edit-profile')}
+8010:          onClick={() => navigate(-1)}

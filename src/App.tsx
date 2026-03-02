@@ -1344,7 +1344,7 @@ const LiveChatPage = () => {
           />
           <div className="flex flex-col min-w-0">
             <div className="font-black text-stone-900 text-[15px] leading-tight truncate">
-              {profile.name} {profile.surname}
+              {profile.name}
             </div>
             {profile.is_online ? (
               <div className="text-[10px] text-emerald-500 font-bold uppercase tracking-tight flex items-center gap-1">
@@ -1390,24 +1390,35 @@ const LiveChatPage = () => {
         <div ref={messagesEndRef} className="pb-4" />
       </div>
 
-      {/* Input Layer */}
-      <div className="p-3 bg-[#f0f0f0] border-t border-stone-200 flex items-center gap-2 pb-safe">
-        <div className="flex-1 bg-white rounded-full flex items-center px-4 py-1.5 shadow-sm border border-stone-200/50">
-          <input
+      {/* Input Layer Uniforme */}
+      <div className="p-4 bg-white border-t border-stone-100 shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.05)] pb-safe">
+        <div className="flex gap-2 items-end">
+          <textarea
             value={text}
             onChange={e => setText(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleSend()}
-            className="flex-1 bg-transparent py-2.5 text-[15px] outline-none text-stone-800 placeholder:text-stone-400"
+            onKeyDown={e => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
+              }
+            }}
+            onInput={(e) => {
+              const target = e.target as HTMLTextAreaElement;
+              target.style.height = 'auto';
+              target.style.height = `${Math.min(128, target.scrollHeight)}px`;
+            }}
+            className="flex-1 bg-stone-50 border border-stone-200 rounded-[22px] p-4 text-[14px] font-medium resize-none focus:outline-none focus:ring-2 focus:ring-rose-200 shadow-inner min-h-[56px] max-h-32"
+            rows={1}
             placeholder="Scrivi un messaggio"
           />
+          <button
+            onClick={handleSend}
+            disabled={!text.trim()}
+            className="w-14 h-14 bg-rose-600 text-white rounded-[22px] flex items-center justify-center shadow-lg shadow-rose-200 active:scale-95 transition-all disabled:opacity-50 shrink-0"
+          >
+            <Send className="w-6 h-6 rotate-[-45deg] mr-1" />
+          </button>
         </div>
-        <button
-          onClick={handleSend}
-          disabled={!text.trim()}
-          className="w-12 h-12 bg-[#00a884] rounded-full flex items-center justify-center text-white shadow-md disabled:opacity-50 shrink-0 transition-transform active:scale-90"
-        >
-          <Send className="w-5 h-5 fill-current" />
-        </button>
       </div>
     </div>
   );
@@ -1638,7 +1649,7 @@ const ProfileDetailPage = () => {
     }
 
     if (!profile?.is_online) {
-      setToast({ message: "L'utente non è online e non puoi avviare una chat istantanea.", type: 'info' });
+      setToast({ message: `${profile?.name} è offline non puoi avviare una live in questo momento!`, type: 'info' });
       return;
     }
     navigate(`/live-chat/${profile.id}`);
@@ -3325,28 +3336,6 @@ const AmiciPage = () => {
     setIsDeleting(false);
   };
 
-  const handleSendQuickMsg = async () => {
-    if (!quickMsgText.trim() || !currentUser || !messagingFriend) return;
-    setIsSendingQuickMsg(true);
-    try {
-      const { error } = await supabase.from('chat_requests').insert([{
-        from_user_id: currentUser.id,
-        to_user_id: messagingFriend.id,
-        message: quickMsgText
-      }]);
-      if (!error) {
-        setToast({ message: 'Messaggio inviato!', type: 'success' });
-        setQuickMsgText('');
-        setMessagingFriend(null);
-      } else {
-        setToast({ message: 'Errore nell\'invio del messaggio.', type: 'error' });
-      }
-    } catch (err) {
-      setToast({ message: 'Errore di connessione.', type: 'error' });
-    }
-    setIsSendingQuickMsg(false);
-  };
-
   return (
     <div className="min-h-screen bg-stone-50 pt-[178px] pb-28 relative overflow-x-hidden">
       <AnimatePresence>
@@ -3542,7 +3531,7 @@ const AmiciPage = () => {
                           if (f.other_user?.is_online) {
                             navigate(`/live-chat/${f.other_user?.id}`);
                           } else {
-                            setToast({ message: 'L\'utente deve essere online per accedere alla LiveChat.', type: 'info' });
+                            setToast({ message: `${f.other_user?.name} è offline non puoi avviare una live in questo momento!`, type: 'info' });
                           }
                         }}
                         className="w-10 h-10 bg-rose-600 text-white rounded-[14px] flex items-center justify-center shadow-md shadow-rose-200 active:scale-90 transition-all font-bold"
@@ -3623,7 +3612,7 @@ const AmiciPage = () => {
                           <p className="text-[14px] leading-relaxed break-words whitespace-pre-wrap font-medium">{m.text}</p>
                         </div>
                         <span className="text-[9px] text-stone-400 font-black uppercase mt-1.5 px-1 tracking-tighter">
-                          {new Date(m.created_at).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })} • {new Date(m.created_at).getHours()}:{String(new Date(m.created_at).getMinutes()).padStart(2, '0')}
+                          {new Date(m.created_at).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' })} • {new Date(m.created_at).getHours()}:{String(new Date(m.created_at).getMinutes()).padStart(2, '0')}
                         </span>
                       </div>
                     );
@@ -6814,22 +6803,37 @@ const ChatPage = () => {
                                     ))}
                                   </div>
 
-                                  {/* Box di risposta */}
-                                  <div className="p-3 bg-white border-t border-stone-200">
-                                    <textarea
-                                      value={replyText}
-                                      onChange={e => setReplyText(e.target.value)}
-                                      placeholder={`Rispondi a ${chat.other_user.name}...`}
-                                      className="w-full bg-stone-50 border border-stone-200 rounded-xl p-3 text-[13px] outline-none focus:ring-2 focus:ring-rose-500 resize-none shadow-inner"
-                                      rows={2}
-                                    />
-                                    <div className="flex justify-end gap-2 mt-2">
+                                  {/* Box di risposta Uniforme */}
+                                  <div className="p-4 bg-white border-t border-stone-100 shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.05)]">
+                                    <div className="flex gap-2 items-end">
+                                      <textarea
+                                        value={replyText}
+                                        onChange={e => setReplyText(e.target.value)}
+                                        placeholder={`Rispondi a ${chat.other_user.name}...`}
+                                        className="flex-1 bg-stone-50 border border-stone-200 rounded-[22px] p-4 text-[14px] font-medium resize-none focus:outline-none focus:ring-2 focus:ring-rose-200 shadow-inner min-h-[56px] max-h-32"
+                                        rows={1}
+                                        onInput={(e) => {
+                                          const target = e.target as HTMLTextAreaElement;
+                                          target.style.height = 'auto';
+                                          target.style.height = `${Math.min(128, target.scrollHeight)}px`;
+                                        }}
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Enter' && !e.shiftKey) {
+                                            e.preventDefault();
+                                            handleSendReply(chat.other_user.id);
+                                          }
+                                        }}
+                                      />
                                       <button
-                                        onClick={() => handleSendReply(chat.other_user.id)}
                                         disabled={!replyText.trim() || isSendingReply}
-                                        className="w-full py-3 bg-rose-600 text-white text-[11px] font-black uppercase tracking-widest rounded-xl flex items-center justify-center gap-2 shadow-md hover:bg-rose-700 disabled:opacity-50 transition-all active:scale-95"
+                                        onClick={() => handleSendReply(chat.other_user.id)}
+                                        className="w-14 h-14 bg-rose-600 text-white rounded-[22px] flex items-center justify-center shadow-lg shadow-rose-200 active:scale-95 transition-all disabled:opacity-50 shrink-0"
                                       >
-                                        {isSendingReply ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><Send className="w-4 h-4 rotate-[-45deg]" /> Invia</>}
+                                        {isSendingReply ? (
+                                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                        ) : (
+                                          <Send className="w-6 h-6 rotate-[-45deg] mr-1" />
+                                        )}
                                       </button>
                                     </div>
                                   </div>
@@ -6889,7 +6893,7 @@ const ChatPage = () => {
                                 if (pu?.is_online) {
                                   navigate(`/live-chat/${pu?.id}`);
                                 } else {
-                                  setToast({ message: 'L\'utente deve essere online per accedere alla LiveChat.', type: 'info' });
+                                  setToast({ message: `${pu?.name} è offline non puoi avviare una live in questo momento!`, type: 'info' });
                                 }
                               }}
                               className="flex flex-col items-center gap-2 cursor-pointer group"
@@ -7149,18 +7153,36 @@ const LiveChatModal = ({ profile, currentUser, onClose }: any) => {
           <div ref={messagesEndRef} />
         </div>
 
-        <div className="p-4 bg-white border-t border-stone-100 flex gap-2">
-          <input
-            autoFocus
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            placeholder="Scrivi un messaggio..."
-            className="flex-1 bg-stone-50 border border-stone-100 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-rose-200"
-          />
-          <button onClick={handleSend} className="w-12 h-12 bg-rose-600 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-rose-200 active:scale-90">
-            <Send className="w-5 h-5 fill-current" />
-          </button>
+        {/* Input box Uniforme */}
+        <div className="p-4 bg-white border-t border-stone-100 shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.05)]">
+          <div className="flex gap-2 items-end">
+            <textarea
+              autoFocus
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSend();
+                }
+              }}
+              onInput={(e) => {
+                const target = e.target as HTMLTextAreaElement;
+                target.style.height = 'auto';
+                target.style.height = `${Math.min(128, target.scrollHeight)}px`;
+              }}
+              placeholder="Scrivi un messaggio..."
+              className="flex-1 bg-stone-50 border border-stone-200 rounded-[22px] p-4 text-[14px] font-medium resize-none focus:outline-none focus:ring-2 focus:ring-rose-200 shadow-inner min-h-[56px] max-h-32"
+              rows={1}
+            />
+            <button
+              onClick={handleSend}
+              disabled={!text.trim()}
+              className="w-14 h-14 bg-rose-600 text-white rounded-[22px] flex items-center justify-center shadow-lg shadow-rose-200 active:scale-95 transition-all disabled:opacity-50 shrink-0"
+            >
+              <Send className="w-6 h-6 rotate-[-45deg] mr-1" />
+            </button>
+          </div>
         </div>
       </motion.div>
     </div>

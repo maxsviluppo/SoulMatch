@@ -1,0 +1,648 @@
+57:const parseArrField = (val: any): string[] => {
+60:  const s = String(val).trim();
+67:const normalizeUser = (u: any): any => ({
+76:const AppBottomNav = () => {
+77:  const location = useLocation();
+78:  const navigate = useNavigate();
+79:  const [pendingCount, setPendingCount] = useState(0);
+80:  const [chatCount, setChatCount] = useState(0);
+81:  const [isNavExpanded, setIsNavExpanded] = useState(true);
+82:  const scrollTimeout = React.useRef<NodeJS.Timeout | null>(null);
+85:    const isScrollPage = location.pathname.startsWith('/feed') || location.pathname.startsWith('/bacheca') || location.pathname.startsWith('/amici');
+91:    const handleScroll = () => {
+109:  const getActiveTab = () => {
+110:    const path = location.pathname;
+120:  const activeTab = getActiveTab();
+121:  const hideOn = ['/live-chat', '/register', '/onboarding', '/edit-profile', '/admin'];
+122:  const shouldHide = hideOn.some(p => location.pathname.startsWith(p));
+127:      const saved = localStorage.getItem('soulmatch_user');
+129:        const user = JSON.parse(saved);
+136:    const fetchPending = async () => {
+138:        const { count: friendsCount } = await supabase
+145:        const { count: msgsCount } = await supabase
+157:    const slChannel = supabase.channel(`nav_sl_${currentUserId}`)
+161:    const crChannel = supabase.channel(`nav_cr_${currentUserId}`)
+165:    const rmChannel = supabase.channel(`nav_rm_${currentUserId}`)
+168:        const chatIcon = document.getElementById('nav-chat-icon');
+176:    const interval = setInterval(fetchPending, 10000);
+331:const GlobalFlashBanner = () => {
+332:  const [bannerMessages, setBannerMessages] = useState<any[]>([]);
+333:  const [bannerIndex, setBannerIndex] = useState(0);
+334:  const [isBannerExpanded, setIsBannerExpanded] = useState(false);
+335:  const navigate = useNavigate();
+336:  const location = useLocation();
+339:  const isBacheca = location.pathname.startsWith('/bacheca');
+340:  const shouldHide = !isBacheca;
+342:  const fetchGlobalBanner = async () => {
+344:      const { data } = await supabase.from('banner_messages').select('*').order('created_at', { ascending: false });
+351:    const interval = setInterval(fetchGlobalBanner, 30000);
+357:    const interval = setInterval(() => {
+364:    const handleOutsideClick = (e: MouseEvent | TouchEvent) => {
+365:      const bannerEl = document.getElementById('msg-floating-banner');
+462:const Toast = ({ message, type, onClose }: { message: string, type: 'success' | 'error' | 'info', onClose: () => void }) => {
+464:    const timer = setTimeout(onClose, 3000);
+486:const BackgroundDecorations = () => {
+487:  const location = useLocation();
+488:  const [bgImage, setBgImage] = useState<string>('');
+492:    const backgrounds = [
+525:const ProfileAvatar = ({ user, className, iconSize = "w-6 h-6" }: { user: any, className?: string, iconSize?: string }) => {
+526:  const photo = user?.photos?.[0] || user?.photo_url;
+538:const Navbar = () => {
+539:  const [user, setUser] = useState<UserProfile | null>(null);
+541:  const checkUser = () => {
+543:      const saved = localStorage.getItem('soulmatch_user');
+564:  const location = useLocation();
+611:const ProfileCard: React.FC<{ profile: UserProfile; onInteract?: () => void }> = ({ profile, onInteract }) => {
+612:  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+613:  const [showScore, setShowScore] = useState(false);
+617:      const saved = localStorage.getItem('soulmatch_user');
+622:  const handleInteract = async (e: React.MouseEvent, type: 'like' | 'heart') => {
+637:  const handleTestMatch = (e: React.MouseEvent) => {
+647:  const score = useMemo(() => calculateMatchScore(currentUser, profile), [currentUser, profile]);
+753:const HomeSlider = () => {
+754:  const [images, setImages] = useState<string[]>([]);
+755:  const [index, setIndex] = useState(0);
+764:  const fallbackImages = [
+767:  const displayImages = images.length > 0 ? images : fallbackImages;
+771:    const itv = setInterval(() => {
+795:const HomePage = () => {
+796:  const [simulatedProfiles] = useState([
+805:  const [isLoggedIn, setIsLoggedIn] = useState(false);
+806:  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+807:  const [demoLikes, setDemoLikes] = useState<Record<number, boolean>>({});
+808:  const [demoHearts, setDemoHearts] = useState<Record<number, boolean>>({});
+813:      const saved = localStorage.getItem('soulmatch_user');
+821:  const handleShare = async () => {
+866:          const rejectedAt = (currentUser as any).doc_rejected_at ? new Date((currentUser as any).doc_rejected_at) : null;
+867:          const daysUsed = rejectedAt ? Math.floor((Date.now() - rejectedAt.getTime()) / (1000 * 60 * 60 * 24)) : 0;
+868:          const daysLeft = Math.max(0, 15 - daysUsed);
+869:          const expiryDate = rejectedAt ? new Date(rejectedAt.getTime() + 15 * 24 * 60 * 60 * 1000) : null;
+870:          const expiryStr = expiryDate ? expiryDate.toLocaleDateString('it-IT', { day: '2-digit', month: 'long' }) : '';
+1159:const LiveChatPage = () => {
+1160:  const { id } = useParams<{ id: string }>();
+1161:  const navigate = useNavigate();
+1162:  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+1163:  const [profile, setProfile] = useState<any>(null);
+1164:  const [messages, setMessages] = useState<any[]>([]);
+1165:  const [text, setText] = useState('');
+1166:  const messagesEndRef = React.useRef<HTMLDivElement>(null);
+1167:  const [loading, setLoading] = useState(true);
+1168:  const [isFriend, setIsFriend] = useState<boolean | null>(null);
+1172:      const saved = localStorage.getItem('soulmatch_user');
+1185:    const fetchData = async () => {
+1188:      const { data: prof } = await supabase.from('users').select('*').eq('id', id).single();
+1192:      const { data: sl } = await supabase
+1208:    const fetchMsgs = async () => {
+1210:      const { data: liveMsgs } = await supabase
+1217:      const { data: asyncMsgs } = await supabase
+1223:      const unified = [
+1238:    const roomChannel = supabase.channel('msgs_live')
+1240:        const msg = payload.new;
+1251:    const asyncChannel = supabase.channel('msgs_async')
+1253:        const msg = payload.new;
+1257:            const mapped = { ...msg, text: msg.message, sender_id: msg.from_user_id, receiver_id: msg.to_user_id, type: 'async' };
+1275:  const handleSend = async () => {
+1277:    const msgText = text;
+1281:    const tempId = self.crypto.randomUUID();
+1282:    const optimisticMsg = {
+1291:    const { error } = await supabase.from('room_messages').insert([
+1302:  const handleClose = () => {
+1365:          const isOwn = m.sender_id === currentUser.id;
+1366:          const prevMsg = messages[idx - 1];
+1367:          const isSameSender = prevMsg?.sender_id === m.sender_id;
+1406:              const target = e.target as HTMLTextAreaElement;
+1428:const ProfileDetailPage = () => {
+1429:  const { id } = useParams<{ id: string }>();
+1430:  const [profile, setProfile] = useState<UserProfile | null>(null);
+1431:  const [loading, setLoading] = useState(true);
+1432:  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+1433:  const [chatStatus, setChatStatus] = useState<'none' | 'pending' | 'approved' | 'rejected'>('none');
+1434:  const [userInteractions, setUserInteractions] = useState<string[]>([]);
+1435:  const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
+1436:  const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
+1437:  const [messageText, setMessageText] = useState('');
+1438:  const [soulLinkStatus, setSoulLinkStatus] = useState<'none' | 'pending_sent' | 'pending_received' | 'accepted' | 'rejected'>('none');
+1439:  const [soulLinkId, setSoulLinkId] = useState<string | null>(null);
+1440:  const navigate = useNavigate();
+1442:  const fetchInteractionState = async (currentUserId: string) => {
+1443:    const { data } = await supabase
+1455:      const saved = localStorage.getItem('soulmatch_user');
+1457:        const user = JSON.parse(saved);
+1463:    const fetchProfile = async () => {
+1467:      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+1476:        const { data: userProfile, error } = await supabase
+1488:          const profileWithCounts = {
+1504:    const fetchStatus = async () => {
+1507:      const { data } = await supabase
+1520:      const { data: slData } = await supabase
+1545:  const handleSendSoulLink = async () => {
+1552:    const { data, error } = await supabase
+1567:  const handleAcceptSoulLink = async () => {
+1569:    const { error } = await supabase
+1580:  const handleRemoveSoulLink = async () => {
+1582:    const { error } = await supabase
+1594:  const handleInteract = async (type: 'like' | 'heart') => {
+1600:    const isRemoving = userInteractions.includes(type);
+1616:    const { data: updatedProfile } = await supabase
+1626:      const profileWithCounts = {
+1641:  const handleInstantChat = async () => {
+1658:  const handleOpenMessageModal = () => {
+1667:  const sendChatMessage = async () => {
+1678:      const { count } = await supabase
+1689:    const textToSend = messageText;
+1695:      const { error } = await supabase
+1732:  const matchScore = calculateMatchScore(currentUser, profile);
+1910:                  const h1 = (profile.hobbies || "").toLowerCase().split(",").map((s: string) => s.trim()).filter(Boolean);
+1911:                  const h2 = (currentUser?.hobbies || "").toLowerCase().split(",").map((s: string) => s.trim()).filter(Boolean);
+1912:                  const common = h1.filter((h: string) => h2.includes(h)).slice(0, 2);
+2005:          <FeedComponent userId={profile.id} isOwner={false} />
+2056:const BachecaPage = () => {
+2057:  const navigate = useNavigate();
+2058:  const location = useLocation();
+2059:  const [profiles, setProfiles] = useState<UserProfile[]>([]);
+2060:  const [loading, setLoading] = useState(true);
+2061:  const [filterCity, setFilterCity] = useState<string>('Tutte');
+2062:  const [filterBodyType, setFilterBodyType] = useState<string>('Tutte');
+2063:  const [filterAge, setFilterAge] = useState<[number, number]>([18, 99]);
+2064:  const [showAdvanced, setShowAdvanced] = useState(false);
+2065:  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+2066:  const [showSoulMatch, setShowSoulMatch] = useState(false);
+2067:  const [soulmatchToast, setSoulmatchToast] = useState(false);
+2068:  const [selectedGenders, setSelectedGenders] = useState<string[]>([]);
+2069:  const [searchTerm, setSearchTerm] = useState('');
+2070:  const [showSearch, setShowSearch] = useState(false);
+2072:  const SM_COOLDOWN_KEY = 'soulmatch_last_used';
+2073:  const COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24h
+2076:  const getSoulMatchCooldownRemaining = (): number => {
+2077:    const last = localStorage.getItem(SM_COOLDOWN_KEY);
+2079:    const elapsed = Date.now() - parseInt(last);
+2083:  const isSoulMatchOnCooldown = () => getSoulMatchCooldownRemaining() > 0;
+2085:  const [showSoulMatchConfirm, setShowSoulMatchConfirm] = useState(false);
+2087:  const formatCooldown = (): string => {
+2088:    const ms = getSoulMatchCooldownRemaining();
+2089:    const h = Math.floor(ms / 3600000);
+2090:    const m = Math.floor((ms % 3600000) / 60000);
+2094:  const handleSoulMatchPress = () => {
+2103:  const confirmSoulMatch = () => {
+2109:  const fetchProfiles = async () => {
+2113:      const res = await fetch('/api/profiles');
+2115:        const data = await res.json();
+2127:      const { data, error } = await supabase
+2135:        const processed = data.map(u => ({
+2149:      const saved = localStorage.getItem('soulmatch_user');
+2151:        const user = normalizeUser(JSON.parse(saved));
+2171:      const savedScroll = sessionStorage.getItem('bacheca_scroll');
+2179:      const params = new URLSearchParams(location.search);
+2187:  const genderOptions = ['Uomo', 'Donna', 'Non-binario', 'Transgender', 'Genderfluid', 'Queer', 'Altro'];
+2188:  const orientationOptions = ['Eterosessuale', 'Gay', 'Lesbica', 'Bisessuale', 'Pansessuale', 'Queer', 'Altro'];
+2189:  const cityOptions = useMemo(() => {
+2190:    const rawCities = profiles.map(p => p.city).filter(Boolean);
+2191:    const normalizedCities = rawCities.map(c => typeof c === 'string' ? c.trim().charAt(0).toUpperCase() + c.trim().slice(1).toLowerCase() : c);
+2195:  const filteredProfiles = profiles.filter(p => {
+2201:    const hasPhoto = (p.photos && p.photos.length > 0) || p.photo_url;
+2205:    const cityMatch = filterCity === 'Tutte' || (p.city && p.city.trim().toLowerCase() === filterCity.toLowerCase());
+2206:    const bodyTypeMatch = filterBodyType === 'Tutte' || p.body_type === filterBodyType;
+2207:    const age = p.dob ? calculateAge(p.dob) : null;
+2208:    const ageMatch = !age || (age >= filterAge[0] && age <= filterAge[1]);
+2209:    const nameMatch = !searchTerm || p.name?.toLowerCase().includes(searchTerm.toLowerCase());
+2215:    const getMacroArea = (gender: string) => {
+2216:      const g = gender?.toLowerCase() || '';
+2224:    const viewer = normalizeUser(currentUser);
+2225:    const target = normalizeUser(p);
+2229:    const macroV = getMacroArea(viewer.gender);
+2230:    const macroT = getMacroArea(target.gender);
+2232:    const wantsV = selectedGenders.map((g: string) => g.toLowerCase());
+2233:    const wantsT = (target.looking_for_gender || []).map((g: string) => g.toLowerCase());
+2235:    const isWildcard = (arr: string[]) => arr.some(v => ['tutti', 'tutte', 'entrambi', 'qualsiasi', 'tutti i generi'].includes(v));
+2238:    const targetGender = target.gender?.toLowerCase() || '';
+2239:    const viewerGender = viewer.gender?.toLowerCase() || '';
+2240:    const viewerWantsTarget = wantsV.length === 0 || isWildcard(wantsV) || wantsV.includes(targetGender);
+2248:    const checkOri = (myMacro: string, myOris: string[], targetMacro: string) => {
+2275:    const orisV = viewer.orientation || [];
+2276:    const orisT = target.orientation || [];
+2278:    const vCompatibleWithT = checkOri(macroV, orisV, macroT);
+2279:    const tCompatibleWithV = checkOri(macroT, orisT, macroV);
+2290:  const userWantsGender: string[] = (() => {
+2291:    const lfg = currentUser?.looking_for_gender;
+2298:  const [cardReactions, setCardReactions] = useState<Record<string, 'like' | 'heart' | null>>({});
+2300:  const handleQuickReaction = async (profileId: string, type: 'like' | 'heart', e: React.MouseEvent) => {
+2304:    const existing = cardReactions[profileId];
+2315:      const { error } = await supabase
+2329:  const [heroIndex, setHeroIndex] = useState(0);
+2330:  const heroProfiles = filteredProfiles.slice(0, Math.min(5, filteredProfiles.length));
+2335:    const timer = setInterval(() => setHeroIndex(i => (i + 1) % heroProfiles.length), 4000);
+2339:  const heroProfile = heroProfiles[heroIndex];
+2479:                      const isActive = selectedGenders.map(s => s.toLowerCase()).includes(g.toLowerCase());
+2482:                          const lower = g.toLowerCase();
+2661:                const ranked = [...filteredProfiles]
+2758:const SoulMatchConfirmBanner = ({ onConfirm }: { onConfirm: () => void }) => {
+2759:  const [confirmed, setConfirmed] = useState(false);
+2791:const SoulMatchPage = () => {
+2792:  const [profiles, setProfiles] = useState<UserProfile[]>([]);
+2793:  const [loading, setLoading] = useState(true);
+2794:  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+2795:  const [showRankings, setShowRankings] = useState(() => {
+2798:  const [calculating, setCalculating] = useState(false);
+2799:  const navigate = useNavigate();
+2801:  const fetchProfiles = async () => {
+2802:    const { data } = await supabase.from('users').select('*');
+2810:    const saved = localStorage.getItem('soulmatch_user');
+2819:  const filtered = profiles.filter(p => {
+2825:    const wantsV = (currentUser.looking_for_gender || []).map(g => g.toLowerCase());
+2826:    const isWildcard = (arr: string[]) => arr.some(v => ['tutti', 'tutte', 'entrambi', 'qualsiasi', 'tutti i generi'].includes(v));
+2827:    const targetGender = p.gender?.toLowerCase() || '';
+2832:  const ranked = [...filtered]
+2837:  const startCalculation = () => {
+2994:const FeedPage = () => {
+2995:  const navigate = useNavigate();
+2996:  const [loading, setLoading] = useState(true);
+2997:  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+2999:  const [profiles, setProfiles] = useState<UserProfile[]>([]);
+3000:  const [bannerMessages, setBannerMessages] = useState<any[]>([]);
+3001:  const [bannerIndex, setBannerIndex] = useState(0);
+3002:  const [heroIndex, setHeroIndex] = useState(0);
+3006:      const saved = localStorage.getItem('soulmatch_user');
+3016:    const fetchData = async () => {
+3017:      const { data } = await supabase.from('users').select('*').limit(50);
+3019:        const processed = data.map((u: any) => normalizeUser(u)).filter((p: any) => (p.photos && p.photos.length > 0) || p.photo_url);
+3026:    const fetchGlobalBanner = async () => {
+3028:        const { data } = await supabase.from('banner_messages').select('*').order('created_at', { ascending: false });
+3037:    const interval = setInterval(() => {
+3043:  const heroProfiles = profiles.slice(0, Math.min(5, profiles.length));
+3046:    const timer = setInterval(() => setHeroIndex(i => (i + 1) % heroProfiles.length), 4000);
+3050:  const heroProfile = heroProfiles[heroIndex];
+3101:        {currentUser?.id && <FeedComponent userId={null} isOwner={false} global={true} />}
+3109:const AmiciPage = () => {
+3110:  const navigate = useNavigate();
+3111:  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+3112:  const [friends, setFriends] = useState<SoulLink[]>([]);
+3113:  const [pendingIn, setPendingIn] = useState<SoulLink[]>([]);
+3114:  const [friendsPosts, setFriendsPosts] = useState<Post[]>([]);
+3115:  const [loading, setLoading] = useState(true);
+3116:  const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
+3117:  const [activeTab, setActiveTab] = useState<'feed' | 'amici' | 'richieste'>('feed');
+3118:  const [messagingFriend, setMessagingFriend] = useState<UserProfile | null>(null);
+3119:  const [quickMsgText, setQuickMsgText] = useState('');
+3120:  const [isSendingQuickMsg, setIsSendingQuickMsg] = useState(false);
+3121:  const [confirmDelete, setConfirmDelete] = useState<SoulLink | null>(null);
+3122:  const [isDeleting, setIsDeleting] = useState(false);
+3123:  const [friendMessages, setFriendMessages] = useState<any[]>([]);
+3124:  const messagesEndRef = React.useRef<HTMLDivElement>(null);
+3135:      const channel = supabase.channel(`friend_chat_amici_${messagingFriend.id}`)
+3141:          const m = payload.new;
+3154:  const fetchFriendMessages = async (friendId: string) => {
+3156:    const { data } = await supabase
+3164:  const handleSendQuickMsg = async () => {
+3168:      const { error } = await supabase.from('room_messages').insert([{
+3185:  const fetchSoulLinks = async (userId: string) => {
+3187:    const { data: sentData } = await supabase
+3195:    const { data: receivedData } = await supabase
+3203:    const acceptedFriends: SoulLink[] = [];
+3204:    const incoming: SoulLink[] = [];
+3225:      const friendIds = acceptedFriends.map(f => f.other_user!.id);
+3226:      const { data: postsData } = await supabase
+3252:      const saved = localStorage.getItem('soulmatch_user');
+3254:        const user = JSON.parse(saved);
+3266:      const channel = supabase
+3293:  const handleAccept = async (slId: string) => {
+3294:    const { error } = await supabase
+3305:  const handleReject = async (slId: string) => {
+3306:    const { error } = await supabase
+3318:  const handleConfirmDelete = async () => {
+3321:    const slId = confirmDelete.id;
+3322:    const name = confirmDelete.other_user?.name || 'Utente';
+3324:    const { error } = await supabase
+3603:                    const isOwn = m.sender_id === currentUser?.id;
+3635:                      const target = e.target as HTMLTextAreaElement;
+3713:const AdminPage = () => {
+3714:  const [username, setUsername] = useState('');
+3715:  const [password, setPassword] = useState('');
+3716:  const [isAuthenticated, setIsAuthenticated] = useState(false);
+3719:  const [users, setUsers] = useState<any[]>([]);
+3720:  const [sliderImages, setSliderImages] = useState<string[]>([]);
+3721:  const [loadingData, setLoadingData] = useState(false);
+3722:  const [newUrl, setNewUrl] = useState('');
+3723:  const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
+3724:  const [archiveSearch, setArchiveSearch] = useState('');
+3725:  const [docSubTab, setDocSubTab] = useState<'pending' | 'archive'>('pending');
+3726:  const [previewDoc, setPreviewDoc] = useState<{ url: string; name: string } | null>(null);
+3729:  const stats = useMemo(() => {
+3740:  const [activeTab, setActiveTab] = useState<'dashboard' | 'utenti' | 'documenti' | 'segnalazioni' | 'pagamenti' | 'impostazioni'>('dashboard');
+3742:  const handleShareDoc = async (url: string, name: string) => {
+3746:          const res = await fetch(url);
+3747:          const blob = await res.blob();
+3748:          const ext = url.split('.').pop()?.split('?')[0] || 'jpg';
+3749:          const file = new File([blob], `documento-${name.replace(/\s+/g, '_')}.${ext}`, { type: blob.type || 'image/jpeg' });
+3764:  const handleLogin = (e: React.FormEvent) => {
+3775:  const fetchUsers = async () => {
+3779:      const { data: sbData, error: sbError } = await supabase.from('users').select('*').order('created_at', { ascending: false });
+3784:        const res = await fetch('/api/profiles');
+3786:          const rawLocal = await res.json();
+3798:      const combined = [...(sbData || [])];
+3815:  const fetchSliderImages = async () => {
+3817:      const res = await fetch('/api/settings/home_slider');
+3822:  const handleUpdateSlider = async (newImages: string[]) => {
+3824:      const res = await fetch('/api/settings/home_slider', {
+3838:  const addImage = () => {
+3844:  const removeImage = (index: number) => {
+3848:  const handleValidateDoc = async (userId: string) => {
+3850:      const { error } = await supabase.from('users').update({
+3864:  const handleRejectDoc = async (userId: string) => {
+3866:      const { error } = await supabase.from('users').update({
+3879:  const handleBlockUserToggle = async (userId: string, isBlocked: boolean) => {
+3881:      const { error } = await supabase.from('users').update({ is_blocked: !isBlocked }).eq('id', userId);
+4170:                const pendingDocs = users.filter((u: any) => u.id_document_url && !u.is_validated && !u.doc_rejected);
+4171:                const archivedDocs = users.filter((u: any) => u.id_document_url && (u.is_validated || u.doc_rejected));
+4172:                const q = archiveSearch.toLowerCase();
+4173:                const filteredArchive = archivedDocs.filter((u: any) =>
+4328:                              const daysLeft = u.doc_rejected_at
+4463:const RegisterPage = () => {
+4464:  const navigate = useNavigate();
+4465:  const [step, setStep] = useState(() => {
+4466:    const savedUser = localStorage.getItem('soulmatch_user');
+4467:    const isEditing = savedUser ? true : false;
+4470:  const [isLogin, setIsLogin] = useState(false);
+4471:  const [showPassword, setShowPassword] = useState(false);
+4472:  const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
+4473:  const [formData, setFormData] = useState<UserProfile>({
+4504:    const initData = async () => {
+4506:        const authenticatedUserRaw = localStorage.getItem('soulmatch_user');
+4507:        const savedDraft = localStorage.getItem('soulmatch_reg_draft');
+4515:          const user = JSON.parse(authenticatedUserRaw);
+4518:            const { data, error } = await supabase
+4543:  const handleNextToStep1 = async () => {
+4557:      const email = formData.email.trim();
+4558:      const password = formData.password;
+4562:      const { data: authCheck, error: authCheckErr } = await supabase.auth.signInWithPassword({
+4570:        const { data: profile } = await supabase.from('users').select('*').eq('id', authCheck.user.id).single();
+4590:        const { data: emailExists } = await supabase.from('users').select('id').eq('email', email).maybeSingle();
+4604:  const handleLogin = async () => {
+4611:      const email = formData.email.trim();
+4612:      const password = formData.password;
+4614:      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+4630:      const { data: profile, error: profileErr } = await supabase
+4657:  const handleOAuthLogin = async (provider: 'google') => {
+4658:    const { error } = await supabase.auth.signInWithOAuth({
+4667:  const handleNextToStep2 = () => {
+4668:    const required = ['name', 'surname', 'dob', 'city', 'job', 'description'];
+4669:    const missing = required.filter(k => !formData[k as keyof UserProfile]);
+4677:  const handleNextToStep3 = () => {
+4685:  const handleNextToStep4 = () => {
+4689:  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+4691:      const files = Array.from(e.target.files);
+4693:        const base64s = await Promise.all(files.map(f => fileToBase64(f as File)));
+4704:  const removePhoto = (index: number) => {
+4711:  const replacePhoto = async (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+4714:        const base64 = await fileToBase64(e.target.files[0]);
+4716:          const newPhotos = [...(prev.photos || [])];
+4726:  const handleIdUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+4729:        const base64 = await fileToBase64(e.target.files[0]);
+4737:  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+4738:    const { name, value, type } = e.target as any;
+4740:    const finalValue = (type === 'text' || e.target.tagName === 'TEXTAREA') ? capFirst(value) : value;
+4744:  const handleSubmit = async () => {
+4748:      const submissionData = { ...formData };
+4749:      const userId = submissionData.id;
+4750:      const email = submissionData.email;
+4751:      const password = submissionData.password;
+4763:        const { data: authData, error: authError } = await supabase.auth.signUp({
+4770:          const msg = authError.message === 'User already registered'
+4786:      const profileData = { ...submissionData, id: finalUserId };
+4788:      const { data, error } = await supabase
+4818:  const isEditing = !!formData.id;
+5004:                        const cur: string[] = Array.isArray(formData.orientation) ? formData.orientation : formData.orientation ? [formData.orientation as unknown as string] : [];
+5005:                        const sel = cur.includes(o);
+5009:                              const c: string[] = Array.isArray(prev.orientation) ? prev.orientation : prev.orientation ? [prev.orientation as unknown as string] : [];
+5010:                              const next = c.includes(o) ? c.filter(x => x !== o) : [...c, o];
+5129:                      const cur = Array.isArray(formData.looking_for_gender) ? formData.looking_for_gender : (formData.looking_for_gender ? [formData.looking_for_gender as any] : []);
+5130:                      const sel = cur.includes(g);
+5134:                            const c = Array.isArray(prev.looking_for_gender) ? prev.looking_for_gender : (prev.looking_for_gender ? [prev.looking_for_gender as any] : []);
+5139:                              const withoutTutti = c.filter(x => x !== 'Tutti');
+5412:const FeedComponent = ({ userId, isOwner, global = false }: { userId: any, isOwner?: boolean, global?: boolean }) => {
+5413:  const [posts, setPosts] = useState<Post[]>([]);
+5414:  const [newPostDesc, setNewPostDesc] = useState('');
+5415:  const [newPostPhotos, setNewPostPhotos] = useState<string[]>([]);
+5416:  const [isPosting, setIsPosting] = useState(false);
+5417:  const [expandedComments, setExpandedComments] = useState<string[]>([]);
+5418:  const [commentTexts, setCommentTexts] = useState<Record<string, string>>({});
+5419:  const [postComments, setPostComments] = useState<Record<string, any[]>>({});
+5420:  const navigate = useNavigate();
+5421:  const [postToDelete, setPostToDelete] = useState<string | null>(null);
+5423:  const deletePost = async (postId: string) => {
+5431:  const [isPostingComment, setIsPostingComment] = useState<Record<string, boolean>>({});
+5433:  const fetchComments = async (postId: string) => {
+5435:      const { data, error } = await supabase
+5448:  const toggleComments = (postId: string) => {
+5455:  const submitComment = async (postId: string) => {
+5456:    const text = commentTexts[postId]?.trim();
+5459:    const viewer = localStorage.getItem('soulmatch_user') ? JSON.parse(localStorage.getItem('soulmatch_user')!) : null;
+5467:      const { error } = await supabase.from('post_comments').insert([{
+5488:  const fetchPosts = async () => {
+5490:      const viewer = localStorage.getItem('soulmatch_user') ? JSON.parse(localStorage.getItem('soulmatch_user')!) : null;
+5491:      const viewerId = viewer?.id;
+5507:      const { data: postsData, error } = await query;
+5513:          const { data: interactionData } = await supabase
+5521:        const processed = (postsData as any[]).map(p => ({
+5547:  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+5549:      const files = Array.from(e.target.files).slice(0, 3 - newPostPhotos.length);
+5551:        const base64s = await Promise.all(files.map(f => fileToBase64(f as File)));
+5559:  const submitPost = async () => {
+5564:      const { data: { session } } = await supabase.auth.getSession();
+5565:      const authUserId = session?.user?.id || userId;
+5573:      const { error } = await supabase
+5595:  const toggleInteraction = async (postId: string, type: 'like' | 'heart') => {
+5597:      const viewer = localStorage.getItem('soulmatch_user') ? JSON.parse(localStorage.getItem('soulmatch_user')!) : null;
+5600:      const post = posts.find(p => p.id === postId);
+5601:      const isRemoving = type === 'like' ? post?.has_liked : post?.has_hearted;
+5874:const capFirst = (s: string) => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+5876:const EPInputField = ({ label, value, onChange, disabled = false, type = 'text', placeholder = '', className = '' }: any) => (
+5899:const EPSelectDropdown = ({ label, value, onChange, options, disabled = false, placeholder = '' }: any) => (
+5926:const EPTextAreaField = ({ label, value, onChange, placeholder = '' }: any) => (
+5941:const EPSelectGroup = ({ label, options, currentValue, onSelect, columns = 2 }: any) => (
+5963:const EditProfilePage = () => {
+5964:  const [user, setUser] = useState<UserProfile | null>(null);
+5965:  const [loading, setLoading] = useState(true);
+5966:  const [saving, setSaving] = useState(false);
+5967:  const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
+5968:  const navigate = useNavigate();
+5971:    const init = async () => {
+5973:      const saved = localStorage.getItem('soulmatch_user');
+5975:        const parsed = normalizeUser(JSON.parse(saved));
+5976:        const isLocalId = /^\d+$/.test(String(parsed.id));
+5987:      const { data: { session } } = await supabase.auth.getSession();
+6003:  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+6005:  const handleSave = async () => {
+6009:      const { data: { session } } = await supabase.auth.getSession();
+6010:      const isLocalUser = /^\d+$/.test(String(user.id));
+6013:      const submissionData = { ...user };
+6020:        const res = await fetch(`/api/profiles/${user.id}`, {
+6027:          const err = await res.json();
+6031:        const updated = await res.json();
+6032:        const normalizedUpdated = normalizeUser(updated);
+6046:      const { data, error } = await supabase
+6064:  const handleDeleteProfile = async () => {
+6068:      const isLocalUser = /^\d+$/.test(String(user.id));
+6072:        const res = await fetch(`/api/profiles/${user.id}`, { method: 'DELETE' });
+6076:        const { error } = await supabase.rpc('delete_user_account');
+6098:  const updateField = (field: keyof UserProfile, value: any) => {
+6102:  const updateConosciamoci = (key: string, value: string) => {
+6178:                  const cur: string[] = Array.isArray(user.orientation) ? user.orientation : user.orientation ? [user.orientation as unknown as string] : [];
+6179:                  const sel = cur.includes(o);
+6183:                        const next = sel ? cur.filter(x => x !== o) : [...cur, o];
+6279:                  const cur = Array.isArray(user.looking_for_gender) ? user.looking_for_gender : (user.looking_for_gender ? [user.looking_for_gender as any] : []);
+6280:                  const sel = cur.includes(g);
+6284:                        const next = g === 'Tutti'
+6371:const ChatPage = () => {
+6372:  const [user, setUser] = useState<UserProfile | null>(null);
+6373:  const [loading, setLoading] = useState(true);
+6374:  const [chatRequests, setChatRequests] = useState<ChatRequest[]>([]);
+6375:  const [activeChats, setActiveChats] = useState<any[]>([]);
+6376:  const [friends, setFriends] = useState<SoulLink[]>([]);
+6377:  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+6378:  const [replyText, setReplyText] = useState('');
+6379:  const [isSendingReply, setIsSendingReply] = useState(false);
+6380:  const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
+6381:  const [activeTab, setActiveTab] = useState<'messaggi' | 'live' | 'flash'>('messaggi');
+6382:  const [confirmDeleteChat, setConfirmDeleteChat] = useState<any>(null);
+6383:  const [isDeletingChat, setIsDeletingChat] = useState(false);
+6384:  const [currentFlash, setCurrentFlash] = useState<any>(null);
+6385:  const [flashMessage, setFlashMessage] = useState('');
+6386:  const [isPublishingFlash, setIsPublishingFlash] = useState(false);
+6387:  const navigate = useNavigate();
+6392:      const saved = localStorage.getItem('soulmatch_user');
+6394:        const u = normalizeUser(JSON.parse(saved));
+6405:  const fetchData = async (userId: string) => {
+6408:      const { data: sentSL } = await supabase
+6414:      const { data: recvSL } = await supabase
+6420:      const acceptedFriends: SoulLink[] = [];
+6426:      const { data: requestsData } = await supabase
+6437:        const filteredRequests = requestsData.filter((r: any) =>
+6441:        const processedRequests = filteredRequests.map((r: any) => ({
+6451:      const { data: msgs } = await supabase
+6462:        const chatMap = new Map();
+6463:        for (const m of msgs) {
+6464:          const isSender = m.sender_id === userId;
+6465:          const u: any = isSender ? m.receiver : m.sender;
+6466:          const otherUser = Array.isArray(u) ? u[0] : u;
+6470:          const isFriend = acceptedFriends.some(f => f.other_user?.id === otherUser.id);
+6488:          for (const r of requestsData) {
+6489:            const from_u = r.from_user;
+6491:            const isFriend = acceptedFriends.some(f => f.other_user?.id === from_u.id);
+6505:        const sorted = Array.from(chatMap.values()).sort((a, b) =>
+6512:      const { data: flashData } = await supabase
+6531:  const handleSendReply = async (toUserId: string) => {
+6544:      const tempId = self.crypto.randomUUID();
+6545:      const { error } = await supabase.from('room_messages').insert([{
+6566:  const handleConfirmDeleteChat = async () => {
+6570:      const otherUserId = confirmDeleteChat.other_user.id;
+6583:  const handlePublishFlash = async () => {
+6586:    const newFlash = {
+6595:      const { data, error } = await supabase.from('banner_messages').insert([newFlash]).select().single();
+6669:          const isActive = activeTab === tab.id;
+6670:          const isFlashWithContent = tab.id === 'flash' && currentFlash;
+6722:                        const hasUnread = chatRequests.some(r => r.from_user_id === chat.other_user.id && r.status === 'pending');
+6816:                                          const target = e.target as HTMLTextAreaElement;
+6874:                          const unreadCount = chatRequests.filter(r => r.from_user_id === f.other_user?.id && r.status === 'pending').length;
+6875:                          const chat = activeChats.find(c => c.other_user.id === f.other_user?.id);
+6876:                          const time = chat ? new Date(chat.created_at).getTime() : 0;
+6885:                          const pu = f.other_user;
+7000:const ChatRequestItem = ({ req, index, bounceNotif, handleDeleteChatRequest, replyingTo, setReplyingTo, replyText, setReplyText, handleSendReply, isSendingReply }: any) => {
+7076:const LiveChatModal = ({ profile, currentUser, onClose }: any) => {
+7077:  const [messages, setMessages] = useState<any[]>([]);
+7078:  const [text, setText] = useState('');
+7079:  const messagesEndRef = React.useRef<HTMLDivElement>(null);
+7082:    const fetchMsgs = async () => {
+7083:      const { data } = await supabase
+7092:    const channel = supabase.channel(`modal_chat_${profile.id}`)
+7094:        const m = payload.new;
+7107:  const handleSend = async () => {
+7109:    const msgText = text;
+7141:            const isOwn = m.sender_id === currentUser.id;
+7170:                const target = e.target as HTMLTextAreaElement;
+7192:const ProfilePage = () => {
+7193:  const [user, setUser] = useState<UserProfile | null>(null);
+7194:  const [loading, setLoading] = useState(true);
+7195:  const [chatRequests, setChatRequests] = useState<ChatRequest[]>([]);
+7196:  const [activeChats, setActiveChats] = useState<any[]>([]);
+7197:  const [liveChatsCount, setLiveChatsCount] = useState(0);
+7198:  const [activeChatTarget, setActiveChatTarget] = useState<any>(null);
+7199:  const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
+7200:  const [activeTab, setActiveTab] = useState<'notifications' | 'gallery' | 'feed'>('notifications');
+7201:  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+7202:  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+7203:  const [replyText, setReplyText] = useState('');
+7204:  const [isSendingReply, setIsSendingReply] = useState(false);
+7205:  const [bannerData, setBannerData] = useState<any>(null);
+7206:  const [bannerText, setBannerText] = useState('');
+7207:  const [isWritingBanner, setIsWritingBanner] = useState(false);
+7208:  const navigate = useNavigate();
+7210:  const [hasViewedNotifs, setHasViewedNotifs] = useState(false);
+7211:  const [bounceNotif, setBounceNotif] = useState(false);
+7214:    const bounceInterval = setInterval(() => {
+7227:  const fetchData = async (userId: string) => {
+7229:      const { data: profileData, error: profileErr } = await supabase
+7254:      const { data: requestsData, error: requestsErr } = await supabase
+7266:        const processedRequests = requestsData.map((r: any) => ({
+7276:      const { count: liveCount, error: liveErr } = await supabase
+7283:        const { data: msgs } = await supabase
+7294:          const chatMap = new Map();
+7295:          for (const m of msgs) {
+7296:            const isSender = m.sender_id === userId;
+7297:            const u: any = isSender ? m.receiver : m.sender;
+7298:            const otherUser = Array.isArray(u) ? u[0] : u;
+7309:          const uniqueSenders = new Set(msgs.map((m: any) => m.sender_id));
+7317:        const { data, error } = await supabase
+7340:    const saved = localStorage.getItem('soulmatch_user');
+7343:        const parsed = normalizeUser(JSON.parse(saved));
+7350:  const handleRequestAction = async (requestId: string, status: 'approved' | 'rejected') => {
+7351:    const { error } = await supabase
+7364:  const handleDeleteChatRequest = async (requestId: string) => {
+7365:    const { error } = await supabase
+7375:  const handleSendReply = async (recipientId: string) => {
+7387:      const { error } = await supabase
+7411:  const removeProfilePhoto = async (index: number) => {
+7413:    const newPhotos = user.photos.filter((_, i) => i !== index);
+7415:    const { error } = await supabase
+7428:  const replaceProfilePhoto = async (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+7430:    const file = e.target.files[0];
+7431:    const base64 = await fileToBase64(file);
+7432:    const newPhotos = [...user.photos];
+7435:    const { error } = await supabase
+7448:  const addProfilePhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+7450:    const files = Array.from(e.target.files);
+7451:    const base64s = await Promise.all(files.map(f => fileToBase64(f as File)));
+7452:    const newPhotos = [...(user.photos || []), ...base64s].slice(0, 5);
+7454:    const { error } = await supabase
+7495:  const heroPhoto = (user.photos && user.photos.length > 0) ? user.photos[0] : (user.photo_url || `https://picsum.photos/seed/${user.name}/400/600`);
+7621:                    const newBanner = {
+7629:                    const { data, error } = await supabase.from('banner_messages').insert([newBanner]).select().single();
+7809:              <FeedComponent userId={user.id} isOwner={true} />
+7885:const AppFooter = () => {
+7886:  const sections = [
+7993:const LegalPage = ({
+8004:  const navigate = useNavigate();
+8067:const PrivacyPage = () => (
+8085:const CookiePage = () => (
+8101:const TerminiPage = () => (
+8120:const RegolamentoPage = () => (
+8138:const ContattiPage = () => (
+8155:const SegnalazioniPage = () => (
+8174:const FaqPage = () => (
+8192:const DmcaPage = () => (
+8211:    const verifyUser = async () => {
+8212:      const saved = localStorage.getItem('soulmatch_user');
+8215:          const u = JSON.parse(saved);
+8218:            const { data, error } = await supabase.from('users').select('id, is_online').eq('id', u.id).maybeSingle();
+8243:    const heartbeatInterval = setInterval(async () => {
+8244:      const saved = localStorage.getItem('soulmatch_user');
+8247:          const u = JSON.parse(saved);
+8255:    const handleVisibilityChange = async () => {
+8256:      const saved = localStorage.getItem('soulmatch_user');
+8259:          const u = JSON.parse(saved);
+8261:            const isVisible = document.visibilityState === 'visible';
+8272:    const handleBeforeUnload = () => {
+8273:      const saved = localStorage.getItem('soulmatch_user');
+8276:          const u = JSON.parse(saved);
+8287:    const handleGlobalClick = (e: MouseEvent) => {
+8288:      const target = e.target as HTMLElement;
+8289:      const interactive = target.closest('button, a, [role="button"]');
