@@ -82,7 +82,7 @@ const AppBottomNav = () => {
   const scrollTimeout = React.useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    const isScrollPage = location.pathname.startsWith('/feed') || location.pathname.startsWith('/bacheca') || location.pathname.startsWith('/amici');
+    const isScrollPage = location.pathname.startsWith('/feed') || location.pathname.startsWith('/bacheca') || location.pathname.startsWith('/amici') || location.pathname.startsWith('/live-chat');
     if (!isScrollPage) {
       setIsNavExpanded(true);
       return;
@@ -118,7 +118,7 @@ const AppBottomNav = () => {
   };
 
   const activeTab = getActiveTab();
-  const hideOn = ['/live-chat', '/register', '/onboarding', '/edit-profile', '/admin'];
+  const hideOn = ['/register', '/onboarding', '/edit-profile', '/admin'];
   const shouldHide = hideOn.some(p => location.pathname.startsWith(p));
 
   useEffect(() => {
@@ -471,7 +471,7 @@ const Toast = ({ message, type, onClose }: { message: string, type: 'success' | 
       animate={{ opacity: 1, y: 0, x: '-50%' }}
       exit={{ opacity: 0, y: 20, x: '-50%' }}
       className={cn(
-        "fixed bottom-8 left-1/2 z-[100] px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 min-w-[280px]",
+        "fixed bottom-[200px] left-1/2 z-[100] px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 min-w-[280px]",
         type === 'success' ? "bg-emerald-600 text-white" :
           type === 'error' ? "bg-rose-600 text-white" : "bg-stone-800 text-white"
       )}
@@ -1300,7 +1300,7 @@ const LiveChatPage = () => {
   };
 
   const handleClose = () => {
-    navigate(-1);
+    navigate('/chat', { state: { activeTab: 'live' } });
   };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-stone-50"><Sparkles className="w-8 h-8 text-rose-600 animate-pulse" /></div>;
@@ -1327,9 +1327,9 @@ const LiveChatPage = () => {
   }
 
   return (
-    <div className="fixed inset-0 z-[120] bg-white flex flex-col pt-safe overflow-hidden">
-      {/* Header - WhatsApp Style */}
-      <div className="flex items-center gap-2 p-3 border-b border-stone-100 shadow-sm relative z-20 bg-white/95 backdrop-blur-md">
+    <div className="min-h-screen bg-stone-50 flex flex-col pb-48 relative">
+      {/* Header */}
+      <div className="sticky top-0 flex items-center gap-2 p-3 border-b border-stone-100 shadow-sm z-50 bg-white/95 backdrop-blur-md">
         <button onClick={handleClose} className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-stone-50 transition-colors shrink-0">
           <ChevronRight className="w-6 h-6 rotate-180 text-stone-600" />
         </button>
@@ -1359,8 +1359,8 @@ const LiveChatPage = () => {
         </div>
       </div>
 
-      {/* Messages - Subtle WhatsApp Background */}
-      <div className="flex-1 overflow-y-auto px-4 py-6 flex flex-col gap-3 relative bg-[#e5ddd5]" style={{ backgroundImage: "url('https://i.pinimg.com/originals/85/ec/8b/85ec8b71343719942a78bc57f9ed56f0.jpg')", backgroundSize: '400px', backgroundBlendMode: 'overlay' }}>
+      {/* Messages - White Clean Background */}
+      <div className="flex-1 px-4 py-6 flex flex-col gap-3 relative bg-stone-50 z-10 overflow-x-hidden">
         {messages.map((m, idx) => {
           const isOwn = m.sender_id === currentUser.id;
           const prevMsg = messages[idx - 1];
@@ -1372,16 +1372,21 @@ const LiveChatPage = () => {
               isOwn ? "self-end" : "self-start",
               !isSameSender && "mt-1"
             )}>
-              <div className={cn(
-                "px-3 py-1.5 text-[14.5px] font-sans shadow-[0_1px_1px_rgba(0,0,0,0.1)] relative min-w-[60px]",
-                isOwn
-                  ? "bg-[#dcf8c6] text-[#303030] rounded-l-xl rounded-br-xl rounded-tr-[4px]"
-                  : "bg-white text-[#303030] rounded-r-xl rounded-bl-xl rounded-tl-[4px]"
-              )}>
-                <div className="leading-relaxed whitespace-pre-wrap break-words">{m.text}</div>
-                <div className="text-[9px] text-[#00000073] font-bold flex justify-end gap-1 mt-0.5 uppercase">
-                  {new Date(m.created_at).getHours()}:{String(new Date(m.created_at).getMinutes()).padStart(2, '0')}
-                  {isOwn && <span className="text-sky-500 scale-125 ml-1">✓✓</span>}
+              <div className="flex items-end gap-2 text-left">
+                {!isOwn && !isSameSender && <ProfileAvatar user={profile} className="w-6 h-6 rounded-full shrink-0 mb-1 border border-stone-100 shadow-sm" iconSize="w-3 h-3" />}
+                {!isOwn && isSameSender && <div className="w-6 shrink-0" />}
+
+                <div className={cn(
+                  "px-3 py-1.5 text-[14.5px] font-sans shadow-sm relative min-w-[60px]",
+                  isOwn
+                    ? "bg-rose-500 text-white rounded-2xl rounded-br-sm"
+                    : "bg-white border border-stone-200 shadow-sm text-stone-800 rounded-2xl rounded-bl-sm"
+                )}>
+                  <div className="leading-relaxed whitespace-pre-wrap break-words">{m.text}</div>
+                  <div className={cn("text-[9px] font-bold flex justify-end gap-1 mt-0.5 uppercase", isOwn ? "text-rose-200" : "text-stone-400")}>
+                    {new Date(m.created_at).getHours()}:{String(new Date(m.created_at).getMinutes()).padStart(2, '0')}
+                    {isOwn && <span className="text-rose-100 scale-125 ml-1">✓✓</span>}
+                  </div>
                 </div>
               </div>
             </div>
@@ -1390,9 +1395,9 @@ const LiveChatPage = () => {
         <div ref={messagesEndRef} className="pb-4" />
       </div>
 
-      {/* Input Layer Uniforme */}
-      <div className="p-4 bg-white border-t border-stone-100 shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.05)] pb-safe">
-        <div className="flex gap-2 items-end">
+      {/* Input Layer */}
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-stone-100 shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.05)] pb-safe z-[60]">
+        <div className="flex gap-2 items-end max-w-lg mx-auto">
           <textarea
             value={text}
             onChange={e => setText(e.target.value)}
@@ -1409,7 +1414,7 @@ const LiveChatPage = () => {
             }}
             className="flex-1 bg-stone-50 border border-stone-200 rounded-[22px] p-4 text-[14px] font-medium resize-none focus:outline-none focus:ring-2 focus:ring-rose-200 shadow-inner min-h-[56px] max-h-32"
             rows={1}
-            placeholder="Scrivi un messaggio"
+            placeholder="Scrivi un messaggio..."
           />
           <button
             onClick={handleSend}
@@ -6378,7 +6383,8 @@ const ChatPage = () => {
   const [replyText, setReplyText] = useState('');
   const [isSendingReply, setIsSendingReply] = useState(false);
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
-  const [activeTab, setActiveTab] = useState<'messaggi' | 'live' | 'flash'>('messaggi');
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState<'messaggi' | 'live' | 'flash'>(location.state?.activeTab || 'messaggi');
   const [confirmDeleteChat, setConfirmDeleteChat] = useState<any>(null);
   const [isDeletingChat, setIsDeletingChat] = useState(false);
   const [currentFlash, setCurrentFlash] = useState<any>(null);
