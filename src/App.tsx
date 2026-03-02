@@ -1360,38 +1360,51 @@ const LiveChatPage = () => {
       </div>
 
       {/* Messages - White Clean Background */}
-      <div className="flex-1 px-4 py-6 flex flex-col gap-3 relative bg-stone-50 z-10 overflow-x-hidden">
-        {messages.map((m, idx) => {
-          const isOwn = m.sender_id === currentUser.id;
-          const prevMsg = messages[idx - 1];
-          const isSameSender = prevMsg?.sender_id === m.sender_id;
+      <div className="flex-1 px-4 py-10 flex flex-col gap-4 relative bg-stone-50 z-10 overflow-x-hidden pt-24">
+        <div className="max-w-lg mx-auto w-full flex flex-col gap-4">
+          {messages.map((m, idx) => {
+            const isOwn = m.sender_id === currentUser.id;
+            const prevMsg = messages[idx - 1];
+            const isSameSender = prevMsg?.sender_id === m.sender_id;
 
-          return (
-            <div key={m.id} className={cn(
-              "flex flex-col max-w-[85%]",
-              isOwn ? "self-end" : "self-start",
-              !isSameSender && "mt-1"
-            )}>
-              <div className="flex items-end gap-2 text-left">
-                {!isOwn && !isSameSender && <ProfileAvatar user={profile} className="w-6 h-6 rounded-full shrink-0 mb-1 border border-stone-100 shadow-sm" iconSize="w-3 h-3" />}
-                {!isOwn && isSameSender && <div className="w-6 shrink-0" />}
-
+            return (
+              <div key={m.id} className={cn(
+                "flex flex-col w-full",
+                isOwn ? "items-end" : "items-start",
+                !isSameSender && "mt-2"
+              )}>
                 <div className={cn(
-                  "px-3 py-1.5 text-[14.5px] font-sans shadow-sm relative min-w-[60px]",
-                  isOwn
-                    ? "bg-rose-500 text-white rounded-2xl rounded-br-sm"
-                    : "bg-white border border-stone-200 shadow-sm text-stone-800 rounded-2xl rounded-bl-sm"
+                  "flex items-end gap-2 text-left w-full",
+                  isOwn ? "flex-row-reverse" : "flex-row"
                 )}>
-                  <div className="leading-relaxed whitespace-pre-wrap break-words">{m.text}</div>
-                  <div className={cn("text-[9px] font-bold flex justify-end gap-1 mt-0.5 uppercase", isOwn ? "text-rose-200" : "text-stone-400")}>
-                    {new Date(m.created_at).getHours()}:{String(new Date(m.created_at).getMinutes()).padStart(2, '0')}
-                    {isOwn && <span className="text-rose-100 scale-125 ml-1">✓✓</span>}
+                  {/* Avatar conditionally rendered */}
+                  {!isSameSender ? (
+                    <ProfileAvatar
+                      user={isOwn ? currentUser : profile}
+                      className="w-10 h-10 rounded-[14px] shrink-0 mb-1 border-2 border-white shadow-sm"
+                      iconSize="w-5 h-5"
+                    />
+                  ) : (
+                    <div className="w-10 shrink-0" />
+                  )}
+
+                  <div className={cn(
+                    "px-4 py-2.5 text-[15px] font-medium shadow-md relative max-w-[70%] transition-all",
+                    isOwn
+                      ? "bg-rose-600 text-white rounded-[24px] rounded-br-sm"
+                      : "bg-white border border-stone-100 text-stone-800 rounded-[24px] rounded-bl-sm"
+                  )}>
+                    <div className="leading-relaxed whitespace-pre-wrap break-words">{m.text}</div>
+                    <div className={cn("text-[9px] font-black flex justify-end gap-1 mt-1.5 uppercase tracking-widest", isOwn ? "text-rose-200" : "text-stone-400")}>
+                      {new Date(m.created_at).getHours()}:{String(new Date(m.created_at).getMinutes()).padStart(2, '0')}
+                      {isOwn && <span className="text-rose-100 scale-125 ml-1">✓✓</span>}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
         <div ref={messagesEndRef} className="pb-4" />
       </div>
 
@@ -3126,6 +3139,8 @@ const AmiciPage = () => {
   const [confirmDelete, setConfirmDelete] = useState<SoulLink | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [friendMessages, setFriendMessages] = useState<any[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -3358,15 +3373,48 @@ const AmiciPage = () => {
             damping: 15,
             duration: 0.8
           }}
-          className="bg-stone-900/95 backdrop-blur-xl border border-white/10 text-white px-8 py-4 rounded-[32px] flex items-center gap-4 shadow-sm min-w-[190px] justify-center scale-90"
+          className="flex flex-col items-center gap-3"
         >
-          <UserCheck className="w-8 h-8 text-white shrink-0" />
-          <div className="flex flex-col items-center">
-            <span className="text-xl font-black uppercase tracking-[0.3em] leading-none">Amici</span>
-            <span className="text-[10px] font-black text-white/40 mt-1.5 tracking-[0.2em]">
-              {friends.length}
-            </span>
+          <div className="bg-stone-900/95 backdrop-blur-xl border border-white/10 text-white px-6 py-4 rounded-[32px] flex items-center gap-4 shadow-sm min-w-[220px] justify-between scale-90">
+            <div className="flex items-center gap-4">
+              <UserCheck className="w-8 h-8 text-white shrink-0" />
+              <div className="flex flex-col items-center text-left">
+                <span className="text-xl font-black uppercase tracking-[0.3em] leading-none">Amici</span>
+                <span className="text-[10px] font-black text-white/40 mt-1.5 tracking-[0.2em]">
+                  {friends.length}
+                </span>
+              </div>
+            </div>
+            <button
+              onClick={() => setIsSearchOpen(!isSearchOpen)}
+              className={cn(
+                "w-10 h-10 rounded-full flex items-center justify-center transition-all active:scale-90",
+                isSearchOpen ? "bg-rose-600 text-white" : "bg-white/10 text-white/60 hover:text-white"
+              )}
+            >
+              <Search className="w-5 h-5 font-black" />
+            </button>
           </div>
+
+          <AnimatePresence>
+            {isSearchOpen && (
+              <motion.div
+                initial={{ height: 0, opacity: 0, y: -10 }}
+                animate={{ height: 'auto', opacity: 1, y: 0 }}
+                exit={{ height: 0, opacity: 0, y: -10 }}
+                className="w-[280px] bg-white rounded-[24px] shadow-xl border border-stone-100 overflow-hidden p-2"
+              >
+                <input
+                  autoFocus
+                  type="text"
+                  placeholder="Cerca tra gli amici..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full px-4 py-2.5 text-sm font-bold text-stone-900 bg-stone-50 rounded-[18px] border-none focus:ring-2 focus:ring-rose-200"
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </motion.div>
       </div>
 
@@ -3431,7 +3479,7 @@ const AmiciPage = () => {
 
           <div className="grid grid-cols-1 gap-3">
             <AnimatePresence mode="popLayout">
-              {friends.length === 0 && !loading && (
+              {friends.filter(f => f.other_user?.name?.toLowerCase().includes(searchTerm.toLowerCase())).length === 0 && !loading && (
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -3440,121 +3488,127 @@ const AmiciPage = () => {
                   <div className="w-16 h-16 bg-stone-50 rounded-[20px] flex items-center justify-center mx-auto">
                     <Users className="w-8 h-8 text-stone-200" />
                   </div>
-                  <p className="text-stone-400 text-xs font-medium px-4">Ancora nessuna connessione confermata. Inizia a inviare SoulLink in bacheca!</p>
-                  <button
-                    onClick={() => navigate('/bacheca')}
-                    className="text-xs font-black text-rose-600 uppercase tracking-widest"
-                  >
-                    Vai alla Bacheca
-                  </button>
+                  <p className="text-stone-400 text-xs font-medium px-4">
+                    {searchTerm ? `Nessun amico trovato per "${searchTerm}"` : 'Ancore nessuna connessione confermata. Inizia a inviare SoulLink in bacheca!'}
+                  </p>
+                  {!searchTerm && (
+                    <button
+                      onClick={() => navigate('/bacheca')}
+                      className="text-xs font-black text-rose-600 uppercase tracking-widest"
+                    >
+                      Vai alla Bacheca
+                    </button>
+                  )}
                 </motion.div>
               )}
-              {friends.map((f, i) => (
-                <motion.div
-                  key={`container-${f.id}`}
-                  layout
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0, transition: { duration: 0.2 } }}
-                  className="relative overflow-hidden rounded-[24px] shadow-sm border border-stone-100"
-                >
-                  {/* Sfondo Elimina - Solido e Preciso */}
-                  <div className="absolute inset-0 bg-rose-600 flex items-center justify-end px-8 z-0">
-                    <div className="flex flex-col items-center gap-1 text-white pr-2">
-                      <Trash2 className="w-5 h-5" />
-                      <span className="text-[10px] font-black uppercase tracking-widest">Elimina</span>
-                    </div>
-                  </div>
-
+              {friends
+                .filter(f => f.other_user?.name?.toLowerCase().includes(searchTerm.toLowerCase()))
+                .map((f, i) => (
                   <motion.div
-                    key={`card-${f.id}`}
-                    drag="x"
-                    dragConstraints={{ left: -140, right: 0 }}
-                    dragElastic={0.03}
-                    dragSnapToOrigin={true}
-                    onDragEnd={(_, info) => {
-                      // Se l'utente ha trascinato abbastanza a sinistra, scatta l'eliminazione
-                      if (info.offset.x < -100) {
-                        setConfirmDelete(f);
-                      }
-                    }}
-                    // Animazione di suggerimento (Peek) SOLO sul primo banner ogni 10 secondi
-                    animate={i === 0 ? {
-                      x: [0, -20, 0, 0, 0, 0, 0, 0, 0, 0]
-                    } : { x: 0 }}
-                    transition={i === 0 ? {
-                      x: {
-                        duration: 10,
-                        repeat: Infinity,
-                        times: [0, 0.02, 0.04, 1],
-                        ease: "easeInOut"
-                      }
-                    } : { duration: 0.1 }}
-                    whileDrag={{ cursor: 'grabbing', scale: 1.02, zIndex: 50 }}
-                    className="group relative bg-white border border-stone-100 p-4 flex items-center gap-4 transition-shadow hover:shadow-lg z-10"
+                    key={`container-${f.id}`}
+                    layout
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0, transition: { duration: 0.2 } }}
+                    className="relative overflow-hidden rounded-[24px] shadow-sm border border-stone-100"
                   >
-                    <div className="relative shrink-0">
-                      <ProfileAvatar
-                        user={f.other_user}
-                        className="w-14 h-14 rounded-[20px] border-2 border-white shadow-md group-hover:scale-105 transition-transform"
-                        iconSize="w-6 h-6"
-                      />
-                      <div className={cn(
-                        "absolute -bottom-0.5 -right-0.5 w-4 h-4 border-2 border-white rounded-full shadow-sm",
-                        f.other_user?.is_online ? "bg-emerald-500" : "bg-rose-500"
-                      )} />
-                    </div>
-
-                    <div
-                      onClick={() => navigate(`/profile-detail/${f.other_user?.id}`)}
-                      className="flex-1 min-w-0 pr-2 cursor-pointer hover:opacity-75 transition-opacity"
-                    >
-                      <h3 className="text-base font-black text-stone-900 truncate">{f.other_user?.name}</h3>
-                      <div className="mt-0.5 space-y-0.5">
-                        {f.other_user?.dob && (
-                          <p className="text-[10px] text-stone-900 font-black uppercase tracking-widest">
-                            {calculateAge(f.other_user.dob)}
-                          </p>
-                        )}
-                        {f.other_user?.city && (
-                          <p className="text-[11px] text-stone-400 font-bold flex items-center gap-1 truncate">
-                            <MapPin className="w-3 h-3 text-stone-300" />{f.other_user.city}
-                          </p>
-                        )}
+                    {/* Sfondo Elimina - Solido e Preciso */}
+                    <div className="absolute inset-0 bg-rose-600 flex items-center justify-end px-8 z-0">
+                      <div className="flex flex-col items-center gap-1 text-white pr-2">
+                        <Trash2 className="w-5 h-5" />
+                        <span className="text-[10px] font-black uppercase tracking-widest">Elimina</span>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3 shrink-0 pr-1">
-                      <button
-                        className="w-10 h-10 bg-rose-50 text-rose-600 rounded-[14px] flex items-center justify-center border border-rose-100 active:scale-90 transition-all hover:bg-rose-100"
-                        title="SoulMatch"
+                    <motion.div
+                      key={`card-${f.id}`}
+                      drag="x"
+                      dragConstraints={{ left: -140, right: 0 }}
+                      dragElastic={0.03}
+                      dragSnapToOrigin={true}
+                      onDragEnd={(_, info) => {
+                        // Se l'utente ha trascinato abbastanza a sinistra, scatta l'eliminazione
+                        if (info.offset.x < -100) {
+                          setConfirmDelete(f);
+                        }
+                      }}
+                      // Animazione di suggerimento (Peek) SOLO sul primo banner ogni 10 secondi
+                      animate={i === 0 ? {
+                        x: [0, -20, 0, 0, 0, 0, 0, 0, 0, 0]
+                      } : { x: 0 }}
+                      transition={i === 0 ? {
+                        x: {
+                          duration: 10,
+                          repeat: Infinity,
+                          times: [0, 0.02, 0.04, 1],
+                          ease: "easeInOut"
+                        }
+                      } : { duration: 0.1 }}
+                      whileDrag={{ cursor: 'grabbing', scale: 1.02, zIndex: 50 }}
+                      className="group relative bg-white border border-stone-100 p-4 flex items-center gap-4 transition-shadow hover:shadow-lg z-10"
+                    >
+                      <div className="relative shrink-0">
+                        <ProfileAvatar
+                          user={f.other_user}
+                          className="w-14 h-14 rounded-[20px] border-2 border-white shadow-md group-hover:scale-105 transition-transform"
+                          iconSize="w-6 h-6"
+                        />
+                        <div className={cn(
+                          "absolute -bottom-0.5 -right-0.5 w-4 h-4 border-2 border-white rounded-full shadow-sm",
+                          f.other_user?.is_online ? "bg-emerald-500" : "bg-rose-500"
+                        )} />
+                      </div>
+
+                      <div
+                        onClick={() => navigate(`/profile-detail/${f.other_user?.id}`)}
+                        className="flex-1 min-w-0 pr-2 cursor-pointer hover:opacity-75 transition-opacity"
                       >
-                        <Heart className="w-5 h-5 fill-current" />
-                      </button>
-                      <button
-                        onClick={() => {
-                          if (f.other_user?.is_online) {
-                            navigate(`/live-chat/${f.other_user?.id}`);
-                          } else {
-                            setToast({ message: `${f.other_user?.name} è offline non puoi avviare una live in questo momento!`, type: 'info' });
-                          }
-                        }}
-                        className="w-10 h-10 bg-rose-600 text-white rounded-[14px] flex items-center justify-center shadow-md shadow-rose-200 active:scale-90 transition-all font-bold"
-                        title="Chat Live"
-                      >
-                        <MessageCircle className="w-5 h-5 fill-current" />
-                      </button>
-                      <button
-                        onClick={() => setMessagingFriend(normalizeUser(f.other_user!))}
-                        className="w-10 h-10 bg-white text-stone-400 rounded-[14px] flex items-center justify-center border border-stone-100 shadow-xs active:scale-90 transition-all hover:bg-stone-50"
-                        title="Messaggi"
-                      >
-                        <Send className="w-4 h-4" />
-                      </button>
-                    </div>
+                        <h3 className="text-base font-black text-stone-900 truncate">{f.other_user?.name}</h3>
+                        <div className="mt-0.5 space-y-0.5">
+                          {f.other_user?.dob && (
+                            <p className="text-[10px] text-stone-900 font-black uppercase tracking-widest">
+                              {calculateAge(f.other_user.dob)}
+                            </p>
+                          )}
+                          {f.other_user?.city && (
+                            <p className="text-[11px] text-stone-400 font-bold flex items-center gap-1 truncate">
+                              <MapPin className="w-3 h-3 text-stone-300" />{f.other_user.city}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3 shrink-0 pr-1">
+                        <button
+                          className="w-10 h-10 bg-rose-50 text-rose-600 rounded-[14px] flex items-center justify-center border border-rose-100 active:scale-90 transition-all hover:bg-rose-100"
+                          title="SoulMatch"
+                        >
+                          <Heart className="w-5 h-5 fill-current" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (f.other_user?.is_online) {
+                              navigate(`/live-chat/${f.other_user?.id}`);
+                            } else {
+                              setToast({ message: `${f.other_user?.name} è offline non puoi avviare una live in questo momento!`, type: 'info' });
+                            }
+                          }}
+                          className="w-10 h-10 bg-rose-600 text-white rounded-[14px] flex items-center justify-center shadow-md shadow-rose-200 active:scale-90 transition-all font-bold"
+                          title="Chat Live"
+                        >
+                          <MessageCircle className="w-5 h-5 fill-current" />
+                        </button>
+                        <button
+                          onClick={() => setMessagingFriend(normalizeUser(f.other_user!))}
+                          className="w-10 h-10 bg-white text-stone-400 rounded-[14px] flex items-center justify-center border border-stone-100 shadow-xs active:scale-90 transition-all hover:bg-stone-50"
+                          title="Messaggi"
+                        >
+                          <Send className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </motion.div>
                   </motion.div>
-                </motion.div>
-              ))}
+                ))}
             </AnimatePresence>
           </div>
         </div>

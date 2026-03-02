@@ -1,0 +1,23 @@
+85:    const isScrollPage = location.pathname.startsWith('/feed') || location.pathname.startsWith('/bacheca') || location.pathname.startsWith('/amici') || location.pathname.startsWith('/live-chat');
+113:    if (path.startsWith('/amici')) return 'soullink';
+267:            {/* Amici (SoulLink) */}
+268:            <Link to="/amici" className="relative flex-1 group">
+285:                <span className="text-[6px] font-black uppercase tracking-wider">Amici</span>
+835:      alert('Link copiato negli appunti! Condividilo con i tuoi amici.');
+1011:              desc: "Invia SoulMatch ai tuoi amici e invitali!",
+1581:      setToast({ message: '🎉 Ora siete amici!', type: 'success' });
+1595:      setToast({ message: 'Amicizia rimossa.', type: 'info' });
+1652:      setToast({ message: "La chat è riservata ai tuoi SoulLinks! Invia una richiesta di amicizia.", type: 'info' });
+1818:        {/* Amici */}
+1845:            {soulLinkStatus === 'accepted' ? 'Amici' :
+1847:                soulLinkStatus === 'pending_received' ? 'Accetta' : 'Amici'}
+3114:const AmiciPage = () => {
+3122:  const [activeTab, setActiveTab] = useState<'feed' | 'amici' | 'richieste'>('feed');
+3140:      const channel = supabase.channel(`friend_chat_amici_${messagingFriend.id}`)
+3305:      setToast({ message: '🎉 Richiesta accettata! Siete ora amici.', type: 'success' });
+3335:      setToast({ message: `L'amicizia con ${name} è stata eliminata.`, type: 'info' });
+3365:            <span className="text-xl font-black uppercase tracking-[0.3em] leading-none">Amici</span>
+3685:                  Stai per eliminare l'amicizia con <span className="text-stone-900 font-bold">{confirmDelete.other_user?.name}</span>. Questa azione non può essere annullata.
+3697:                      "Elimina Amicizia"
+6219:            <EPInputField label="Cosa cerchi / Desideri" value={user.desires} onChange={(v: string) => updateField('desires', v)} placeholder="es. Relazione seria, Amicizia..." />
+8372:        <Route path="/amici" element={<AmiciPage />} />

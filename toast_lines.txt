@@ -1,0 +1,98 @@
+462:const Toast = ({ message, type, onClose }: { message: string, type: 'success' | 'error' | 'info', onClose: () => void }) => {
+1435:  const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
+1547:      setToast({ message: 'Devi essere iscritto!', type: 'error' });
+1561:      setToast({ message: '✨ Richiesta inviata! Attendi la risposta.', type: 'success' });
+1563:      setToast({ message: 'Errore nell\'invio della richiesta.', type: 'error' });
+1576:      setToast({ message: '🎉 Ora siete amici!', type: 'success' });
+1590:      setToast({ message: 'Amicizia rimossa.', type: 'info' });
+1596:      setToast({ message: "Devi essere iscritto per interagire!", type: 'error' });
+1635:    setToast({
+1643:      setToast({ message: "Devi essere iscritto!", type: 'error' });
+1647:      setToast({ message: "La chat è riservata ai tuoi SoulLinks! Invia una richiesta di amicizia.", type: 'info' });
+1652:      setToast({ message: `${profile?.name} è offline non puoi avviare una live in questo momento!`, type: 'info' });
+1660:      setToast({ message: "Devi essere iscritto!", type: 'error' });
+1672:      setToast({ message: "Puoi inviare messaggi solo ai tuoi SoulLinks!", type: 'info' });
+1684:        setToast({ message: "Hai raggiunto il limite di 5 messaggi. Passa a Premium per scrivere senza limiti!", type: 'info' });
+1705:        setToast({ message: "Messaggio inviato con successo!", type: 'success' });
+1708:        setToast({ message: "Errore durante l'invio del messaggio.", type: 'error' });
+1711:      setToast({ message: "Errore di connessione", type: 'error' });
+1737:        {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+2067:  const [soulmatchToast, setSoulmatchToast] = useState(false);
+2096:      setSoulmatchToast(true);
+2097:      setTimeout(() => setSoulmatchToast(false), 4000);
+2596:      {/* ── COOLDOWN TOAST ── */}
+2598:        {soulmatchToast && (
+3116:  const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
+3177:        setToast({ message: 'Errore nell\'invio.', type: 'error' });
+3180:      setToast({ message: 'Errore di connessione.', type: 'error' });
+3300:      setToast({ message: '🎉 Richiesta accettata! Siete ora amici.', type: 'success' });
+3312:      setToast({ message: 'Richiesta rifiutata.', type: 'info' });
+3330:      setToast({ message: `L'amicizia con ${name} è stata eliminata.`, type: 'info' });
+3334:      setToast({ message: 'Errore durante la rimozione.', type: 'error' });
+3342:        {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+3534:                            setToast({ message: `${f.other_user?.name} è offline non puoi avviare una live in questo momento!`, type: 'info' });
+3723:  const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
+3771:      setToast({ message: "Credenziali errate", type: 'error' });
+3807:        setToast({ message: "Sincronizzazione Supabase limitata. Uso dati locali.", type: 'info' });
+3810:      setToast({ message: "Errore caricamento dati.", type: 'error' });
+3831:        setToast({ message: "Slider aggiornato!", type: 'success' });
+3834:      setToast({ message: "Errore aggiornamento.", type: 'error' });
+3858:        setToast({ message: "Utente Verificato!", type: 'success' });
+3861:    } catch (e) { setToast({ message: "Errore.", type: 'error' }); }
+3873:        setToast({ message: "Documento respinto.", type: 'info' });
+3876:    } catch (e) { setToast({ message: "Errore.", type: 'error' }); }
+3883:        setToast({ message: !isBlocked ? "Utente bloccato." : "Utente sbloccato.", type: 'success' });
+3886:    } catch (e) { setToast({ message: "Errore.", type: 'error' }); }
+3965:        {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+4472:  const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
+4550:      setToast({ message: "Inserisci email e password per procedere.", type: 'info' });
+4572:          setToast({ message: "Bentornato! Sei già registrato. Ti stiamo portando alla tua bacheca.", type: 'success' });
+4579:          setToast({ message: "Account esistente trovato. Completa il tuo profilo.", type: 'info' });
+4592:          setToast({ message: "Questa email è già registrata con una password diversa. Prova ad accedere.", type: 'error' });
+4607:      setToast({ message: "Inserisci email e password per accedere.", type: 'info' });
+4621:        setToast({
+4647:        setToast({ message: "Bentornato! Il tuo account esiste ma il profilo non è completo. Per favora completa i dati mancanti.", type: 'info' });
+4653:      setToast({ message: "Errore imprevisto durante l'accesso.", type: 'error' });
+4664:    if (error) setToast({ message: "Errore login " + provider + ": " + error.message, type: 'error' });
+4671:      setToast({ message: "Per favore, completa tutti i campi del profilo per continuare.", type: 'info' });
+4679:      setToast({ message: "Inserisci l'età minima e massima che cerchi in un partner.", type: 'info' });
+4699:        setToast({ message: "Errore durante l'elaborazione delle foto.", type: 'error' });
+4721:        setToast({ message: "Errore durante l'elaborazione della foto.", type: 'error' });
+4732:        setToast({ message: "Errore durante l'elaborazione del documento.", type: 'error' });
+4773:          setToast({ message: msg, type: 'error' });
+4778:          setToast({ message: "Errore imprevisto durante la registrazione.", type: 'error' });
+4796:        setToast({ message: "Errore durante il salvataggio del profilo: " + error.message, type: 'error' });
+4814:      setToast({ message: "Errore di connessione o configurazione.", type: 'error' });
+4823:        {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+5967:  const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
+6034:        setToast({ message: 'Profilo locale aggiornato!', type: 'success' });
+6041:        setToast({ message: 'Sessione scaduta. Effettua nuovamente il login.', type: 'error' });
+6055:      setToast({ message: 'Profilo aggiornato con successo!', type: 'success' });
+6058:      setToast({ message: 'Errore: ' + e.message, type: 'error' });
+6084:      setToast({ message: 'Profilo eliminato con successo. Arrivederci!', type: 'info' });
+6092:      setToast({ message: 'Errore durante l\'eliminazione: ' + err.message, type: 'error' });
+6118:        {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+6380:  const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
+6555:        setToast({ message: 'Risposta inviata!', type: 'success' });
+6558:        setToast({ message: 'Errore durante l\'invio', type: 'error' });
+6575:      setToast({ message: 'Conversazione eliminata', type: 'info' });
+6578:      setToast({ message: 'Errore durante l\'eliminazione', type: 'error' });
+6599:        setToast({ message: 'Messaggio Flash pubblicato!', type: 'success' });
+6601:        setToast({ message: 'Errore durante la pubblicazione', type: 'error' });
+6614:        {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+6896:                                  setToast({ message: `${pu?.name} è offline non puoi avviare una live in questo momento!`, type: 'info' });
+7214:  const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
+7372:      setToast({
+7386:      setToast({ message: 'Messaggio eliminato', type: 'info' });
+7413:        setToast({ message: 'Risposta inviata!', type: 'success' });
+7418:        setToast({ message: 'Errore nell\'invio.', type: 'error' });
+7421:      setToast({ message: 'Errore di connessione.', type: 'error' });
+7436:      setToast({ message: "Errore durante l'eliminazione.", type: 'error' });
+7438:      setToast({ message: "Foto rimossa correttamente!", type: 'success' });
+7456:      setToast({ message: "Errore durante la sostituzione.", type: 'error' });
+7458:      setToast({ message: "Foto aggiornata!", type: 'success' });
+7475:      setToast({ message: "Errore durante l'aggiunta.", type: 'error' });
+7477:      setToast({ message: "Foto aggiunte alla galleria!", type: 'success' });
+7515:        {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+7648:                      setToast({ message: 'Messaggio flash pubblicato in bacheca!', type: 'success' });
+7863:                    setToast({ message: 'Logout effettuato. A presto!', type: 'success' });
