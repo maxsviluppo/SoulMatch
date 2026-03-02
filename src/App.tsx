@@ -6673,18 +6673,18 @@ const ChatPage = () => {
               key={tab.id}
               onClick={() => setActiveTab(tab.id as 'messaggi' | 'live' | 'flash')}
               className={cn(
-                "flex-1 max-w-[160px] flex items-center justify-center gap-3 px-4 py-3.5 rounded-[28px] shadow-sm transition-all relative overflow-hidden",
+                "flex-1 flex flex-col items-center justify-center gap-1.5 px-1 py-3 lg:px-4 lg:py-3.5 rounded-[28px] shadow-sm transition-all relative overflow-hidden",
                 isActive
                   ? (isFlashWithContent ? "bg-rose-600 text-white" : "bg-stone-900/95 backdrop-blur-xl border border-white/10 text-white")
                   : (isFlashWithContent ? "bg-rose-600 text-white shadow-lg shadow-rose-200" : "bg-white border border-stone-100 text-stone-400 opacity-80")
               )}
             >
-              <tab.icon className={cn("w-6 h-6 shrink-0", isActive ? "text-white" : (isFlashWithContent ? "text-white" : "text-stone-300"))} />
+              <tab.icon className={cn("w-5 h-5 lg:w-6 lg:h-6 shrink-0", isActive ? "text-white" : (isFlashWithContent ? "text-white" : "text-stone-300"))} />
               <div className="flex flex-col items-center">
-                <span className={cn("text-[11px] font-black uppercase tracking-[0.2em] leading-none", isActive ? "text-white" : (isFlashWithContent ? "text-white" : "text-stone-500"))}>
+                <span className={cn("text-[8px] lg:text-[11px] font-black uppercase tracking-wider lg:tracking-[0.2em] leading-none text-center", isActive ? "text-white" : (isFlashWithContent ? "text-white" : "text-stone-500"))}>
                   {tab.label}
                 </span>
-                <span className={cn("text-[9px] font-black mt-1", isActive ? "text-white/40 tracking-[0.2em]" : (isFlashWithContent ? "text-white/60" : "text-stone-400 tracking-[0.2em]"))}>
+                <span className={cn("text-[8px] lg:text-[9px] font-black mt-1", isActive ? "text-white/40 tracking-wider lg:tracking-[0.2em]" : (isFlashWithContent ? "text-white/60" : "text-stone-400 tracking-wider lg:tracking-[0.2em]"))}>
                   {tab.count}
                 </span>
               </div>
@@ -6896,22 +6896,37 @@ const ChatPage = () => {
                                   setToast({ message: `${pu?.name} è offline non puoi avviare una live in questo momento!`, type: 'info' });
                                 }
                               }}
-                              className="flex flex-col items-center gap-2 cursor-pointer group"
+                              className="relative group cursor-pointer"
                             >
-                              <div className="w-24 h-24 rounded-[32px] p-[3px] bg-gradient-to-tr from-rose-100 to-rose-200 shadow-sm relative group-hover:scale-105 transition-transform">
-                                <div className="w-full h-full bg-white rounded-[28px] p-1">
-                                  <ProfileAvatar user={pu} className="w-full h-full rounded-[24px] object-cover" iconSize="w-8 h-8" />
+                              <div className="aspect-[3/5.5] rounded-[28px] overflow-hidden bg-stone-200 relative shadow-md group-hover:shadow-2xl transition-all duration-300 border border-stone-100/50">
+                                <img
+                                  src={pu?.photos?.[0] || pu?.photo_url || `https://picsum.photos/seed/${pu?.name}/400/500`}
+                                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000"
+                                  alt={pu?.name}
+                                  onContextMenu={e => e.preventDefault()}
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/100 via-black/40 to-transparent" />
+
+                                <div className="absolute top-2 right-2 flex flex-col items-end gap-1.5">
+                                  <div className="w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full animate-pulse shadow-sm" />
+                                  {unreadCount > 0 && (
+                                    <div className="w-6 h-6 bg-rose-600 border-2 border-white text-white text-[10px] font-black rounded-full flex items-center justify-center shadow-lg animate-bounce">
+                                      {unreadCount}
+                                    </div>
+                                  )}
                                 </div>
-                                <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-500 border-2 border-white rounded-full animate-pulse shadow-sm" />
-                                {unreadCount > 0 && (
-                                  <div className="absolute -top-2 -right-2 w-7 h-7 bg-rose-600 border-2 border-white text-white text-[10px] font-black rounded-full flex items-center justify-center shadow-lg shadow-rose-200 animate-bounce">
-                                    {unreadCount}
-                                  </div>
-                                )}
+
+                                <div className="absolute bottom-0 left-0 right-0 p-3">
+                                  <p className="text-white text-[13px] font-black drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] truncate mb-0.5">
+                                    {pu?.name}{pu?.dob && calculateAge(pu.dob) > 0 ? `, ${calculateAge(pu.dob)}` : ''}
+                                  </p>
+                                  {pu?.city && (
+                                    <p className="text-white/90 text-[10px] font-bold truncate flex items-center gap-1 drop-shadow-md">
+                                      <MapPin className="w-2.5 h-2.5" />{pu.city}
+                                    </p>
+                                  )}
+                                </div>
                               </div>
-                              <span className="text-[12px] font-black text-stone-800 max-w-[80px] truncate text-center mt-1">
-                                {pu?.name}
-                              </span>
                             </motion.div>
                           );
                         })}
