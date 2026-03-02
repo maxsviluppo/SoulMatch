@@ -72,9 +72,28 @@ const normalizeUser = (u: any): any => ({
 });
 
 // ── Shared Bottom Navigation Bar ──────────────────────────────────────────
-const AppBottomNav = ({ activeTab }: { activeTab?: 'home' | 'bacheca' | 'feed' | 'soulmatch' | 'soullink' | 'profile' }) => {
+const AppBottomNav = () => {
+  const location = useLocation();
   const navigate = useNavigate();
   const [pendingCount, setPendingCount] = useState(0);
+  const [chatCount, setChatCount] = useState(0);
+
+  // Determina il tab attivo in base al percorso
+  const getActiveTab = () => {
+    const path = location.pathname;
+    if (path === '/') return 'home';
+    if (path.startsWith('/bacheca')) return 'bacheca';
+    if (path.startsWith('/amici')) return 'soullink';
+    if (path.startsWith('/chat')) return 'chat';
+    if (path.startsWith('/feed')) return 'feed';
+    if (path.startsWith('/soul-match')) return 'soulmatch';
+    return '';
+  };
+
+  const activeTab = getActiveTab();
+  const hideOn = ['/live-chat', '/register', '/onboarding', '/edit-profile', '/admin'];
+  const shouldHide = hideOn.some(p => location.pathname.startsWith(p));
+
   useEffect(() => {
     let currentUserId: string | null = null;
     try {
@@ -89,133 +108,136 @@ const AppBottomNav = ({ activeTab }: { activeTab?: 'home' | 'bacheca' | 'feed' |
 
     const fetchPending = async () => {
       try {
-        const { count } = await supabase
+        const { count: friendsCount } = await supabase
           .from('soul_links')
           .select('*', { count: 'exact', head: true })
           .eq('receiver_id', currentUserId)
           .eq('status', 'pending');
-        setPendingCount(count || 0);
+        setPendingCount(friendsCount || 0);
+
+        const { count: msgsCount } = await supabase
+          .from('chat_requests')
+          .select('*', { count: 'exact', head: true })
+          .eq('to_user_id', currentUserId)
+          .eq('status', 'pending');
+        setChatCount(msgsCount || 0);
       } catch (e) {
-        console.error("Fetch pending links error:", e);
+        console.error("Fetch pending counts error:", e);
       }
     };
 
     fetchPending();
-
-    const channel = supabase
-      .channel('navbar-notifications')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'soul_links', filter: `receiver_id=eq.${currentUserId}` }, () => {
-        fetchPending();
-      })
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
+    const interval = setInterval(fetchPending, 10000);
+    return () => clearInterval(interval);
   }, []);
 
+  if (shouldHide) return null;
+
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/90 backdrop-blur-xl border-t border-stone-100 shadow-2xl px-2 pb-6 pt-3">
-      <div className="max-w-md mx-auto flex items-center justify-between gap-0.5">
-
-        {/* Home */}
-        <Link to="/" className={cn("flex flex-col items-center gap-1 transition-all flex-1", activeTab === 'home' ? "text-rose-600" : "text-stone-400 hover:text-rose-500")}>
-          <div className={cn(
-            "flex items-center justify-center transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]",
-            activeTab === 'home'
-              ? "w-10 h-10 rounded-[14px] -mt-4 shadow-lg bg-rose-600 text-white shadow-rose-200"
-              : "w-4 h-4 bg-transparent mt-0"
-          )}>
-            <Home className={cn("transition-all duration-500", activeTab === 'home' ? "w-5 h-5 text-white" : "w-4 h-4")} />
-          </div>
-          <span className={cn(
-            "text-[7px] font-black uppercase tracking-wider leading-none mt-0.5 transition-all duration-500",
-            activeTab === 'home' ? "text-rose-600 mt-1" : ""
-          )}>Home</span>
-        </Link>
-
-        {/* Bacheca */}
-        <Link to="/bacheca" className={cn("flex flex-col items-center gap-1 transition-all flex-1", activeTab === 'bacheca' ? "text-rose-600" : "text-stone-400 hover:text-rose-500")}>
-          <div className={cn(
-            "flex items-center justify-center transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]",
-            activeTab === 'bacheca'
-              ? "w-10 h-10 rounded-[14px] -mt-4 shadow-lg bg-rose-600 text-white shadow-rose-200"
-              : "w-4 h-4 bg-transparent mt-0"
-          )}>
-            <Users className={cn("transition-all duration-500", activeTab === 'bacheca' ? "w-5 h-5 text-white" : "w-4 h-4")} />
-          </div>
-          <span className={cn(
-            "text-[7px] font-black uppercase tracking-wider leading-none mt-0.5 transition-all duration-500",
-            activeTab === 'bacheca' ? "text-rose-600 mt-1" : ""
-          )}>Bacheca</span>
-        </Link>
-
-        {/* Feed */}
-        <Link to="/feed" className={cn("flex flex-col items-center gap-1 transition-all flex-1", activeTab === 'feed' ? "text-rose-600" : "text-stone-400 hover:text-rose-500")}>
-          <div className={cn(
-            "flex items-center justify-center transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]",
-            activeTab === 'feed'
-              ? "w-10 h-10 rounded-[14px] -mt-4 shadow-lg bg-rose-600 text-white shadow-rose-200"
-              : "w-4 h-4 bg-transparent mt-0"
-          )}>
-            <LayoutGrid className={cn("transition-all duration-500", activeTab === 'feed' ? "w-5 h-5 text-white" : "w-4 h-4")} />
-          </div>
-          <span className={cn(
-            "text-[7px] font-black uppercase tracking-wider leading-none mt-0.5 transition-all duration-500",
-            activeTab === 'feed' ? "text-rose-600 mt-1" : ""
-          )}>Feed</span>
-        </Link>
-
-        {/* Amici (SoulLink) */}
-        <Link to="/amici" className={cn("flex flex-col items-center gap-1 relative transition-all flex-1", activeTab === 'soullink' ? "text-rose-600" : "text-stone-400 hover:text-rose-500")}>
-          <div className={cn(
-            "flex items-center justify-center transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] relative",
-            activeTab === 'soullink'
-              ? "w-10 h-10 rounded-[14px] -mt-4 shadow-lg bg-rose-600 text-white shadow-rose-200"
-              : "w-4 h-4 bg-transparent mt-0"
-          )}>
-            <UserCheck className={cn("transition-all duration-500", activeTab === 'soullink' ? "w-5 h-5 text-white" : "w-4 h-4")} />
-            {pendingCount > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-emerald-500 text-white text-[6px] font-black rounded-full flex items-center justify-center border border-white">{pendingCount}</span>
+    <div className="fixed bottom-6 left-0 right-0 z-[100] px-4 pointer-events-none">
+      <motion.div
+        initial={{ y: 100, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ type: 'spring', damping: 20, stiffness: 100 }}
+        className="max-w-md mx-auto bg-stone-900/90 backdrop-blur-2xl border border-white/10 shadow-[0_20px_40px_rgba(0,0,0,0.5)] rounded-[32px] p-2 flex items-center justify-between gap-1 pointer-events-auto"
+      >
+        {/* Home - Blue */}
+        <Link to="/" className="relative flex-1 group">
+          <motion.div
+            whileTap={{ scale: 0.9 }}
+            className={cn(
+              "flex flex-col items-center py-2.5 rounded-2xl transition-all duration-300",
+              activeTab === 'home' ? "bg-sky-500 text-white shadow-lg shadow-sky-500/30" : "text-stone-400"
             )}
-          </div>
-          <span className={cn(
-            "text-[7px] font-black uppercase tracking-wider leading-none mt-0.5 transition-all duration-500",
-            activeTab === 'soullink' ? "text-rose-600 mt-1" : ""
-          )}>Amici</span>
+          >
+            <Home className="w-5 h-5 mb-1" />
+            <span className="text-[7px] font-black uppercase tracking-wider">Home</span>
+          </motion.div>
         </Link>
 
-        {/* SoulMatch (Heart Button) */}
-        <Link to="/soul-match" className={cn("flex flex-col items-center gap-1 transition-all flex-1", activeTab === 'soulmatch' ? "text-rose-600" : "text-stone-400 hover:text-rose-500")}>
-          <div className={cn(
-            "flex items-center justify-center transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]",
-            activeTab === 'soulmatch'
-              ? "w-10 h-10 rounded-[14px] -mt-4 shadow-lg bg-rose-600 text-white shadow-rose-200"
-              : "w-4 h-4 bg-transparent mt-0"
-          )}>
-            <Heart className={cn("transition-all duration-500", activeTab === 'soulmatch' ? "w-5 h-5 text-white fill-current" : "w-4 h-4")} />
-          </div>
-          <span className={cn(
-            "text-[7px] font-black uppercase tracking-wider leading-none mt-0.5 transition-all duration-500",
-            activeTab === 'soulmatch' ? "text-rose-600 mt-1" : ""
-          )}>SoulMatch</span>
+        {/* Bacheca - Amber */}
+        <Link to="/bacheca" className="relative flex-1 group">
+          <motion.div
+            whileTap={{ scale: 0.9 }}
+            className={cn(
+              "flex flex-col items-center py-2.5 rounded-2xl transition-all duration-300",
+              activeTab === 'bacheca' ? "bg-orange-500 text-white shadow-lg shadow-orange-500/30" : "text-stone-400"
+            )}
+          >
+            <Users className="w-5 h-5 mb-1" />
+            <span className="text-[7px] font-black uppercase tracking-wider">Bacheca</span>
+          </motion.div>
         </Link>
 
-        {/* Profile */}
-        <Link to="/profile" className={cn("flex flex-col items-center gap-1 transition-all flex-1", activeTab === 'profile' ? "text-rose-600" : "text-stone-400 hover:text-rose-500")}>
-          <div className={cn(
-            "flex items-center justify-center transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]",
-            activeTab === 'profile'
-              ? "w-10 h-10 rounded-[14px] -mt-4 shadow-lg bg-rose-600 text-white shadow-rose-200"
-              : "w-4 h-4 bg-transparent mt-0"
-          )}>
-            <User className={cn("transition-all duration-500", activeTab === 'profile' ? "w-5 h-5 text-white" : "w-4 h-4")} />
-          </div>
-          <span className={cn(
-            "text-[7px] font-black uppercase tracking-wider leading-none mt-0.5 transition-all duration-500",
-            activeTab === 'profile' ? "text-rose-600 mt-1" : ""
-          )}>Profilo</span>
+        {/* Amici (SoulLink) - Emerald */}
+        <Link to="/amici" className="relative flex-1 group">
+          <motion.div
+            whileTap={{ scale: 0.9 }}
+            className={cn(
+              "flex flex-col items-center py-2.5 rounded-2xl transition-all duration-300",
+              activeTab === 'soullink' ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/30" : "text-stone-400"
+            )}
+          >
+            <div className="relative">
+              <UserCheck className="w-5 h-5 mb-1" />
+              {pendingCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-rose-500 text-white text-[7px] font-black rounded-full flex items-center justify-center border-2 border-stone-800 shadow-sm">{pendingCount}</span>
+              )}
+            </div>
+            <span className="text-[7px] font-black uppercase tracking-wider">Amici</span>
+          </motion.div>
         </Link>
-      </div>
+
+        {/* Chat - Indigo */}
+        <Link to="/chat" className="relative flex-1 group">
+          <motion.div
+            whileTap={{ scale: 0.9 }}
+            className={cn(
+              "flex flex-col items-center py-2.5 rounded-2xl transition-all duration-300",
+              activeTab === 'chat' ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/30" : "text-stone-400"
+            )}
+          >
+            <div className="relative">
+              <MessageCircle className="w-5 h-5 mb-1" />
+              {chatCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-rose-500 text-white text-[7px] font-black rounded-full flex items-center justify-center border-2 border-stone-800 shadow-sm">{chatCount}</span>
+              )}
+            </div>
+            <span className="text-[7px] font-black uppercase tracking-wider">Chat</span>
+          </motion.div>
+        </Link>
+
+        {/* Feed - Violet */}
+        <Link to="/feed" className="relative flex-1 group">
+          <motion.div
+            whileTap={{ scale: 0.9 }}
+            className={cn(
+              "flex flex-col items-center py-2.5 rounded-2xl transition-all duration-300",
+              activeTab === 'feed' ? "bg-violet-500 text-white shadow-lg shadow-violet-500/30" : "text-stone-400"
+            )}
+          >
+            <LayoutGrid className="w-5 h-5 mb-1" />
+            <span className="text-[7px] font-black uppercase tracking-wider">Feed</span>
+          </motion.div>
+        </Link>
+
+        {/* SoulMatch (Heart Button) - Rose */}
+        <Link to="/soul-match" className="relative flex-1 group">
+          <motion.div
+            whileTap={{ scale: 0.9 }}
+            className={cn(
+              "flex flex-col items-center py-2.5 rounded-2xl transition-all duration-300",
+              activeTab === 'soulmatch' ? "bg-rose-600 text-white shadow-lg shadow-rose-500/40" : "text-stone-400"
+            )}
+          >
+            <Heart className={cn("w-5 h-5 mb-1", activeTab === 'soulmatch' ? "fill-current" : "")} />
+            <span className="text-[7px] font-black uppercase tracking-wider">SoulMatch</span>
+          </motion.div>
+        </Link>
+      </motion.div>
     </div>
+  );
+};
   );
 };
 
@@ -815,7 +837,7 @@ const HomePage = () => {
           </div>
 
           {/* Mock device frame */}
-          <div className="relative rounded-[32px] overflow-hidden border-2 border-stone-200 shadow-2xl bg-[#F8F4EF]">
+          <div className="relative rounded-[32px] overflow-hidden border-2 border-stone-200 shadow-2xl bg-stone-50">
             {/* Fake status bar */}
             <div className="bg-white/90 backdrop-blur-sm px-5 py-2 flex items-center justify-between border-b border-stone-100">
               <span className="text-[10px] font-black text-stone-400">SoulMatch</span>
@@ -881,7 +903,7 @@ const HomePage = () => {
             </div>
 
             {/* Subtle blur overlay with CTA */}
-            <div className="relative bg-gradient-to-t from-[#F8F4EF] via-[#F8F4EF]/60 to-transparent -mt-16 pt-16 pb-5 px-4 flex flex-col items-center gap-3">
+            <div className="relative bg-gradient-to-t from-[stone-50] via-[stone-50]/60 to-transparent -mt-16 pt-16 pb-5 px-4 flex flex-col items-center gap-3">
               <p className="text-xs text-stone-500 font-semibold text-center">Accedi per vedere tutti i profili reali nella tua zona</p>
               <Link
                 to={isLoggedIn ? "/bacheca" : "/register"}
@@ -920,50 +942,128 @@ const HomePage = () => {
 };
 
 
-const LiveChatModal = ({ profile, currentUser, onClose }: { profile: any, currentUser: any, onClose: () => void }) => {
+const LiveChatPage = () => {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [profile, setProfile] = useState<any>(null);
   const [messages, setMessages] = useState<any[]>([]);
   const [text, setText] = useState('');
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
+  const [loading, setLoading] = useState(true);
+  const [isFriend, setIsFriend] = useState<boolean | null>(null);
 
   useEffect(() => {
+    try {
+      const saved = localStorage.getItem('soulmatch_user');
+      if (saved) {
+        setCurrentUser(normalizeUser(JSON.parse(saved)));
+      } else {
+        navigate('/register');
+      }
+    } catch (e) {
+      navigate('/register');
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!currentUser || !id) return;
+    const fetchData = async () => {
+      setLoading(true);
+      // Fetch profile
+      const { data: prof } = await supabase.from('users').select('*').eq('id', id).single();
+      if (prof) setProfile(prof);
+
+      // Check friendship
+      const { data: sl } = await supabase
+        .from('soul_links')
+        .select('id')
+        .or(`and(sender_id.eq.${currentUser.id},receiver_id.eq.${id}),and(sender_id.eq.${id},receiver_id.eq.${currentUser.id})`)
+        .eq('status', 'accepted')
+        .maybeSingle();
+
+      setIsFriend(!!sl);
+      setLoading(false);
+    };
+    fetchData();
+  }, [currentUser, id]);
+
+  useEffect(() => {
+    if (!profile || !currentUser) return;
+
     const fetchMsgs = async () => {
-      const { data } = await supabase
+      // 1. Fetch live room messages
+      const { data: liveMsgs } = await supabase
         .from('room_messages')
         .select('*')
         .or(`and(sender_id.eq.${currentUser.id},receiver_id.eq.${profile.id}),and(sender_id.eq.${profile.id},receiver_id.eq.${currentUser.id})`)
-        .order('created_at', { ascending: true })
-        .limit(100);
-      if (data) setMessages(data);
+        .order('created_at', { ascending: true });
+
+      // 2. Fetch asynchronous chat requests (to display as messages)
+      const { data: asyncMsgs } = await supabase
+        .from('chat_requests')
+        .select('*')
+        .or(`and(from_user_id.eq.${currentUser.id},to_user_id.eq.${profile.id}),and(from_user_id.eq.${profile.id},to_user_id.eq.${currentUser.id})`)
+        .order('created_at', { ascending: true });
+
+      const unified = [
+        ...(liveMsgs || []).map(m => ({ ...m, type: 'live' })),
+        ...(asyncMsgs || []).map(m => ({
+          ...m,
+          text: m.message,
+          sender_id: m.from_user_id,
+          receiver_id: m.to_user_id,
+          type: 'async'
+        }))
+      ].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
+      setMessages(unified);
     };
     fetchMsgs();
 
-    const channel = supabase.channel('room_messages_channel')
+    const roomChannel = supabase.channel('msgs_live')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'room_messages' }, (payload) => {
         const msg = payload.new;
         if ((msg.sender_id === currentUser.id && msg.receiver_id === profile.id) ||
           (msg.sender_id === profile.id && msg.receiver_id === currentUser.id)) {
           setMessages(prev => {
-            // Prevent duplicates
             if (prev.some(m => m.id === msg.id)) return prev;
-            return [...prev, msg];
+            return [...prev, { ...msg, type: 'live' }].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
           });
         }
       })
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
-  }, [profile.id, currentUser.id]);
+    const asyncChannel = supabase.channel('msgs_async')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_requests' }, (payload) => {
+        const msg = payload.new;
+        if ((msg.from_user_id === currentUser.id && msg.to_user_id === profile.id) ||
+          (msg.from_user_id === profile.id && msg.to_user_id === currentUser.id)) {
+          setMessages(prev => {
+            const mapped = { ...msg, text: msg.message, sender_id: msg.from_user_id, receiver_id: msg.to_user_id, type: 'async' };
+            if (prev.some(m => m.id === msg.id)) return prev;
+            return [...prev, mapped].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+          });
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(roomChannel);
+      supabase.removeChannel(asyncChannel);
+    };
+  }, [profile, currentUser]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   const handleSend = async () => {
-    if (!text.trim()) return;
+    if (!text.trim() || !currentUser || !profile) return;
     const msgText = text;
     setText('');
 
-    // Aggiornamento ottimistico: il messaggio appare subito prima di parlare con il DB
+    // Aggiornamento ottimistico
     const tempId = self.crypto.randomUUID();
     const optimisticMsg = {
       id: tempId,
@@ -972,7 +1072,6 @@ const LiveChatModal = ({ profile, currentUser, onClose }: { profile: any, curren
       text: msgText,
       created_at: new Date().toISOString()
     };
-
     setMessages(prev => [...prev, optimisticMsg]);
 
     const { error } = await supabase.from('room_messages').insert([
@@ -981,75 +1080,119 @@ const LiveChatModal = ({ profile, currentUser, onClose }: { profile: any, curren
 
     if (error) {
       console.error("Errore chat live:", error);
-      alert("Ouch! La tabella 'room_messages' non esiste o non è configurata correttamente nel database. Assicurati di aver eseguito lo script 'add_room_messages.sql' su Supabase!");
-      // Rimuovi messaggio finto
+      alert("Errore invio.");
       setMessages(prev => prev.filter(m => m.id !== tempId));
     }
   };
 
-  const handleClose = async () => {
-    // Cancella messaggi al termine della chat secondo richiesta
-    await supabase.from('room_messages')
-      .delete()
-      .or(`and(sender_id.eq.${currentUser.id},receiver_id.eq.${profile.id}),and(sender_id.eq.${profile.id},receiver_id.eq.${currentUser.id})`);
-    onClose();
+  const handleClose = () => {
+    navigate(-1);
   };
 
+  if (loading) return <div className="min-h-screen flex items-center justify-center bg-stone-50"><Sparkles className="w-8 h-8 text-rose-600 animate-pulse" /></div>;
+  if (!profile || !currentUser) return null;
+
+  if (isFriend === false) {
+    return (
+      <div className="min-h-screen bg-stone-50 pt-20 px-6 flex flex-col items-center justify-center text-center">
+        <div className="w-20 h-20 bg-rose-100 rounded-[28px] flex items-center justify-center mb-6">
+          <Lock className="w-10 h-10 text-rose-600" />
+        </div>
+        <h2 className="text-xl font-serif font-black text-stone-900 mb-2">Accesso Riservato</h2>
+        <p className="text-stone-500 text-sm mb-8 max-w-xs mx-auto">
+          Puoi chattare solo con gli utenti che hanno accettato la tua richiesta di SoulLink.
+        </p>
+        <button
+          onClick={() => navigate(-1)}
+          className="px-8 py-3 bg-rose-600 text-white font-black uppercase tracking-widest rounded-2xl shadow-lg shadow-rose-200 active:scale-95 transition-all"
+        >
+          Torna indietro
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <div className="fixed inset-0 z-[120] bg-white flex flex-col pt-safe">
-      {/* Header */}
-      <div className="flex items-center gap-3 p-4 border-b border-stone-100 shadow-sm relative z-10 bg-white">
-        <button onClick={handleClose} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-stone-50 transition-colors">
+    <div className="fixed inset-0 z-[120] bg-white flex flex-col pt-safe overflow-hidden">
+      {/* Header - WhatsApp Style */}
+      <div className="flex items-center gap-2 p-3 border-b border-stone-100 shadow-sm relative z-20 bg-white/95 backdrop-blur-md">
+        <button onClick={handleClose} className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-stone-50 transition-colors shrink-0">
           <ChevronRight className="w-6 h-6 rotate-180 text-stone-600" />
         </button>
-        <div className="flex items-center gap-3 flex-1">
-          <div className="w-10 h-10 rounded-[14px] overflow-hidden shrink-0 border border-stone-100 bg-stone-50">
-            <img src={profile.photo_url || `https://picsum.photos/seed/${profile.name}/100`} className="w-full h-full object-cover" />
-          </div>
-          <div className="flex flex-col">
-            <div className="font-bold text-stone-900 leading-none">{profile.name}</div>
-            <div className="text-[10px] text-emerald-500 font-bold uppercase tracking-widest mt-1 flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Online ora
+        <div
+          className="flex items-center gap-3 flex-1 cursor-pointer active:opacity-70 transition-opacity"
+          onClick={() => navigate(`/profile-detail/${profile.id}`)}
+        >
+          <ProfileAvatar
+            user={profile}
+            className="w-10 h-10 rounded-full border border-stone-100 shadow-sm"
+            iconSize="w-5 h-5"
+          />
+          <div className="flex flex-col min-w-0">
+            <div className="font-black text-stone-900 text-[15px] leading-tight truncate">
+              {profile.name} {profile.surname}
             </div>
+            {profile.is_online ? (
+              <div className="text-[10px] text-emerald-500 font-bold uppercase tracking-tight flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> online
+              </div>
+            ) : (
+              <div className="text-[10px] text-stone-400 font-bold uppercase tracking-tight">
+                disponibile
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 bg-[#F8F4EF]">
-        <div className="text-center mb-4">
-          <span className="text-[10px] bg-white/60 text-stone-400 px-3 py-1.5 rounded-full font-bold uppercase tracking-widest border border-stone-200/50 shadow-sm inline-block max-w-[80%] leading-relaxed">
-            Come su Whatsapp, i messaggi restano qui durante la conversazione e verranno cancellati alla chiusura della chat per la tua privacy.
-          </span>
-        </div>
-        {messages.map(m => (
-          <div key={m.id} className={cn(
-            "max-w-[80%] rounded-2xl px-4 py-3 text-[13px] font-medium leading-relaxed font-sans shadow-sm",
-            m.sender_id === currentUser.id
-              ? "bg-rose-600 text-white self-end rounded-br-[4px]"
-              : "bg-white text-stone-800 self-start border border-stone-100 rounded-bl-[4px]"
-          )}>
-            {m.text}
-          </div>
-        ))}
-        <div ref={messagesEndRef} />
+      {/* Messages - Subtle WhatsApp Background */}
+      <div className="flex-1 overflow-y-auto px-4 py-6 flex flex-col gap-3 relative bg-[#e5ddd5]" style={{ backgroundImage: "url('https://i.pinimg.com/originals/85/ec/8b/85ec8b71343719942a78bc57f9ed56f0.jpg')", backgroundSize: '400px', backgroundBlendMode: 'overlay' }}>
+        {messages.map((m, idx) => {
+          const isOwn = m.sender_id === currentUser.id;
+          const prevMsg = messages[idx - 1];
+          const isSameSender = prevMsg?.sender_id === m.sender_id;
+
+          return (
+            <div key={m.id} className={cn(
+              "flex flex-col max-w-[85%]",
+              isOwn ? "self-end" : "self-start",
+              !isSameSender && "mt-1"
+            )}>
+              <div className={cn(
+                "px-3 py-1.5 text-[14.5px] font-sans shadow-[0_1px_1px_rgba(0,0,0,0.1)] relative min-w-[60px]",
+                isOwn
+                  ? "bg-[#dcf8c6] text-[#303030] rounded-l-xl rounded-br-xl rounded-tr-[4px]"
+                  : "bg-white text-[#303030] rounded-r-xl rounded-bl-xl rounded-tl-[4px]"
+              )}>
+                <div className="leading-relaxed whitespace-pre-wrap break-words">{m.text}</div>
+                <div className="text-[9px] text-[#00000073] font-bold flex justify-end gap-1 mt-0.5 uppercase">
+                  {new Date(m.created_at).getHours()}:{String(new Date(m.created_at).getMinutes()).padStart(2, '0')}
+                  {isOwn && <span className="text-sky-500 scale-125 ml-1">✓✓</span>}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+        <div ref={messagesEndRef} className="pb-4" />
       </div>
 
-      {/* Input */}
-      <div className="p-4 border-t border-stone-100 bg-white flex gap-2 pb-safe shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.05)]">
-        <input
-          value={text}
-          onChange={e => setText(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && handleSend()}
-          className="flex-1 bg-stone-50 rounded-[20px] px-5 py-3.5 text-sm outline-none border border-stone-200 focus:border-rose-300 focus:ring-4 focus:ring-rose-500/10 transition-all font-medium text-stone-800 placeholder:font-normal"
-          placeholder={`Scrivi a ${profile.name}...`}
-        />
+      {/* Input Layer */}
+      <div className="p-3 bg-[#f0f0f0] border-t border-stone-200 flex items-center gap-2 pb-safe">
+        <div className="flex-1 bg-white rounded-full flex items-center px-4 py-1.5 shadow-sm border border-stone-200/50">
+          <input
+            value={text}
+            onChange={e => setText(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleSend()}
+            className="flex-1 bg-transparent py-2.5 text-[15px] outline-none text-stone-800 placeholder:text-stone-400"
+            placeholder="Scrivi un messaggio"
+          />
+        </div>
         <button
           onClick={handleSend}
           disabled={!text.trim()}
-          className="w-14 h-14 bg-rose-600 rounded-[20px] flex items-center justify-center text-white shadow-lg shadow-rose-600/30 disabled:opacity-50 disabled:shadow-none shrink-0 transition-all active:scale-95"
+          className="w-12 h-12 bg-[#00a884] rounded-full flex items-center justify-center text-white shadow-md disabled:opacity-50 shrink-0 transition-transform active:scale-90"
         >
-          <Send className="w-5 h-5 -ml-0.5" />
+          <Send className="w-5 h-5 fill-current" />
         </button>
       </div>
     </div>
@@ -1066,7 +1209,6 @@ const ProfileDetailPage = () => {
   const [userInteractions, setUserInteractions] = useState<string[]>([]);
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
   const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
-  const [isLiveChatOpen, setIsLiveChatOpen] = useState(false);
   const [messageText, setMessageText] = useState('');
   const [soulLinkStatus, setSoulLinkStatus] = useState<'none' | 'pending_sent' | 'pending_received' | 'accepted' | 'rejected'>('none');
   const [soulLinkId, setSoulLinkId] = useState<string | null>(null);
@@ -1276,17 +1418,16 @@ const ProfileDetailPage = () => {
       setToast({ message: "Devi essere iscritto!", type: 'error' });
       return;
     }
-    if (!currentUser.is_paid) {
-      setToast({ message: "Funzione riservata agli utenti Premium!", type: 'info' });
+    if (soulLinkStatus !== 'accepted') {
+      setToast({ message: "La chat è riservata ai tuoi SoulLinks! Invia una richiesta di amicizia.", type: 'info' });
       return;
     }
 
     if (!profile?.is_online) {
-      setToast({ message: "L'utente non è online e non puoi avviare una chat. Inviagli un messaggio!", type: 'info' });
+      setToast({ message: "L'utente non è online e non puoi avviare una chat istantanea.", type: 'info' });
       return;
     }
-
-    setIsLiveChatOpen(true);
+    navigate(`/live-chat/${profile.id}`);
   };
 
   const handleOpenMessageModal = () => {
@@ -1300,6 +1441,12 @@ const ProfileDetailPage = () => {
 
   const sendChatMessage = async () => {
     if (!messageText.trim()) return;
+
+    if (soulLinkStatus !== 'accepted') {
+      setIsMessageModalOpen(false);
+      setToast({ message: "Puoi inviare messaggi solo ai tuoi SoulLinks!", type: 'info' });
+      return;
+    }
 
     // ── Limit free users to max 5 sent messages ──
     if (currentUser && !currentUser.is_paid) {
@@ -1360,7 +1507,7 @@ const ProfileDetailPage = () => {
   const matchScore = calculateMatchScore(currentUser, profile);
 
   return (
-    <div className="min-h-screen bg-[#F8F4EF] pt-16 pb-32 relative overflow-x-hidden">
+    <div className="min-h-screen bg-stone-50 pt-16 pb-32 relative overflow-x-hidden">
       <AnimatePresence>
         {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       </AnimatePresence>
@@ -1369,7 +1516,7 @@ const ProfileDetailPage = () => {
       <div className="relative w-full h-[55vh] min-h-[320px] overflow-hidden">
         <ProfileAvatar user={profile} className="w-full h-full" iconSize="w-32 h-32" />
         {/* Gradient: dark at bottom for text readability */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-[#F8F4EF]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-[stone-50]" />
 
         {/* Status badge top-right */}
         <div className="absolute top-4 right-5 z-20">
@@ -1704,15 +1851,7 @@ const ProfileDetailPage = () => {
         )}
       </AnimatePresence>
 
-      <AnimatePresence>
-        {isLiveChatOpen && profile && currentUser && (
-          <LiveChatModal
-            profile={profile}
-            currentUser={currentUser}
-            onClose={() => setIsLiveChatOpen(false)}
-          />
-        )}
-      </AnimatePresence>
+      <AppBottomNav />
     </div>
   );
 };
@@ -2036,7 +2175,7 @@ const BachecaPage = () => {
   const heroProfile = heroProfiles[heroIndex];
 
   return (
-    <div className="min-h-screen bg-[#F8F4EF] pt-16 pb-28 relative overflow-x-hidden">
+    <div className="min-h-screen bg-stone-50 pt-16 pb-28 relative overflow-x-hidden">
 
       {/* ── HERO SLIDER ── */}
       {!loading && heroProfile && (
@@ -2053,7 +2192,7 @@ const BachecaPage = () => {
             />
           </AnimatePresence>
           {/* Gradient fade */}
-          <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-[#F8F4EF]" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-[stone-50]" />
           {/* Name + CTA overlaid */}
           <div className="absolute bottom-0 left-0 right-0 px-5 pb-5 flex items-end justify-between z-10">
             <div>
@@ -2227,33 +2366,6 @@ const BachecaPage = () => {
                     </div>
                   </div>
                 </Link>
-                {/* Quick reaction buttons */}
-                <div className="absolute top-2 right-2 flex flex-col gap-1.5">
-                  <button
-                    onClick={e => handleQuickReaction(profile.id, 'heart', e)}
-                    className={cn(
-                      'w-9 h-9 rounded-[12px] flex items-center justify-center shadow-lg backdrop-blur-sm transition-all active:scale-90',
-                      cardReactions[profile.id] === 'heart'
-                        ? 'bg-rose-600 text-white'
-                        : 'bg-white/80 text-stone-400 hover:text-rose-500'
-                    )}
-                    title="Cuore"
-                  >
-                    <Heart className={cn("w-4 h-4", cardReactions[profile.id] === 'heart' && 'fill-current')} />
-                  </button>
-                  <button
-                    onClick={e => handleQuickReaction(profile.id, 'like', e)}
-                    className={cn(
-                      'w-9 h-9 rounded-[12px] flex items-center justify-center shadow-lg backdrop-blur-sm transition-all active:scale-90',
-                      cardReactions[profile.id] === 'like'
-                        ? 'bg-blue-500 text-white'
-                        : 'bg-white/80 text-stone-400 hover:text-blue-500'
-                    )}
-                    title="Like"
-                  >
-                    <ThumbsUp className={cn("w-4 h-4", cardReactions[profile.id] === 'like' && 'fill-current')} />
-                  </button>
-                </div>
               </div>
             ))}
           </div>
@@ -2272,12 +2384,11 @@ const BachecaPage = () => {
         )}>
           {!isBannerExpanded ? (
             <div
-              onClick={() => setIsBannerExpanded(true)}
+              onClick={(e) => { e.stopPropagation(); navigate('/chat'); }}
+              onMouseEnter={() => setIsBannerExpanded(true)}
               className="w-full h-full flex flex-col items-center justify-center text-white relative"
             >
-              <MessageSquare className="w-5 h-5 mb-0.5 opacity-90" />
-              <span className="text-[9px] font-black tracking-widest leading-none">MSG</span>
-              <div className="absolute top-0 right-1 w-3.5 h-3.5 bg-white text-rose-600 rounded-full text-[8px] font-black flex items-center justify-center shadow-sm">{bannerMessages.length}</div>
+              <span className="text-[9px] font-black tracking-widest leading-none">CHAT</span>
             </div>
           ) : (
             <div className="w-full flex items-center justify-between gap-1 overflow-hidden">
@@ -2299,7 +2410,7 @@ const BachecaPage = () => {
                     </div>
                   </div>
 
-                  <div className="flex flex-col flex-1 min-w-0 pr-1">
+                  <div className="flex flex-col flex-1 min-w-0 pr-1 cursor-pointer" onClick={() => navigate(`/live-chat/${bannerMessages[bannerIndex]?.user_id}`)}>
                     <div className="flex items-baseline gap-1.5 leading-tight mb-0.5">
                       <span className="text-[11px] font-black text-stone-900 truncate">{bannerMessages[bannerIndex]?.name}</span>
                       <span className="text-[9px] font-bold text-stone-400 capitalize shrink-0">{bannerMessages[bannerIndex]?.city}</span>
@@ -2317,7 +2428,7 @@ const BachecaPage = () => {
               </AnimatePresence>
 
               <button
-                onClick={() => setIsBannerExpanded(false)}
+                onClick={() => navigate('/chat')}
                 className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-stone-400 hover:bg-rose-50 hover:text-rose-600 shrink-0 shadow-sm border border-stone-100 active:scale-90 ml-1"
               >
                 <ChevronRight className="w-5 h-5 ml-0.5" />
@@ -2360,7 +2471,7 @@ const BachecaPage = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[90] bg-[#F8F4EF]"
+            className="fixed inset-0 z-[90] bg-stone-50"
           >
             {/* Top bar */}
             <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-xl border-b border-stone-100 px-5 py-4 flex items-center justify-between">
@@ -2578,7 +2689,7 @@ const SoulMatchPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8F4EF] pt-20 pb-28 px-4">
+    <div className="min-h-screen bg-stone-50 pt-20 pb-28 px-4">
       <div className="max-w-md mx-auto space-y-8">
         {/* Banner with names */}
         <div className="space-y-3">
@@ -2785,7 +2896,7 @@ const FeedPage = () => {
   const heroProfile = heroProfiles[heroIndex];
 
   return (
-    <div className="min-h-screen bg-[#F8F4EF] pt-16 pb-28 relative overflow-x-hidden">
+    <div className="min-h-screen bg-stone-50 pt-16 pb-28 relative overflow-x-hidden">
       {/* ── HERO SLIDER ── */}
       {!loading && heroProfile && (
         <div className="relative w-full h-[42vh] min-h-[260px] overflow-hidden mb-6">
@@ -2800,7 +2911,7 @@ const FeedPage = () => {
               className="absolute inset-0 w-full h-full object-cover object-top border-b border-stone-200"
             />
           </AnimatePresence>
-          <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-[#F8F4EF]" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-[stone-50]" />
           <div className="absolute bottom-0 left-0 right-0 px-5 pb-5 flex items-end justify-between z-10">
             <div>
               <h2 className="text-2xl font-serif font-black text-stone-900 drop-shadow-sm">
@@ -2997,7 +3108,7 @@ const AmiciPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8F4EF] pt-11 pb-28 relative overflow-x-hidden">
+    <div className="min-h-screen bg-stone-50 pt-11 pb-28 relative overflow-x-hidden">
       <AnimatePresence>
         {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       </AnimatePresence>
@@ -5934,96 +6045,272 @@ const EditProfilePage = () => {
   );
 };
 
-const ChatRequestItem = ({
-  req,
-  index,
-  bounceNotif,
-  handleDeleteChatRequest,
-  replyingTo,
-  setReplyingTo,
-  replyText,
-  setReplyText,
-  handleSendReply,
-  isSendingReply
-}: any) => {
-  const [dragX, setDragX] = useState(0);
-  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+// Unified Chat UI: all chats are now handled via LiveChatPage
+const ChatPage = () => {
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [chatRequests, setChatRequests] = useState<ChatRequest[]>([]);
+  const [activeChats, setActiveChats] = useState<any[]>([]);
+  const [friends, setFriends] = useState<SoulLink[]>([]);
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState('');
+  const [isSendingReply, setIsSendingReply] = useState(false);
+  const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('soulmatch_user');
+      if (saved) {
+        const u = normalizeUser(JSON.parse(saved));
+        setUser(u);
+        fetchData(u.id);
+      } else {
+        navigate('/register');
+      }
+    } catch (e) {
+      navigate('/register');
+    }
+  }, []);
+
+  const fetchData = async (userId: string) => {
+    try {
+      // 1. Fetch SoulLinks (Friends)
+      const { data: sentSL } = await supabase
+        .from('soul_links')
+        .select('*, receiver:users!receiver_id(id, name, photos, photo_url, city, is_online)')
+        .eq('sender_id', userId)
+        .eq('status', 'accepted');
+
+      const { data: recvSL } = await supabase
+        .from('soul_links')
+        .select('*, sender:users!sender_id(id, name, photos, photo_url, city, is_online)')
+        .eq('receiver_id', userId)
+        .eq('status', 'accepted');
+
+      const acceptedFriends: SoulLink[] = [];
+      (sentSL || []).forEach((sl: any) => acceptedFriends.push({ ...sl, other_user: sl.receiver }));
+      (recvSL || []).forEach((sl: any) => acceptedFriends.push({ ...sl, other_user: sl.sender }));
+      setFriends(acceptedFriends);
+
+      // 2. Fetch richieste asincrone (chat_requests) - Only from friends
+      const { data: requestsData } = await supabase
+        .from('chat_requests')
+        .select(`
+          *,
+          from_user:users!from_user_id(id, name, surname, photo_url, photos)
+        `)
+        .eq('to_user_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (requestsData) {
+        // Filter those where from_user is an accepted friend
+        const filteredRequests = requestsData.filter((r: any) =>
+          acceptedFriends.some(f => f.other_user?.id === r.from_user_id)
+        );
+
+        const processedRequests = filteredRequests.map((r: any) => ({
+          ...r,
+          name: r.from_user?.name,
+          surname: r.from_user?.surname,
+          photo_url: r.from_user?.photos?.[0] || r.from_user?.photo_url
+        }));
+        setChatRequests(processedRequests);
+      }
+
+      // 3. Fetch chat in corso (room_messages)
+      const { data: msgs } = await supabase
+        .from('room_messages')
+        .select(`
+          id, text, created_at, sender_id, receiver_id,
+          sender:users!sender_id(id, name, photos, photo_url, is_online, city),
+          receiver:users!receiver_id(id, name, photos, photo_url, is_online, city)
+        `)
+        .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
+        .order('created_at', { ascending: false });
+
+      if (msgs) {
+        const chatMap = new Map();
+        for (const m of msgs) {
+          const isSender = m.sender_id === userId;
+          const u: any = isSender ? m.receiver : m.sender;
+          const otherUser = Array.isArray(u) ? u[0] : u;
+          if (!otherUser) continue;
+
+          // Check if user is among accepted friends
+          const isFriend = acceptedFriends.some(f => f.other_user?.id === otherUser.id);
+          if (!isFriend) continue; // Only show chats with friends
+
+          if (!chatMap.has(otherUser.id)) {
+            chatMap.set(otherUser.id, {
+              other_user: otherUser,
+              last_msg: m.text,
+              created_at: m.created_at,
+              isSender
+            });
+          }
+        }
+
+        // Also integrate requests into the same conversation list
+        if (requestsData) {
+          for (const r of requestsData) {
+            const from_u = r.from_user;
+            if (!from_u) continue;
+            const isFriend = acceptedFriends.some(f => f.other_user?.id === from_u.id);
+            if (!isFriend) continue;
+
+            if (!chatMap.has(from_u.id) || new Date(r.created_at) > new Date(chatMap.get(from_u.id).created_at)) {
+              chatMap.set(from_u.id, {
+                other_user: { ...from_u, photo_url: from_u.photos?.[0] || from_u.photo_url },
+                last_msg: r.message,
+                created_at: r.created_at,
+                isSender: false
+              });
+            }
+          }
+        }
+
+        const sorted = Array.from(chatMap.values()).sort((a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+        setActiveChats(sorted);
+      }
+    } catch (e) { }
+    setLoading(false);
+  };
+
+  const handleSendReply = async (toUserId: string) => {
+    if (!replyText.trim() || !user) return;
+    setIsSendingReply(true);
+
+    try {
+      const { error } = await supabase.from('chat_requests').insert([{
+        from_user_id: user.id,
+        to_user_id: toUserId,
+        message: replyText
+      }]);
+      if (!error) {
+        setReplyText('');
+        setReplyingTo(null);
+        setToast({ message: 'Risposta inviata!', type: 'success' });
+        fetchData(user.id);
+      }
+    } catch (err) { }
+    setIsSendingReply(false);
+  };
+
+  const handleDeleteChatRequest = async (id: string) => {
+    try {
+      await supabase.from('chat_requests').delete().eq('id', id);
+      setChatRequests(prev => prev.filter(r => r.id !== id));
+      setToast({ message: 'Messaggio eliminato', type: 'info' });
+    } catch (err) { }
+  };
+
+  if (loading) return <div className="min-h-screen flex items-center justify-center bg-stone-50"><Sparkles className="w-8 h-8 text-rose-600 animate-pulse" /></div>;
+  if (!user) return null;
+
   return (
-    <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="flex flex-col gap-2 relative">
-      {/* Sfondo cestino dietro per lo swipe */}
-      <div className="absolute top-0 bottom-0 right-0 w-24 bg-rose-600 rounded-[24px] flex flex-col items-center justify-center text-white shadow-sm z-0">
-        <button
-          onClick={(e) => { e.stopPropagation(); handleDeleteChatRequest(req.id); }}
-          className="flex flex-col items-center h-full w-full justify-center active:bg-rose-700 rounded-[24px] pr-2 transition-colors"
-        >
-          <Trash2 className="w-5 h-5 mb-0.5" />
-          <span className="text-[9px] font-black uppercase tracking-widest">Elimina</span>
-        </button>
+    <div className="min-h-screen bg-stone-50 pt-16 pb-28 relative overflow-x-hidden">
+      <AnimatePresence>
+        {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      </AnimatePresence>
+      <div className="px-6 relative z-10 space-y-2 pb-6 flex items-center gap-3">
+        <div className="w-12 h-12 bg-rose-600 rounded-[16px] flex items-center justify-center shadow-lg shadow-rose-200">
+          <MessageCircle className="w-6 h-6 text-white" />
+        </div>
+        <div>
+          <h1 className="text-3xl font-serif font-black text-stone-900 tracking-tight leading-none bg-clip-text text-transparent bg-gradient-to-r from-stone-900 to-stone-500">
+            Chat
+          </h1>
+          <p className="text-stone-500 text-[11px] font-medium tracking-wide">Cronologia & Messaggi</p>
+        </div>
       </div>
 
-      <motion.div
-        drag="x"
-        dragConstraints={{ left: -100, right: 0 }}
-        dragElastic={0.1}
-        onDrag={(e, info) => setDragX(info.offset.x)}
-        animate={{ x: isDeleteOpen ? -85 : (index === 0 && bounceNotif ? -12 : 0) }}
-        transition={isDeleteOpen ? { type: "spring", stiffness: 400, damping: 25 } : (index === 0 && bounceNotif ? { type: "spring", stiffness: 400, damping: 10 } : {})}
-        onDragEnd={(e, info) => {
-          setDragX(0);
-          if (info.offset.x < -45) {
-            setIsDeleteOpen(true);
-          } else {
-            setIsDeleteOpen(false);
-          }
-        }}
-        onClick={() => { if (isDeleteOpen) setIsDeleteOpen(false); }}
-        className="bg-white rounded-[24px] border border-stone-100 p-4 flex items-center justify-between gap-3 shadow-sm z-10 relative"
-      >
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-[16px] overflow-hidden border border-stone-100 shadow-sm shrink-0">
-            <img src={req.photo_url || `https://picsum.photos/seed/${req.from_user_id}/100`} className="w-full h-full object-cover" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <h4 className="text-sm font-black text-stone-900 leading-none">{req.name}</h4>
-              <span className="text-[8px] font-bold text-stone-400 bg-stone-50 px-2 py-0.5 rounded-full uppercase tracking-widest whitespace-nowrap">
-                {new Date(req.created_at).toLocaleString([], { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}
-              </span>
+      <div className="mx-4 mt-2">
+        {chatRequests.length === 0 && activeChats.length === 0 && friends.length === 0 ? (
+          <div className="bg-white rounded-[28px] border border-stone-100 p-10 flex flex-col items-center gap-4">
+            <div className="w-16 h-16 bg-stone-100 rounded-full flex items-center justify-center">
+              <CheckCircle className="w-8 h-8 text-stone-300" />
             </div>
-            <p className="text-[11px] text-stone-500 font-medium line-clamp-2">{req.message || "Ti ha notato e vuole conoscerti!"}</p>
+            <p className="text-stone-400 text-sm font-bold">Nessun contatto amico.</p>
           </div>
-        </div>
-        <div className="flex gap-2">
-          {replyingTo !== req.id ? (
-            <button onClick={() => setReplyingTo(req.id)} className="w-9 h-9 bg-rose-50 border border-rose-100 text-rose-500 rounded-[14px] flex items-center justify-center hover:bg-rose-100 transition-colors">
-              <MessageSquare className="w-4 h-4" />
-            </button>
-          ) : (
-            <button onClick={() => setReplyingTo(null)} className="w-9 h-9 bg-stone-100 text-stone-500 rounded-[14px] flex items-center justify-center hover:bg-stone-200 transition-colors">
-              <X className="w-4 h-4" />
-            </button>
-          )}
-        </div>
-      </motion.div>
-      <AnimatePresence>
-        {replyingTo === req.id && (
-          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-            <div className="bg-white p-3 rounded-[20px] border border-rose-100 flex gap-2 mx-2 mt-1 shadow-md">
-              <input
-                type="text" autoFocus value={replyText}
-                onChange={(e) => setReplyText(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSendReply(req.from_user_id)}
-                placeholder="Scrivi la tua risposta..."
-                className="flex-1 bg-stone-50 text-sm outline-none px-3 py-2 rounded-xl placeholder:text-stone-300"
-              />
-              <button onClick={() => handleSendReply(req.from_user_id)} disabled={!replyText.trim() || isSendingReply} className="w-10 h-10 bg-rose-600 text-white rounded-xl flex items-center justify-center disabled:opacity-30">
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            </div>
-          </motion.div>
+        ) : (
+          <div className="space-y-6">
+            {/* ── SEZIONE: AMICI (Modello AmiciPage) ── */}
+            {friends.length > 0 && (
+              <div className="space-y-3">
+                <h4 className="text-[10px] uppercase font-black tracking-widest text-violet-500 flex items-center gap-1.5 px-2">
+                  <UserCheck className="w-3.5 h-3.5" /> I tuoi SoulLinks
+                </h4>
+                <div className="flex gap-4 overflow-x-auto pb-2 px-1 scrollbar-hide">
+                  {friends.map(f => (
+                    <motion.div
+                      key={f.id}
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => navigate(`/live-chat/${f.other_user?.id}`)}
+                      className="flex flex-col items-center gap-2 shrink-0 cursor-pointer group"
+                    >
+                      <div className="relative">
+                        <ProfileAvatar
+                          user={f.other_user}
+                          className="w-16 h-16 rounded-[22px] border-2 border-white shadow-md group-hover:border-violet-200 transition-all"
+                          iconSize="w-8 h-8"
+                        />
+                        {f.other_user?.is_online && (
+                          <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-emerald-400 border-[3px] border-white rounded-full shadow-sm" />
+                        )}
+                      </div>
+                      <span className="text-[10px] font-black text-stone-700 max-w-[64px] truncate">{f.other_user?.name}</span>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Chat Attive e Messaggi (WhatsApp Style) */}
+            {activeChats.length > 0 && (
+              <div className="space-y-1">
+                <h4 className="text-[10px] uppercase font-black tracking-widest text-emerald-500 flex items-center gap-1.5 px-2 mb-3 mt-4">
+                  <MessageSquare className="w-3.5 h-3.5" /> Conversazioni Recenti
+                </h4>
+                {activeChats.map((chat) => (
+                  <div key={chat.other_user.id} onClick={() => navigate(`/live-chat/${chat.other_user.id}`)} className="bg-white border-b border-stone-50 overflow-hidden cursor-pointer hover:bg-stone-50 transition-colors">
+                    <div className="flex items-center gap-4 p-4">
+                      <div className="w-14 h-14 rounded-full overflow-hidden border border-stone-100 shrink-0 relative">
+                        <ProfileAvatar user={chat.other_user} className="w-full h-full" iconSize="w-6 h-6" />
+                        <div className={cn(
+                          "absolute bottom-0.5 right-0.5 w-3.5 h-3.5 border-2 border-white rounded-full",
+                          chat.other_user.is_online ? "bg-emerald-500" : "bg-stone-300"
+                        )}></div>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-center mb-0.5">
+                          <h3 className="text-[15px] font-black text-stone-900 truncate flex-1">
+                            {chat.other_user.name}
+                          </h3>
+                          <span className="text-[10px] text-stone-400 font-bold uppercase tracking-tight ml-2">
+                            {new Date(chat.created_at).getHours()}:{String(new Date(chat.created_at).getMinutes()).padStart(2, '0')}
+                          </span>
+                        </div>
+                        <p className="text-[13px] text-stone-500 truncate font-medium">
+                          {chat.isSender ? 'Tu: ' : ''}{chat.last_msg}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         )}
-      </AnimatePresence>
-    </motion.div>
+      </div>
+
+      <AppBottomNav activeTab="chat" />
+
+    </div>
   );
 };
 
@@ -6132,7 +6419,8 @@ const ProfilePage = () => {
           const chatMap = new Map();
           for (const m of msgs) {
             const isSender = m.sender_id === userId;
-            const otherUser = isSender ? m.receiver : m.sender;
+            const u: any = isSender ? m.receiver : m.sender;
+            const otherUser = Array.isArray(u) ? u[0] : u;
             if (!otherUser) continue;
             if (!chatMap.has(otherUser.id)) {
               chatMap.set(otherUser.id, {
@@ -6324,7 +6612,7 @@ const ProfilePage = () => {
   const heroPhoto = (user.photos && user.photos.length > 0) ? user.photos[0] : (user.photo_url || `https://picsum.photos/seed/${user.name}/400/600`);
 
   return (
-    <div className="min-h-screen bg-[#F8F4EF] pt-16 pb-28 relative overflow-x-hidden">
+    <div className="min-h-screen bg-stone-50 pt-16 pb-28 relative overflow-x-hidden">
       <AnimatePresence>
         {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       </AnimatePresence>
@@ -6337,7 +6625,7 @@ const ProfilePage = () => {
           className="w-full h-full object-cover object-top"
         />
         {/* Gradient overlay: transparent at top, full colour at bottom */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-[#F8F4EF]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-[stone-50]" />
 
         {/* Floating Actions */}
         <div className="absolute top-4 right-4 flex flex-col gap-2 z-20">
@@ -6377,10 +6665,7 @@ const ProfilePage = () => {
       <div className="mx-4 mt-3 bg-white rounded-[28px] shadow-sm border border-stone-100 flex justify-between overflow-hidden">
         {[
           { icon: ThumbsUp, val: user.likes_count || 0, label: 'Like', color: 'text-blue-500' },
-          { icon: Heart, val: user.hearts_count || 0, label: 'Cuori', color: 'text-rose-500' },
-          { icon: Camera, val: user.photos?.length || 0, label: 'Foto', color: 'text-emerald-500' },
-          { icon: MessageSquare, val: liveChatsCount, label: 'Chat', color: 'text-sky-500' },
-          { icon: MessageCircle, val: chatRequests.length, label: 'Messaggi', color: 'text-amber-500' }
+          { icon: Heart, val: user.hearts_count || 0, label: 'Cuori', color: 'text-rose-500' }
         ].map((s, i) => (
           <div key={i} className="flex-1 flex flex-col items-center py-4 gap-1 border-r border-stone-100 last:border-0 border-dashed">
             <span className="text-xl font-black text-stone-900">{s.val}</span>
@@ -6534,20 +6819,29 @@ const ProfilePage = () => {
                         <MessageSquare className="w-3.5 h-3.5" /> Chat in corso
                       </h4>
                       {activeChats.map((chat, index) => (
-                        <div key={chat.other_user.id} onClick={() => setActiveChatTarget(chat.other_user)} className="bg-white rounded-[24px] border border-sky-100 p-3 flex items-center gap-3 shadow-sm cursor-pointer hover:bg-sky-50 transition-colors">
-                          <div className="relative w-12 h-12 rounded-[16px] overflow-hidden border border-stone-100 shrink-0">
-                            <img src={chat.other_user.photos?.[0] || chat.other_user.photo_url || `https://picsum.photos/seed/${chat.other_user.id}/100`} className="w-full h-full object-cover" />
-                            {chat.other_user.is_online && <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full"></div>}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between mb-1">
-                              <h4 className="text-sm font-black text-stone-900 truncate">{chat.other_user.name}</h4>
-                              <span className="text-[9px] text-stone-400 font-bold uppercase tracking-widest">{new Date(chat.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        <div key={chat.other_user.id} onClick={() => setActiveChatTarget(chat.other_user)} className="bg-white rounded-[24px] border border-stone-100 shadow-sm overflow-hidden cursor-pointer hover:bg-stone-50 transition-colors">
+                          <div className="flex items-center gap-4 p-4">
+                            <div className="w-16 h-16 rounded-[18px] overflow-hidden border border-stone-100 shadow-sm shrink-0 relative">
+                              <img src={chat.other_user.photos?.[0] || chat.other_user.photo_url || `https://picsum.photos/seed/${chat.other_user.id}/100`} className="w-full h-full object-cover" />
+                              <div className={cn(
+                                "absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 border-2 border-white rounded-full",
+                                chat.other_user.is_online ? "bg-emerald-500" : "bg-rose-500"
+                              )}></div>
                             </div>
-                            <p className="text-[11px] text-stone-500 truncate font-medium">{chat.isSender ? 'Tu: ' : ''}{chat.last_msg}</p>
-                          </div>
-                          <div className="w-8 h-8 bg-sky-100 text-sky-600 rounded-full flex items-center justify-center shrink-0">
-                            <ChevronRight className="w-4 h-4" />
+                            <div className="flex-1 min-w-0">
+                              <h3 className="text-sm font-black text-stone-900 truncate">
+                                {chat.other_user.name}
+                              </h3>
+                              <p className="text-[11px] text-stone-500 truncate font-medium mt-1 mb-1">
+                                {chat.isSender ? 'Tu: ' : ''}{chat.last_msg}
+                              </p>
+                              <span className="text-[9px] text-stone-400 font-bold uppercase tracking-widest block">
+                                {new Date(chat.created_at).toLocaleString([], { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                            <div className="w-10 h-10 bg-rose-600 text-white rounded-[14px] flex items-center justify-center shadow-md shrink-0">
+                              <ChevronRight className="w-5 h-5" />
+                            </div>
                           </div>
                         </div>
                       ))}
@@ -6825,7 +7119,7 @@ const LegalPage = ({
 }) => {
   const navigate = useNavigate();
   return (
-    <div className="min-h-screen bg-[#F8F4EF] pt-[72px] pb-24">
+    <div className="min-h-screen bg-stone-50 pt-[72px] pb-24">
       {/* Header */}
       <div className="px-5 pt-4 pb-6 max-w-md mx-auto">
         <button
@@ -7034,21 +7328,28 @@ export default function App() {
       const saved = localStorage.getItem('soulmatch_user');
       if (saved) {
         try {
-          const u = normalizeUser(JSON.parse(saved));
+          const u = JSON.parse(saved);
           if (u?.id) {
-            const { data, error } = await supabase.from('users').select('id, is_online').eq('id', u.id).single();
-            if (error || !data) {
-              console.warn("Sessione non valida o profilo rimosso. Pulizia locale...");
+            // Use maybeSingle to avoid error on 0 rows
+            const { data, error } = await supabase.from('users').select('id, is_online').eq('id', u.id).maybeSingle();
+
+            if (error) {
+              console.error("Errore verifica sessione (DB):", error);
+              // Non puliamo in caso di errore di connessione/timeout
+              return;
+            }
+
+            if (!data) {
+              console.warn("Profilo non trovato nel database. Pulizia sessione locale.");
               localStorage.removeItem('soulmatch_user');
               window.dispatchEvent(new Event('user-auth-change'));
             } else {
-              // Update online status on start
+              // Update status
               await supabase.from('users').update({ is_online: true, last_seen: new Date().toISOString() }).eq('id', u.id);
             }
           }
         } catch (e) {
-          localStorage.removeItem('soulmatch_user');
-          window.dispatchEvent(new Event('user-auth-change'));
+          console.error("Errore verifica sessione (Local):", e);
         }
       }
     };
@@ -7166,6 +7467,8 @@ export default function App() {
         <Route path="/feed" element={<FeedPage />} />
         <Route path="/amici" element={<AmiciPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/chat" element={<ChatPage />} />
+        <Route path="/live-chat/:id" element={<LiveChatPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/edit-profile" element={<EditProfilePage />} />
         <Route path="/admin" element={<AdminPage />} />
