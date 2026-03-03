@@ -83,13 +83,22 @@ const AppBottomNav = () => {
   const [lastScrollY, setLastScrollY] = useState(0);
 
   useEffect(() => {
+    let scrollDistance = 0;
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
-      if (currentScrollY > lastScrollY && currentScrollY > 100) {
-        setIsNavVisible(false);
-      } else {
+      const delta = currentScrollY - lastScrollY;
+
+      if (delta > 0 && currentScrollY > 400) {
+        scrollDistance += delta;
+        if (scrollDistance > 100) { // Richiede 100px di scroll continuo verso il basso
+          setIsNavVisible(false);
+        }
+      } else if (delta < -15) { // Mostra non appena si scorre verso l'alto
         setIsNavVisible(true);
+        scrollDistance = 0;
       }
+
+      if (delta < 0) scrollDistance = 0;
       setLastScrollY(currentScrollY);
     };
     window.addEventListener('scroll', handleScroll, { passive: true });
@@ -198,7 +207,7 @@ const AppBottomNav = () => {
           borderRadius: isNavVisible ? "40px" : "32px",
           x: isNavVisible ? 0 : -140, // Trasla a sinistra
         }}
-        transition={{ type: 'spring', damping: 25, stiffness: 220 }}
+        transition={{ type: 'spring', damping: 30, stiffness: 450, mass: 0.8 }}
         className={cn(
           "pointer-events-auto shadow-2xl border border-white/10 bg-stone-900/95 backdrop-blur-2xl p-2 gap-1 overflow-hidden flex items-center justify-center",
           !isNavVisible && "cursor-pointer"
@@ -2109,6 +2118,12 @@ const BachecaPage = () => {
   const [selectedGenders, setSelectedGenders] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [showSearch, setShowSearch] = useState(false);
+  const [unlockedIds, setUnlockedIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('soulmatch_unlocked_ids');
+    if (saved) setUnlockedIds(JSON.parse(saved));
+  }, [showSoulMatch]); // Refresh when soulmatch overlay closes
 
   const SM_COOLDOWN_KEY = 'soulmatch_last_used';
   const COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24h
@@ -2611,8 +2626,8 @@ const BachecaPage = () => {
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/100 via-black/40 to-transparent" />
 
-                    {/* Match Score Badge (Permanent) - REDESIGNED: Concave & 60% Larger */}
-                    {currentUser && (
+                    {/* Match Score Badge (Permanent) - ONLY IF UNLOCKED */}
+                    {currentUser && unlockedIds.includes(profile.id) && (
                       <div className="absolute top-0 left-0 z-20 pointer-events-none drop-shadow-[0_4px_10px_rgba(225,29,72,0.4)]">
                         <svg width="100" height="100" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-[88px] h-[88px]">
                           <path d="M 0 0 L 100 0 Q 15 15 0 100 Z" fill="#e11d48" />
@@ -2860,6 +2875,18 @@ const SoulMatchPage = () => {
 
   // Top 10 Discovery State
   const [showRankings, setShowRankings] = useState(false);
+  const [unlockedIds, setUnlockedIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('soulmatch_unlocked_ids');
+    if (saved) setUnlockedIds(JSON.parse(saved));
+  }, []);
+
+  const unlockId = (id: string) => {
+    const next = [...new Set([...unlockedIds, id])];
+    setUnlockedIds(next);
+    localStorage.setItem('soulmatch_unlocked_ids', JSON.stringify(next));
+  };
 
   const navigate = useNavigate();
 
@@ -2925,8 +2952,10 @@ const SoulMatchPage = () => {
     setMatchScore(null);
     setShowRankings(false);
     setTimeout(() => {
-      setMatchScore(calculateMatchScore(currentUser, user));
+      const score = calculateMatchScore(currentUser, user);
+      setMatchScore(score);
       setCalculating(false);
+      unlockId(user.id);
     }, 2200);
   };
 
@@ -2936,6 +2965,11 @@ const SoulMatchPage = () => {
     setTimeout(() => {
       setCalculating(false);
       setShowRankings(true);
+      // Unlock all current results
+      const allIds = currentList.map(p => p.id);
+      const next = [...new Set([...unlockedIds, ...allIds])];
+      setUnlockedIds(next);
+      localStorage.setItem('soulmatch_unlocked_ids', JSON.stringify(next));
     }, 2500);
   };
 
@@ -3018,8 +3052,8 @@ const SoulMatchPage = () => {
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-stone-900/95 via-stone-900/10 to-transparent opacity-90 transition-opacity" />
 
-                  {/* Match Score Badge (Permanent) - REDESIGNED: Concave & 60% Larger */}
-                  {currentUser && (
+                  {/* Match Score Badge (Permanent) - ONLY IF UNLOCKED */}
+                  {currentUser && unlockedIds.includes(p.id) && (
                     <div className="absolute top-0 left-0 z-20 pointer-events-none drop-shadow-[0_4px_10px_rgba(225,29,72,0.4)]">
                       <svg width="100" height="100" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-[88px] h-[88px]">
                         <path d="M 0 0 L 100 0 Q 15 15 0 100 Z" fill="#e11d48" />
@@ -3081,36 +3115,36 @@ const SoulMatchPage = () => {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="fixed inset-0 z-[200] bg-white flex flex-col items-center justify-between py-12 px-6"
+            className="fixed inset-0 z-[200] bg-white flex flex-col items-center justify-between py-6 px-6 overflow-y-auto"
           >
             {/* Header */}
-            <div className="w-full flex items-center justify-between">
+            <div className="w-full flex items-center justify-between shrink-0">
               <button
                 onClick={() => setTargetUser(null)}
-                className="w-12 h-12 bg-stone-50 rounded-full flex items-center justify-center text-stone-400 border border-stone-100"
+                className="w-10 h-10 bg-stone-50 rounded-full flex items-center justify-center text-stone-400 border border-stone-100"
               >
-                <X className="w-6 h-6" />
+                <X className="w-5 h-5" />
               </button>
               <div className="flex flex-col items-center">
-                <h2 className="text-xl font-serif font-black text-[#2E1139]">Analisi SoulMatch</h2>
-                <span className="text-[8px] font-black text-rose-500 uppercase tracking-[0.3em]">Sincronizzazione Perfetta</span>
+                <h2 className="text-lg font-serif font-black text-[#2E1139]">Analisi SoulMatch</h2>
+                <span className="text-[7px] font-black text-rose-500 uppercase tracking-[0.3em]">Sincronizzazione Perfetta</span>
               </div>
-              <div className="w-12" />
+              <div className="w-10" />
             </div>
 
             {/* Main Content Area */}
-            <div className="flex-1 flex flex-col items-center justify-center w-full space-y-12">
-              <div className="text-center space-y-2">
-                <h1 className="text-3xl font-serif font-black text-[#2E1139]">Trova la tua anima gemella</h1>
-                <p className="text-stone-400 text-xs font-medium max-w-[240px] mx-auto">Calcoliamo l'affinità energetica per una connessione perfetta.</p>
+            <div className="flex-1 flex flex-col items-center justify-center w-full space-y-6 py-4">
+              <div className="text-center space-y-1">
+                <h1 className="text-2xl font-serif font-black text-[#2E1139]">Trova la tua anima gemella</h1>
+                <p className="text-stone-400 text-[10px] font-medium max-w-[200px] mx-auto">Calcoliamo l'affinità energetica per una connessione perfetta.</p>
               </div>
 
-              {/* DYNAMIC AVATAR COMPOSITION (MAXI SIZE) */}
-              <div className="relative w-80 h-80 flex items-center justify-center scale-110">
+              {/* DYNAMIC AVATAR COMPOSITION (COMPACT SIZE) */}
+              <div className="relative w-64 h-64 flex items-center justify-center">
                 {/* AVATAR TOP LEFT */}
                 <motion.div
                   animate={{
-                    y: [0, -15, 0],
+                    y: [0, -10, 0],
                     scale: [1, 1.05, 1],
                     rotate: [-8, -6, -8]
                   }}
@@ -3119,7 +3153,7 @@ const SoulMatchPage = () => {
                     duration: 4,
                     ease: "easeInOut"
                   }}
-                  className="absolute top-0 left-0 w-56 h-56 border-[10px] border-white shadow-2xl overflow-hidden z-10 bg-rose-50"
+                  className="absolute top-0 left-0 w-44 h-44 border-[8px] border-white shadow-xl overflow-hidden z-10 bg-rose-50"
                   style={{
                     borderRadius: "38% 62% 63% 37% / 41% 44% 56% 59%" // Irregular border/blob
                   }}
@@ -3130,7 +3164,7 @@ const SoulMatchPage = () => {
                 {/* AVATAR BOTTOM RIGHT */}
                 <motion.div
                   animate={{
-                    y: [0, 15, 0],
+                    y: [0, 10, 0],
                     scale: [1, 1.05, 1],
                     rotate: [8, 10, 8]
                   }}
@@ -3140,7 +3174,7 @@ const SoulMatchPage = () => {
                     ease: "easeInOut",
                     delay: 0.5
                   }}
-                  className="absolute bottom-0 right-0 w-56 h-56 border-[10px] border-white shadow-2xl overflow-hidden z-10 bg-purple-50"
+                  className="absolute bottom-0 right-0 w-44 h-44 border-[8px] border-white shadow-xl overflow-hidden z-10 bg-purple-50"
                   style={{
                     borderRadius: "62% 38% 37% 63% / 59% 56% 44% 41%" // Irregular border/blob
                   }}
@@ -3152,49 +3186,44 @@ const SoulMatchPage = () => {
                 <motion.div
                   initial={{ scale: 0, opacity: 0 }}
                   animate={{
-                    scale: matchScore !== null ? [1, 1.15, 1] : 0,
+                    scale: matchScore !== null ? [1, 1.1, 1] : 0,
                     opacity: matchScore !== null ? 1 : 0
                   }}
                   transition={{
                     scale: { repeat: Infinity, duration: 1.5 },
                     opacity: { duration: 0.5 }
                   }}
-                  className="absolute z-20 w-36 h-36 flex items-center justify-center"
+                  className="absolute z-20 w-32 h-32 flex items-center justify-center"
                 >
-                  <Heart className="w-full h-full text-rose-600 fill-current drop-shadow-[0_0_25px_rgba(225,29,72,0.6)]" />
+                  <Heart className="w-full h-full text-rose-600 fill-current drop-shadow-[0_0_20px_rgba(225,29,72,0.5)]" />
                   <div className="absolute inset-0 flex flex-col items-center justify-center text-white pb-2">
-                    <span className="text-2xl font-black tracking-tighter leading-none">{matchScore}%</span>
-                    <span className="text-[9px] font-black uppercase tracking-[0.3em] opacity-80 mt-1">Match</span>
+                    <span className="text-xl font-black tracking-tighter leading-none">{matchScore}%</span>
+                    <span className="text-[8px] font-black uppercase tracking-[0.2em] opacity-80 mt-1">Match</span>
                   </div>
                 </motion.div>
               </div>
 
               {/* Match Feedback or Loading */}
-              <div className="w-full max-w-xs text-center min-h-[60px]">
+              <div className="w-full max-w-xs text-center min-h-[50px]">
                 {calculating ? (
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     <div className="flex justify-center space-x-2">
                       {[0, 1, 2].map(i => (
-                        <motion.div key={i} animate={{ scale: [1, 1.5, 1], opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1, delay: i * 0.2 }} className="w-2.5 h-2.5 bg-rose-500 rounded-full" />
+                        <motion.div key={i} animate={{ scale: [1, 1.3, 1], opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1, delay: i * 0.2 }} className="w-2 h-2 bg-rose-500 rounded-full" />
                       ))}
                     </div>
-                    <p className="text-[10px] font-black text-[#2E1139] uppercase tracking-[0.5em] animate-pulse">Sincronizzazione in corso</p>
+                    <p className="text-[9px] font-black text-[#2E1139] uppercase tracking-[0.4em] animate-pulse">Sincronizzazione in corso</p>
                   </div>
                 ) : matchScore !== null && (
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="space-y-3"
+                    className="space-y-2"
                   >
-                    <p className="text-[#2E1139] text-sm font-black italic">
+                    <p className="text-[#2E1139] text-xs font-black italic px-4">
                       {matchScore >= 80 ? '"Una sintonia rara e profonda."' :
                         matchScore >= 50 ? '"Ottime basi per connettersi."' :
                           '"Differenze interessanti da esplorare."'}
-                    </p>
-                    <p className="text-stone-400 text-[11px] font-medium leading-relaxed italic px-4">
-                      {matchScore >= 80 ? "Le vostre anime risuonano sulla stessa frequenza." :
-                        matchScore >= 50 ? "C'è molto da scoprire insieme in questa danza." :
-                          "L'attrazione nasce spesso dal contrasto."}
                     </p>
                   </motion.div>
                 )}
@@ -3202,16 +3231,33 @@ const SoulMatchPage = () => {
             </div>
 
             {/* Action Buttons */}
-            <div className="w-full space-y-4">
-              <button
-                onClick={() => navigate(`/profile-detail/${targetUser.id}`)}
-                className="w-full h-18 bg-[#2E1139] text-white rounded-[28px] text-sm font-black uppercase tracking-[0.2em] shadow-xl shadow-purple-900/20 active:scale-95 transition-all"
-              >
-                Visualizza Profilo
-              </button>
+            <div className="w-full space-y-3 shrink-0">
+              <div className="flex gap-2">
+                <button
+                  onClick={() => navigate(`/profile-detail/${targetUser.id}`)}
+                  className="flex-1 h-14 bg-[#2E1139] text-white rounded-[24px] text-xs font-black uppercase tracking-[0.2em] shadow-lg active:scale-95 transition-all"
+                >
+                  Profilo
+                </button>
+                <button
+                  onClick={async () => {
+                    await supabase.from('interactions').insert({
+                      from_user_id: currentUser?.id,
+                      to_user_id: targetUser.id,
+                      type: 'heart', // Using heart as a 'match notification'
+                      metadata: { match_score: matchScore, source: 'soulmatch' }
+                    });
+                    alert(`Match del ${matchScore}% inviato a ${targetUser.name}!`);
+                  }}
+                  className="w-14 h-14 bg-rose-600 text-white rounded-[24px] flex items-center justify-center shadow-lg shadow-rose-500/30 active:scale-95 transition-all"
+                  title="Invia Match"
+                >
+                  <Send className="w-5 h-5" />
+                </button>
+              </div>
               <button
                 onClick={() => setTargetUser(null)}
-                className="w-full h-16 bg-rose-50 text-rose-600 rounded-[28px] text-xs font-black uppercase tracking-[0.2em] active:scale-95 transition-all"
+                className="w-full h-12 bg-rose-50 text-rose-600 rounded-[24px] text-[10px] font-black uppercase tracking-[0.2em] active:scale-95 transition-all"
               >
                 Torna alla Bacheca
               </button>
