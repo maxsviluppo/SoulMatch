@@ -2167,7 +2167,7 @@ const ProfileDetailPage = () => {
             {/* Heart + score */}
             <div className="absolute inset-0 flex items-end justify-end pb-14 pr-14">
               {currentUser ? (
-                <div className="relative flex items-center justify-center" style={{ width: 210, height: 210, transform: 'rotate(30deg) translateX(20px) translateY(-30px)' }}>
+                <div className="relative flex items-center justify-center" style={{ width: 210, height: 210, transform: 'rotate(25deg) translateX(20px) translateY(-30px)' }}>
                   {/* Dynamic hearts count: slowed duration by another 10% */}
                   {Array.from({ length: Math.max(1, Math.min(10, Math.round(matchScore / 10))) }).map((_, i) => (
                     <div key={i} className="orbit-heart-b" style={{ '--dur': `${3.2 + i * 0.45}s`, '--delay': `${i * 0.45}s` } as React.CSSProperties}>
@@ -2186,7 +2186,7 @@ const ProfileDetailPage = () => {
                   </div>
                 </div>
               ) : (
-                <div className="relative flex items-center justify-center" style={{ width: 168, height: 168, transform: 'rotate(30deg) translateX(20px) translateY(-30px)' }}>
+                <div className="relative flex items-center justify-center" style={{ width: 168, height: 168, transform: 'rotate(25deg) translateX(20px) translateY(-30px)' }}>
                   <svg width="147" height="147" viewBox="0 0 24 24" className="heart-beat-b" style={{ filter: 'drop-shadow(0 0 22px rgba(255,255,255,0.6))' }}>
                     <path d="M12 21.593c-5.63-5.539-11-10.297-11-14.402 0-3.791 3.068-5.191 5.281-5.191 1.312 0 4.151.501 5.719 4.457 1.59-3.968 4.464-4.447 5.726-4.447 2.54 0 5.274 1.621 5.274 5.181 0 4.069-5.136 8.625-11 14.402z" fill="rgba(255,255,255,0.75)" />
                   </svg>
@@ -2490,79 +2490,51 @@ const BachecaPage = () => {
     if (!cityMatch || !ageMatch || !bodyTypeMatch || !nameMatch) return false;
 
     // ─── 2. Preference-based matching (Identità, Attrazione, Inclusione) ───
-
-    // Raggruppamento Logico Macro-Aree
     const getMacroArea = (gender: string) => {
       const g = gender?.toLowerCase() || '';
       if (['uomo', 'mascolino'].includes(g)) return 'M';
       if (['donna', 'femminile'].includes(g)) return 'F';
       if (['non-binario', 'genderfluid', 'queer', 'genderqueer', 'agender', 'bigender', 'pangender', 'neutrois', 'intersex', 'altro'].includes(g)) return 'NB';
       if (['transgender'].includes(g)) return 'TRANS';
-      return 'NB'; // Fallback per identità fluide
+      return 'NB'; // Default fallback
     };
 
     const viewer = normalizeUser(currentUser);
     const target = normalizeUser(p);
-
     if (!viewer || !target) return false;
 
     const macroV = getMacroArea(viewer.gender);
     const macroT = getMacroArea(target.gender);
 
     const wantsV = selectedGenders.map((g: string) => g.toLowerCase());
-    const wantsT = (target.looking_for_gender || []).map((g: string) => g.toLowerCase());
-
     const isWildcard = (arr: string[]) => arr.some(v => ['tutti', 'tutte', 'entrambi', 'qualsiasi', 'tutti i generi'].includes(v));
 
-    // A. RECIPROCITÀ GENDER MATCH - Reso più permissivo per la Bacheca
+    // A. GENDER MATCH (Cosa cerco IO)
     const targetGender = target.gender?.toLowerCase() || '';
-    const viewerGender = viewer.gender?.toLowerCase() || '';
     const viewerWantsTarget = wantsV.length === 0 || isWildcard(wantsV) || wantsV.includes(targetGender);
-
-    // Mostriamo in bacheca chi NOI cerchiamo. 
-    // La reciprocità la lasciamo come "soft filter" o per il SoulMatch se vuoi, 
-    // ma per ora in bacheca vogliamo vedere chiunque IO possa gradire.
     if (!viewerWantsTarget) return false;
 
-    // B. COMPATIBILITÀ ORIENTAMENTO (Il Motore)
+    // B. COMPATIBILITÀ ORIENTAMENTO (Più permissivo per la Bacheca)
     const checkOri = (myMacro: string, myOris: string[], targetMacro: string) => {
-      // 1. Eterosessuale: M -> F, F -> M
+      if (myOris.length === 0) return true; // Se non specificato, aperto a tutto
+      if (myMacro === 'NB' || targetMacro === 'NB') return true; // NB è jolly in bacheca discovery
+
       if (myOris.includes('Eterosessuale')) {
-        return (myMacro === 'M' && targetMacro === 'F') || (myMacro === 'F' && targetMacro === 'M');
+        return (myMacro === 'M' && targetMacro === 'F') || (myMacro === 'F' && targetMacro === 'M') || targetMacro === 'TRANS';
       }
-
-      // 2. Gay / Lesbica: M -> M(+NB compatible), F -> F(+NB compatible)
-      if (myOris.includes('Gay')) {
-        return targetMacro === 'M' || targetMacro === 'NB';
+      if (myOris.includes('Gay') || myOris.includes('Lesbica')) {
+        return myMacro === targetMacro || targetMacro === 'TRANS' || targetMacro === 'NB';
       }
-      if (myOris.includes('Lesbica')) {
-        return targetMacro === 'F' || targetMacro === 'NB';
-      }
-
-      // 3. Bisessuale / Pansessuale / Queer / Fluido: Aperto a tutti (già filtrato da chi_cerca)
-      if (myOris.some(o => ['Bisessuale', 'Pansessuale', 'Queer', 'Fluido', 'Polisessuale', 'Curioso/a'].includes(o))) {
-        return true;
-      }
-
-      // 4. Asessuale / Demisessuale / Sapiosessuale: Si basa puramente su chi_cerca
-      if (myOris.some(o => ['Asessuale', 'Demisessuale', 'Sapiosexual', 'Aromantic'].includes(o))) {
-        return true;
-      }
-
-      return true; // Default per altri orientamenti
+      // Bisessuale/Pansessuale/etc.
+      return true;
     };
 
     const orisV = viewer.orientation || [];
-    const orisT = target.orientation || [];
-
     const vCompatibleWithT = checkOri(macroV, orisV, macroT);
-    const tCompatibleWithV = checkOri(macroT, orisT, macroV);
 
-    if (!vCompatibleWithT || !tCompatibleWithV) return false;
-
-    // C. CASI SPECIALI: Transgender
-    // Se l'utente A cerca specificamente Transgender, il profilo B deve essere Transgender.
-    // Viceversa, se B è Transgender, A deve avere 'Transgender' o un Wildcard nel suo "Chi Cerca" (già gestito sopra nel Reciprocal Match).
+    // In bacheca discovery, mostriamo chiunque il viewer possa gradire 
+    // senza forzare la reciprocità stretta (che resta per il SoulMatch)
+    if (!vCompatibleWithT) return false;
 
     return true;
   });

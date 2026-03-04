@@ -21,31 +21,42 @@ export function calculateAge(dob: string): number {
 export function calculateMatchScore(u1: any, u2: any): number {
   if (!u1 || !u2) return 0;
 
-  let score = 40; // Base score
+  let score = 0; // Start at 0 for new/empty users
 
   // 1. Common Interests (Hobbies)
   const h1 = (u1.hobbies || "").toLowerCase().split(",").map((s: string) => s.trim()).filter(Boolean);
   const h2 = (u2.hobbies || "").toLowerCase().split(",").map((s: string) => s.trim()).filter(Boolean);
   const common = h1.filter((h: string) => h2.includes(h));
-  score += common.length * 12;
+
+  if (common.length > 0) {
+    score += common.length * 15;
+    if (common.length >= 3) score += 10;
+  }
 
   // 2. City Proximity
   if (u1.city && u2.city && u1.city.toLowerCase() === u2.city.toLowerCase()) {
-    score += 15;
+    score += 20;
   }
 
   // 3. Age Proximity
   const a1 = calculateAge(u1.dob);
   const a2 = calculateAge(u2.dob);
-  const ageDiff = Math.abs(a1 - a2);
-  if (ageDiff <= 3) score += 10;
-  else if (ageDiff <= 7) score += 5;
+  if (a1 > 0 && a2 > 0) {
+    const ageDiff = Math.abs(a1 - a2);
+    if (ageDiff <= 3) score += 15;
+    else if (ageDiff <= 7) score += 8;
+  }
 
   // 4. Orientation & Gender Harmony
-  if (u1.orientation === u2.orientation) score += 5;
+  if (u1.orientation && u2.orientation && u1.orientation === u2.orientation) {
+    score += 10;
+  }
+
+  // Add a base affinity if there is at least one match
+  if (score > 0) score += 20;
 
   // Cap score
-  return Math.min(Math.max(score, 20), 99);
+  return Math.min(Math.max(score, 0), 99);
 }
 
 export async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promise<string> {
