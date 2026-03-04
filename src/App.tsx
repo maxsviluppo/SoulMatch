@@ -187,7 +187,7 @@ const AppBottomNav = () => {
   if (shouldHide) return null;
 
   return (
-    <div className="fixed bottom-8 left-0 right-0 z-[100] px-4 pointer-events-none flex justify-center">
+    <div className="fixed bottom-[calc(2rem+env(safe-area-inset-bottom))] left-0 right-0 z-[100] px-4 pointer-events-none flex justify-center">
       <motion.div
         layout
         initial={false}
@@ -200,7 +200,7 @@ const AppBottomNav = () => {
         }}
         transition={{ type: 'spring', damping: 30, stiffness: 600, mass: 0.6 }}
         className={cn(
-          "pointer-events-auto shadow-2xl border border-white/8 bg-black/40 backdrop-blur-3xl p-2 gap-1 overflow-hidden flex items-center justify-center",
+          "pointer-events-auto shadow-2xl border border-white/8 bg-black/40 backdrop-blur-3xl p-2 gap-1 overflow-hidden flex items-center justify-center safe-pb",
           !isNavVisible && "cursor-pointer"
         )}
         onClick={() => !isNavVisible && setIsNavVisible(true)}
@@ -597,7 +597,7 @@ const Navbar = () => {
   }
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 px-6 py-3 flex justify-between items-center bg-black/20 backdrop-blur-3xl border-b border-white/5 shadow-lg overflow-hidden">
+    <nav className="fixed top-0 left-0 right-0 z-50 px-6 py-3 flex justify-between items-center bg-black/20 backdrop-blur-3xl border-b border-white/5 shadow-lg overflow-hidden safe-pt">
       {/* Floating hearts decoration — background only */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <style>{`
