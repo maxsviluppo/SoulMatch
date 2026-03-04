@@ -116,12 +116,32 @@ const AppBottomNav = () => {
         .eq('status', 'pending');
       setPendingCount(friendsCount || 0);
 
+      // Count pending chat requests (messages)
       const { count: msgsCount } = await supabase
         .from('chat_requests')
         .select('*', { count: 'exact', head: true })
         .eq('to_user_id', currentUserId)
         .eq('status', 'pending');
-      setChatCount(msgsCount || 0);
+
+      // Count unread room_messages (live chat messages not yet read)
+      const readChats = JSON.parse(localStorage.getItem('sm_read_chats') || '[]') as string[];
+      const { data: unreadRooms } = await supabase
+        .from('room_messages')
+        .select('sender_id')
+        .eq('receiver_id', currentUserId)
+        .order('created_at', { ascending: false });
+
+      let unreadRoomCount = 0;
+      if (unreadRooms && unreadRooms.length > 0) {
+        const unreadSenders = new Set(
+          unreadRooms
+            .map((m: any) => m.sender_id)
+            .filter((sid: string) => !readChats.includes(sid))
+        );
+        unreadRoomCount = unreadSenders.size;
+      }
+
+      setChatCount((msgsCount || 0) + unreadRoomCount);
     } catch (e) { }
   };
 
@@ -1601,6 +1621,7 @@ const LiveChatPage = () => {
           </button>
         </div>
       </div>
+
     </div>
   );
 };
@@ -1618,6 +1639,7 @@ const ProfileDetailPage = () => {
   const [messageText, setMessageText] = useState('');
   const [soulLinkStatus, setSoulLinkStatus] = useState<'none' | 'pending_sent' | 'pending_received' | 'accepted' | 'rejected'>('none');
   const [soulLinkId, setSoulLinkId] = useState<string | null>(null);
+  const [heroIndex, setHeroIndex] = useState(0);
   const navigate = useNavigate();
 
   const fetchInteractionState = async (currentUserId: string) => {
@@ -1938,199 +1960,245 @@ const ProfileDetailPage = () => {
 
       {/* ── HERO PHOTO with bottom fade ── */}
       <div className="relative w-full h-[calc(65vh+100px)] min-h-[480px] overflow-hidden" style={{ background: '#0a0a0f' }}>
-        <ProfileAvatar user={profile} className="w-full h-full" iconSize="w-32 h-32" />
-
-        {/* CSS mask: photo fades naturally at bottom */}
-        <div className="absolute inset-0 pointer-events-none" style={{
-          background: 'linear-gradient(to bottom, transparent 30%, rgba(10,10,15,0.5) 65%, rgba(10,10,15,0.9) 85%, #0a0a0f 100%)'
-        }} />
-
-        {/* ── ONLINE / OFFLINE badge top-left ── */}
-        <div className="absolute top-5 left-5 z-20">
-          {profile.is_online ? (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full backdrop-blur-md" style={{ background: 'rgba(16,185,129,0.25)', border: '1px solid rgba(52,211,153,0.5)' }}>
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
-              </span>
-              <span className="text-[10px] font-black text-emerald-300 uppercase tracking-wider">Online</span>
-            </div>
+        <div className="w-full h-full relative" onClick={(e) => {
+          const rect = e.currentTarget.getBoundingClientRect();
+          const x = e.clientX - rect.left;
+          const photosCount = (profile.photos && profile.photos.length > 0) ? profile.photos.length : 1;
+          if (photosCount <= 1) return;
+          if (x < rect.width / 2) {
+            setHeroIndex(prev => (prev - 1 + photosCount) % photosCount);
+          } else {
+            setHeroIndex(prev => (prev + 1) % photosCount);
+          }
+        }}>
+          {profile.photos && profile.photos.length > 0 ? (
+            <img
+              src={profile.photos[heroIndex]}
+              alt={profile.name}
+              className="w-full h-full object-cover transition-all duration-500"
+              referrerPolicy="no-referrer"
+            />
           ) : (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full backdrop-blur-md" style={{ background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(255,255,255,0.2)' }}>
-              <span className="w-2 h-2 rounded-full bg-stone-400" />
-              <span className="text-[10px] font-black text-stone-300 uppercase tracking-wider">Offline</span>
-            </div>
+            <ProfileAvatar user={profile} className="w-full h-full" iconSize="w-32 h-32" />
           )}
-        </div>
 
-        {/* ── LIKE + HEART stats bar (same style as personal profile stats) ── */}
-        <div className="absolute top-5 right-5 z-20 flex gap-2">
-          <button
-            onClick={() => handleInteract('like')}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full backdrop-blur-md transition-all active:scale-95"
-            style={{
-              background: userInteractions.includes('like') ? 'rgba(52,211,153,0.25)' : 'rgba(0,0,0,0.35)',
-              border: userInteractions.includes('like') ? '1px solid rgba(52,211,153,0.5)' : '1px solid rgba(255,255,255,0.2)'
-            }}
-          >
-            <ThumbsUp className={cn("w-3.5 h-3.5", userInteractions.includes('like') ? "text-emerald-400 fill-current" : "text-white/60")} />
-            <span className={cn("text-[11px] font-black", userInteractions.includes('like') ? "text-emerald-300" : "text-white/70")}>{profile.likes_count || 0}</span>
-          </button>
-          <button
-            onClick={() => handleInteract('heart')}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full backdrop-blur-md transition-all active:scale-95"
-            style={{
-              background: userInteractions.includes('heart') ? 'rgba(244,63,94,0.25)' : 'rgba(0,0,0,0.35)',
-              border: userInteractions.includes('heart') ? '1px solid rgba(244,63,94,0.5)' : '1px solid rgba(255,255,255,0.2)'
-            }}
-          >
-            <Heart className={cn("w-3.5 h-3.5", userInteractions.includes('heart') ? "text-rose-400 fill-current" : "text-white/60")} />
-            <span className={cn("text-[11px] font-black", userInteractions.includes('heart') ? "text-rose-300" : "text-white/70")}>{profile.hearts_count || 0}</span>
-          </button>
-        </div>
-
-        {/* Name / age / city overlaid on gradient */}
-        <div className="absolute bottom-0 left-0 right-0 px-5 pb-5 z-10">
-          <h1 className="text-3xl font-montserrat font-black text-white leading-tight drop-shadow-lg">
-            {profile.name}{profile.dob && calculateAge(profile.dob) > 0 ? <span className="font-light text-2xl text-white/60">, {calculateAge(profile.dob)}</span> : null}
-          </h1>
-          <p className="text-white/50 text-[11px] font-bold mt-1 uppercase tracking-widest">
-            {profile.gender}{profile.orientation?.length ? ` • ${(profile.orientation as string[]).join(', ')}` : ''}
-          </p>
-          {profile.city && (
-            <p className="flex items-center gap-1 text-white/40 text-xs font-semibold mt-1">
-              <MapPin className="w-3 h-3 text-rose-400" />{profile.city}{profile.province ? `, ${profile.province}` : ''}
-            </p>
-          )}
-          {!!profile.is_paid && (
-            <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider" style={{ background: 'rgba(245,158,11,0.2)', border: '1px solid rgba(245,158,11,0.4)', color: '#fbbf24' }}>
-              <Sparkles className="w-3 h-3" /> Membro Premium
+          {/* Photo Indicators */}
+          {(profile.photos && profile.photos.length > 1) && (
+            <div className="absolute top-20 left-1/2 -translate-x-1/2 flex gap-1 z-30">
+              {profile.photos.map((_, idx) => (
+                <div
+                  key={idx}
+                  className={cn(
+                    "h-1 rounded-full transition-all duration-300",
+                    idx === heroIndex ? "w-6 bg-white" : "w-1.5 bg-white/30"
+                  )}
+                />
+              ))}
             </div>
           )}
 
-          {/* ── FRIEND REQUEST button ── */}
-          <button
-            onClick={
-              soulLinkStatus === 'none' ? handleSendSoulLink :
-                soulLinkStatus === 'pending_received' ? handleAcceptSoulLink :
-                  soulLinkStatus === 'accepted' ? handleRemoveSoulLink :
-                    () => { }
-            }
-            className="mt-4 w-full py-3.5 rounded-[20px] font-black text-sm uppercase tracking-widest text-white transition-all active:scale-95 flex items-center justify-center gap-2"
-            style={
-              soulLinkStatus === 'accepted'
-                ? { background: 'rgba(139,92,246,0.3)', border: '1px solid rgba(139,92,246,0.6)', boxShadow: '0 0 20px rgba(139,92,246,0.2)' }
-                : soulLinkStatus === 'pending_sent'
-                  ? { background: 'rgba(245,158,11,0.2)', border: '1px solid rgba(245,158,11,0.4)', boxShadow: '0 0 16px rgba(245,158,11,0.1)' }
-                  : soulLinkStatus === 'pending_received'
-                    ? { background: 'rgba(52,211,153,0.25)', border: '1px solid rgba(52,211,153,0.5)', boxShadow: '0 0 20px rgba(52,211,153,0.2)' }
-                    : { background: '#f43f5e', boxShadow: '0 0 28px rgba(244,63,94,0.5)', border: '1px solid rgba(255,255,255,0.15)' }
-            }
-          >
-            {soulLinkStatus === 'accepted' ? <><UserCheck className="w-4 h-4" /> Siete Amici</> :
-              soulLinkStatus === 'pending_sent' ? <><Users className="w-4 h-4" /> Richiesta Inviata</> :
-                soulLinkStatus === 'pending_received' ? <><CheckCircle className="w-4 h-4" /> Accetta Amicizia</> :
-                  <><UserPlus className="w-4 h-4" /> Richiesta di Amicizia</>}
-          </button>
+          {/* CSS mask: photo fades naturally at bottom */}
+          <div className="absolute inset-0 pointer-events-none" style={{
+            background: 'linear-gradient(to bottom, transparent 30%, rgba(10,10,15,0.5) 65%, rgba(10,10,15,0.9) 85%, #0a0a0f 100%)'
+          }} />
 
-          {/* ── MESSAGE + CHAT pills ── */}
-          <div className="mt-2 flex gap-2">
-            {/* Scrivi messaggio — solo se SoulLink accettato */}
-            <button
-              onClick={handleOpenMessageModal}
-              className="flex-1 py-3 rounded-[16px] font-black text-[11px] uppercase tracking-widest text-white transition-all active:scale-95 flex items-center justify-center gap-1.5"
-              style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)' }}
-            >
-              <Send className="w-3.5 h-3.5 text-rose-400" /> Scrivi Messaggio
-            </button>
+          {/* ── ONLINE / OFFLINE badge top-left ── */}
+          <div className="absolute top-5 left-5 z-20">
+            {profile.is_online ? (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full backdrop-blur-md" style={{ background: 'rgba(16,185,129,0.25)', border: '1px solid rgba(52,211,153,0.5)' }}>
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
+                </span>
+                <span className="text-[10px] font-black text-emerald-300 uppercase tracking-wider">Online</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full backdrop-blur-md" style={{ background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(255,255,255,0.2)' }}>
+                <span className="w-2 h-2 rounded-full bg-stone-400" />
+                <span className="text-[10px] font-black text-stone-300 uppercase tracking-wider">Offline</span>
+              </div>
+            )}
+          </div>
 
-            {/* Chatta — solo se online */}
+          {/* ── LIKE + HEART stats bar (Relocated to top-right) ── */}
+          <div className="absolute top-5 right-5 z-20 flex gap-2">
             <button
-              onClick={profile.is_online ? handleInstantChat : undefined}
-              disabled={!profile.is_online}
-              className={cn(
-                "flex-1 py-3 rounded-[16px] font-black text-[11px] uppercase tracking-widest transition-all active:scale-95 flex items-center justify-center gap-1.5",
-                profile.is_online ? "text-white" : "text-white/30 cursor-not-allowed"
-              )}
-              style={profile.is_online ? {
-                background: chatStatus === 'approved' ? 'rgba(52,211,153,0.2)' : 'rgba(255,255,255,0.08)',
-                border: chatStatus === 'approved' ? '1px solid rgba(52,211,153,0.4)' : '1px solid rgba(255,255,255,0.15)'
-              } : {
-                background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)'
+              onClick={() => handleInteract('like')}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-2xl backdrop-blur-xl transition-all active:scale-95 shadow-xl"
+              style={{
+                background: userInteractions.includes('like') ? 'rgba(52,211,153,0.3)' : 'rgba(255,255,255,0.08)',
+                border: userInteractions.includes('like') ? '1px solid rgba(52,211,153,0.5)' : '1px solid rgba(255,255,255,0.15)',
+                boxShadow: userInteractions.includes('like') ? '0 0 20px rgba(52,211,153,0.3)' : '0 10px 30px rgba(0,0,0,0.3)'
               }}
             >
-              <MessageCircle className={cn("w-3.5 h-3.5", profile.is_online ? (chatStatus === 'approved' ? "text-emerald-400" : "text-blue-400") : "text-white/20")} />
-              {profile.is_online
-                ? (chatStatus === 'approved' ? 'Chatta' : chatStatus === 'pending' ? 'Attendendo...' : 'Chatta')
-                : 'Offline'}
+              <ThumbsUp className={cn("w-4 h-4", userInteractions.includes('like') ? "text-emerald-400 fill-current" : "text-white/60")} />
+              <span className={cn("text-xs font-black", userInteractions.includes('like') ? "text-emerald-300" : "text-white/70")}>{profile.likes_count || 0}</span>
             </button>
+            <button
+              onClick={() => handleInteract('heart')}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-2xl backdrop-blur-xl transition-all active:scale-95 shadow-xl"
+              style={{
+                background: userInteractions.includes('heart') ? 'rgba(244,63,94,0.3)' : 'rgba(255,255,255,0.08)',
+                border: userInteractions.includes('heart') ? '1px solid rgba(244,63,94,0.5)' : '1px solid rgba(255,255,255,0.15)',
+                boxShadow: userInteractions.includes('heart') ? '0 0 20px rgba(244,63,94,0.3)' : '0 10px 30px rgba(0,0,0,0.3)'
+              }}
+            >
+              <Heart className={cn("w-4 h-4", userInteractions.includes('heart') ? "text-rose-400 fill-current" : "text-white/60")} />
+              <span className={cn("text-xs font-black", userInteractions.includes('heart') ? "text-rose-300" : "text-white/70")}>{profile.hearts_count || 0}</span>
+            </button>
+          </div>
+
+          {/* Name / age / city overlaid on gradient */}
+          <div className="absolute bottom-0 left-0 right-0 px-5 pb-5 z-10">
+            <h1 className="text-3xl font-montserrat font-black text-white leading-tight drop-shadow-lg">
+              {profile.name}{profile.dob && calculateAge(profile.dob) > 0 ? <span className="font-light text-2xl text-white/60">, {calculateAge(profile.dob)}</span> : null}
+            </h1>
+            <p className="text-white/50 text-[11px] font-bold mt-1 uppercase tracking-widest">
+              {profile.gender}{profile.orientation?.length ? ` • ${(profile.orientation as string[]).join(', ')}` : ''}
+            </p>
+            {profile.city && (
+              <p className="flex items-center gap-1 text-white/40 text-xs font-semibold mt-1">
+                <MapPin className="w-3 h-3 text-rose-400" />{profile.city}{profile.province ? `, ${profile.province}` : ''}
+              </p>
+            )}
+            {!!profile.is_paid && (
+              <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider" style={{ background: 'rgba(245,158,11,0.2)', border: '1px solid rgba(245,158,11,0.4)', color: '#fbbf24' }}>
+                <Sparkles className="w-3 h-3" /> Membro Premium
+              </div>
+            )}
+
+            {/* ── FRIEND REQUEST button ── */}
+            <button
+              onClick={
+                soulLinkStatus === 'none' ? handleSendSoulLink :
+                  soulLinkStatus === 'pending_received' ? handleAcceptSoulLink :
+                    soulLinkStatus === 'accepted' ? handleRemoveSoulLink :
+                      () => { }
+              }
+              className="mt-4 w-full py-3.5 rounded-[20px] font-black text-sm uppercase tracking-widest text-white transition-all active:scale-95 flex items-center justify-center gap-2"
+              style={
+                soulLinkStatus === 'accepted'
+                  ? { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', backdropFilter: 'blur(20px)', boxShadow: '0 4px 20px rgba(0,0,0,0.2)' }
+                  : soulLinkStatus === 'pending_sent'
+                    ? { background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)', backdropFilter: 'blur(20px)' }
+                    : soulLinkStatus === 'pending_received'
+                      ? { background: 'rgba(52,211,153,0.15)', border: '1px solid rgba(52,211,153,0.3)', backdropFilter: 'blur(20px)' }
+                      : { background: 'rgba(244,63,94,0.15)', border: '1px solid rgba(244,63,94,0.4)', backdropFilter: 'blur(20px)', boxShadow: '0 0 20px rgba(244,63,94,0.2)' }
+              }
+            >
+              {soulLinkStatus === 'accepted' ? <><UserCheck className="w-4 h-4" /> Siete Amici</> :
+                soulLinkStatus === 'pending_sent' ? <><Users className="w-4 h-4" /> Richiesta Inviata</> :
+                  soulLinkStatus === 'pending_received' ? <><CheckCircle className="w-4 h-4" /> Accetta Amicizia</> :
+                    <><UserPlus className="w-4 h-4" /> Richiesta di Amicizia</>}
+            </button>
+
+            {/* ── MESSAGE + CHAT pills ── */}
+            <div className="mt-2 flex gap-2">
+              {/* Scrivi messaggio — solo se SoulLink accettato */}
+              <button
+                onClick={handleOpenMessageModal}
+                className="flex-1 py-3 rounded-[16px] font-black text-[11px] uppercase tracking-widest text-white transition-all active:scale-95 flex items-center justify-center gap-1.5"
+                style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)' }}
+              >
+                <Send className="w-3.5 h-3.5 text-rose-400" /> Scrivi Messaggio
+              </button>
+
+              {/* Chatta — solo se online */}
+              <button
+                onClick={profile.is_online ? handleInstantChat : undefined}
+                disabled={!profile.is_online}
+                className={cn(
+                  "flex-1 py-3 rounded-[16px] font-black text-[11px] uppercase tracking-widest transition-all active:scale-95 flex items-center justify-center gap-1.5",
+                  profile.is_online ? "text-white" : "text-white/30 cursor-not-allowed"
+                )}
+                style={profile.is_online ? {
+                  background: chatStatus === 'approved' ? 'rgba(52,211,153,0.2)' : 'rgba(255,255,255,0.08)',
+                  border: chatStatus === 'approved' ? '1px solid rgba(52,211,153,0.4)' : '1px solid rgba(255,255,255,0.15)'
+                } : {
+                  background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)'
+                }}
+              >
+                <MessageCircle className={cn("w-3.5 h-3.5", profile.is_online ? (chatStatus === 'approved' ? "text-emerald-400" : "text-blue-400") : "text-white/20")} />
+                {profile.is_online
+                  ? (chatStatus === 'approved' ? 'Chatta' : chatStatus === 'pending' ? 'Attendendo...' : 'Chatta')
+                  : 'Offline'}
+              </button>
+            </div>
+          </div>
+
+          {/* ── MATCH CORNER WIDGET ── */}
+          <div className="absolute bottom-0 right-0 z-0 pointer-events-none overflow-visible">
+            <style>{`
+              @keyframes orbitHeartB {
+              0%   { transform: rotate(0deg) translateX(137px) rotate(0deg) scale(1); opacity:0.85; }
+              50%  { transform: rotate(180deg) translateX(137px) rotate(-180deg) scale(1.2); opacity:1; }
+              100% { transform: rotate(360deg) translateX(137px) rotate(-360deg) scale(1); opacity:0.85; }
+            }
+            @keyframes heartbeatB {
+              0%   { transform: scale(1); }
+              14%  { transform: scale(1.15); }
+              28%  { transform: scale(1); }
+              42%  { transform: scale(1.1); }
+              70%  { transform: scale(1); }
+              100% { transform: scale(1); }
+            }
+            .orbit-heart-b { animation: orbitHeartB var(--dur,4.3s) linear var(--delay,0s) infinite; position:absolute; top:50%; left:50%; margin:-12px; }
+            .heart-beat-b   { animation: heartbeatB 1.4s ease-in-out infinite; transform-origin: center; }
+          `}</style>
+
+            {/* Concave corner SVG — 462px (Reduced by 30%) */}
+            <svg width="462" height="462" viewBox="0 0 462 462" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M462 0 Q462 462 0 462 L462 462 Z" fill="url(#matchGradB)" />
+              <path d="M462 0 Q462 462 0 462 L462 462 Z" fill="url(#matchFadeB)" />
+              <defs>
+                <radialGradient id="matchGradB" cx="100%" cy="100%" r="80%">
+                  <stop offset="0%" stopColor="#f43f5e" stopOpacity="0.9" />
+                  <stop offset="55%" stopColor="#be123c" stopOpacity="0.7" />
+                  <stop offset="100%" stopColor="#0a0a0f" stopOpacity="0" />
+                </radialGradient>
+                <linearGradient id="matchFadeB" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#0a0a0f" stopOpacity="0" />
+                  <stop offset="75%" stopColor="#0a0a0f" stopOpacity="0" />
+                  <stop offset="100%" stopColor="#0a0a0f" stopOpacity="1" />
+                </linearGradient>
+              </defs>
+            </svg>
+
+            {/* Heart + score */}
+            <div className="absolute inset-0 flex items-end justify-end pb-14 pr-14">
+              {currentUser ? (
+                <div className="relative flex items-center justify-center" style={{ width: 210, height: 210, transform: 'rotate(30deg) translateX(20px) translateY(-30px)' }}>
+                  {/* Dynamic hearts count: slowed duration by another 10% */}
+                  {Array.from({ length: Math.max(1, Math.min(10, Math.round(matchScore / 10))) }).map((_, i) => (
+                    <div key={i} className="orbit-heart-b" style={{ '--dur': `${3.2 + i * 0.45}s`, '--delay': `${i * 0.45}s` } as React.CSSProperties}>
+                      <svg width="21" height="21" viewBox="0 0 24 24" fill="#fda4af">
+                        <path d="M12 21.593c-5.63-5.539-11-10.297-11-14.402 0-3.791 3.068-5.191 5.281-5.191 1.312 0 4.151.501 5.719 4.457 1.59-3.968 4.464-4.447 5.726-4.447 2.54 0 5.274 1.621 5.274 5.181 0 4.069-5.136 8.625-11 14.402z" />
+                      </svg>
+                    </div>
+                  ))}
+                  <div className="relative z-10 flex flex-col items-center justify-center">
+                    <svg width="168" height="168" viewBox="0 0 24 24" className="heart-beat-b" style={{ filter: 'drop-shadow(0 0 29px rgba(244,63,94,0.95))' }}>
+                      <path d="M12 21.593c-5.63-5.539-11-10.297-11-14.402 0-3.791 3.068-5.191 5.281-5.191 1.312 0 4.151.501 5.719 4.457 1.59-3.968 4.464-4.447 5.726-4.447 2.54 0 5.274 1.621 5.274 5.181 0 4.069-5.136 8.625-11 14.402z" fill="#f43f5e" />
+                    </svg>
+                    <span className="absolute font-black leading-none" style={{ color: '#fff1f2', fontSize: '38px', top: '50%', transform: 'translateY(-50%)', textShadow: '0 4px 16px rgba(0,0,0,0.8)' }}>
+                      {matchScore}
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div className="relative flex items-center justify-center" style={{ width: 168, height: 168, transform: 'rotate(30deg) translateX(20px) translateY(-30px)' }}>
+                  <svg width="147" height="147" viewBox="0 0 24 24" className="heart-beat-b" style={{ filter: 'drop-shadow(0 0 22px rgba(255,255,255,0.6))' }}>
+                    <path d="M12 21.593c-5.63-5.539-11-10.297-11-14.402 0-3.791 3.068-5.191 5.281-5.191 1.312 0 4.151.501 5.719 4.457 1.59-3.968 4.464-4.447 5.726-4.447 2.54 0 5.274 1.621 5.274 5.181 0 4.069-5.136 8.625-11 14.402z" fill="rgba(255,255,255,0.75)" />
+                  </svg>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
 
-
       {/* ── CONTENT ── */}
       <div className="mx-4 mt-4 space-y-4">
-
-        {/* Compatibility card */}
-        <div className="rounded-[24px] p-5 shadow-sm overflow-hidden relative" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-montserrat font-black text-white flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-rose-400" /> Compatibilità
-            </h2>
-            {currentUser && (
-              <span className="text-[9px] font-black text-rose-600 bg-rose-50 px-2 py-1 rounded-full uppercase tracking-widest border border-rose-100">Calcolo AI</span>
-            )}
-          </div>
-          <div className="flex items-center gap-5">
-            <div className="relative w-20 h-20 shrink-0 flex items-center justify-center">
-              <svg className="w-full h-full -rotate-90">
-                <circle cx="40" cy="40" r="36" stroke="currentColor" strokeWidth="7" fill="transparent" className="text-white/10" />
-                <circle cx="40" cy="40" r="36" stroke="currentColor" strokeWidth="7" fill="transparent"
-                  strokeDasharray={226}
-                  strokeDashoffset={226 - (226 * matchScore) / 100}
-                  strokeLinecap="round"
-                  className="text-rose-600 transition-all duration-1000 ease-out"
-                />
-              </svg>
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-xl font-black text-white leading-none">{matchScore}%</span>
-                <span className="text-[7px] font-bold text-white/40 uppercase tracking-tighter">Match</span>
-              </div>
-            </div>
-            <div className="space-y-1.5 flex-1">
-              <h3 className="text-xs font-black text-stone-600 uppercase tracking-widest">Cosa vi unisce</h3>
-              <ul className="space-y-1">
-                {(() => {
-                  const h1 = (profile.hobbies || "").toLowerCase().split(",").map((s: string) => s.trim()).filter(Boolean);
-                  const h2 = (currentUser?.hobbies || "").toLowerCase().split(",").map((s: string) => s.trim()).filter(Boolean);
-                  const common = h1.filter((h: string) => h2.includes(h)).slice(0, 2);
-                  return common.length > 0
-                    ? common.map((h, i) => (
-                      <li key={i} className="flex items-center gap-1.5 text-[11px] text-stone-500">
-                        <CheckCircle className="w-3 h-3 text-emerald-500 shrink-0" /> {h}
-                      </li>
-                    ))
-                    : <li className="text-[11px] text-stone-400 italic">Scoprite parlando in chat!</li>;
-                })()}
-                {currentUser?.city === profile.city && (
-                  <li className="flex items-center gap-1.5 text-[11px] text-stone-500">
-                    <CheckCircle className="w-3 h-3 text-emerald-500 shrink-0" /> Stessa città
-                  </li>
-                )}
-              </ul>
-            </div>
-          </div>
-          {!currentUser && (
-            <div className="absolute inset-0 bg-white/70 backdrop-blur-[2px] flex items-center justify-center">
-              <div className="text-center space-y-2 px-6">
-                <Sparkles className="w-5 h-5 text-rose-500 mx-auto" />
-                <p className="text-[10px] font-black text-stone-600 uppercase tracking-widest leading-tight">Iscriviti per calcolare<br />la tua affinità reale!</p>
-                <button onClick={() => navigate('/register')} className="text-[10px] font-black text-rose-600 underline">Crea Profilo Gratis</button>
-              </div>
-            </div>
-          )}
-        </div>
 
         {/* Bio */}
         {profile.description && (
@@ -2755,17 +2823,35 @@ const BachecaPage = () => {
             <div className="bg-black/25 backdrop-blur-2xl border border-white/8 rounded-[24px] p-4 space-y-4">
               <div className="space-y-2">
                 <p className="text-white/30 text-[9px] font-black uppercase tracking-widest">Genere Cercato</p>
-                <div className="flex gap-2 flex-wrap">
-                  {['Uomo', 'Donna', 'Non-binario', 'Transgender', 'Genderfluid', 'Queer'].map(g => {
-                    const isA = selectedGenders.map(s => s.toLowerCase()).includes(g.toLowerCase());
-                    return (
-                      <button key={g} onClick={() => {
-                        const lower = g.toLowerCase();
-                        if (isA) setSelectedGenders(selectedGenders.filter(s => s.toLowerCase() !== lower));
-                        else setSelectedGenders([...selectedGenders, g]);
-                      }} className={cn("px-3 py-1.5 rounded-full text-[10px] font-black transition-all", isA ? "bg-rose-600 text-white" : "bg-white/5 text-white/40 border border-white/10")}>{g}</button>
-                    );
-                  })}
+                <div className="relative">
+                  <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-8 z-10" style={{ background: 'linear-gradient(to right, #0a0a0f, transparent)' }} />
+                  <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-8 z-10" style={{ background: 'linear-gradient(to left, #0a0a0f, transparent)' }} />
+                  <div className="flex gap-2 overflow-x-auto pb-2 hide-scrollbar px-2" style={{ scrollSnapType: 'x mandatory' }}>
+                    {['Uomo', 'Donna', 'Non-binario', 'Transgender', 'Genderfluid', 'Queer'].map(g => {
+                      const lower = g.toLowerCase();
+                      const isA = selectedGenders.map(s => s.toLowerCase()).includes(lower);
+                      return (
+                        <button
+                          key={g}
+                          onClick={() => {
+                            if (isA) setSelectedGenders(selectedGenders.filter(s => s.toLowerCase() !== lower));
+                            else setSelectedGenders([...selectedGenders, g]);
+                          }}
+                          style={{
+                            scrollSnapAlign: 'center', flexShrink: 0,
+                            ...(isA ? { background: '#f43f5e', boxShadow: '0 0 15px rgba(244,63,94,0.4)', border: '1px solid rgba(244,63,94,0.6)' }
+                              : { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', opacity: 0.6 })
+                          }}
+                          className={cn(
+                            "px-5 py-2.5 rounded-[18px] text-[10px] font-black tracking-widest uppercase whitespace-nowrap transition-all",
+                            isA ? "text-white scale-105" : "text-white/40"
+                          )}
+                        >
+                          {g}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
               <div className="space-y-2">
@@ -2846,17 +2932,6 @@ const BachecaPage = () => {
                         </div>
                       )}
 
-                      {/* Heart button */}
-                      <button
-                        onClick={async (e) => {
-                          e.preventDefault(); e.stopPropagation();
-                          await supabase.from('interactions').insert({ from_user_id: currentUser?.id, to_user_id: profile.id, type: 'heart', metadata: { source: 'bacheca_quick' } });
-                          alert(`✨ Soul Feeling inviato a ${profile.name}!`);
-                        }}
-                        className="absolute top-2.5 right-2.5 z-30 w-8 h-8 rounded-full bg-black/30 backdrop-blur-md flex items-center justify-center text-white/70 hover:text-rose-500 hover:bg-black/50 transition-all active:scale-90"
-                      >
-                        <Heart className="w-4 h-4 fill-current" />
-                      </button>
 
                       {/* Match Score Badge */}
                       {currentUser && unlockedIds.includes(profile.id) && (
@@ -3741,7 +3816,7 @@ const FeedPage = () => {
   const heroProfile = heroProfiles[heroIndex];
 
   return (
-    <div className="min-h-screen pt-16 pb-28 relative overflow-x-hidden" style={{ background: '#0a0a0f' }}>
+    <div className="min-h-screen pt-[114px] pb-28 relative overflow-x-hidden" style={{ background: '#0a0a0f' }}>
 
       {/* ── FLOATING HEARTS BACKGROUND ── */}
       <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
@@ -3860,6 +3935,11 @@ const AmiciPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
+  const [readChatIds, setReadChatIds] = useState<Set<string>>(() => {
+    try { const s = localStorage.getItem('sm_read_chats'); return s ? new Set(JSON.parse(s)) : new Set(); } catch { return new Set(); }
+  });
+  useEffect(() => { localStorage.setItem('sm_read_chats', JSON.stringify([...readChatIds])); }, [readChatIds]);
+  const [allLastMessages, setAllLastMessages] = useState<any[]>([]);
 
   useEffect(() => {
     if (messagesEndRef.current) {
@@ -3867,9 +3947,22 @@ const AmiciPage = () => {
     }
   }, [friendMessages]);
 
+  const fetchAllLastMessages = async () => {
+    if (!currentUser) return;
+    const { data } = await supabase
+      .from('room_messages')
+      .select('*')
+      .or(`sender_id.eq.${currentUser.id},receiver_id.eq.${currentUser.id}`)
+      .order('created_at', { ascending: false });
+    if (data) setAllLastMessages(data);
+  };
+
   useEffect(() => {
     if (messagingFriend && currentUser) {
       fetchFriendMessages(messagingFriend.id);
+      // Mark as read
+      setReadChatIds(prev => new Set([...prev, messagingFriend.id]));
+
       const channel = supabase.channel(`friend_chat_amici_${messagingFriend.id}`)
         .on('postgres_changes', {
           event: 'INSERT',
@@ -3880,6 +3973,7 @@ const AmiciPage = () => {
           if ((m.sender_id === currentUser.id && m.receiver_id === messagingFriend.id) ||
             (m.sender_id === messagingFriend.id && m.receiver_id === currentUser.id)) {
             setFriendMessages(prev => [...prev, m]);
+            fetchAllLastMessages();
           }
         })
         .subscribe();
@@ -3992,6 +4086,7 @@ const AmiciPage = () => {
         const user = JSON.parse(saved);
         setCurrentUser(user);
         fetchSoulLinks(user.id);
+        fetchAllLastMessages();
       } else {
         navigate('/register');
       }
@@ -4087,6 +4182,13 @@ const AmiciPage = () => {
             100% { transform: translateY(-110vh) rotate(15deg); opacity: 0; }
           }
           .fha { animation: floatHeart var(--dur,12s) ease-in-out var(--delay,0s) infinite; position: absolute; bottom: -10%; }
+          @keyframes balloonHeart {
+            0%   { transform: translateY(0px) rotate(-6deg) scale(1); opacity: 0; }
+            8%   { opacity: 0.9; }
+            75%  { opacity: 0.7; }
+            100% { transform: translateY(-90px) rotate(8deg) scale(0.85); opacity: 0; }
+          }
+          .bha { animation: balloonHeart var(--bdur,5s) ease-in-out var(--bdelay,0s) infinite; position: absolute; bottom: 0px; pointer-events: none; z-index: 100; }
         `}</style>
         {[
           { left: '5%', size: 10, color: '#f43f5e', blur: 3, dur: 13, delay: 0 },
@@ -4122,11 +4224,35 @@ const AmiciPage = () => {
           className="flex items-center gap-2"
         >
           <div
-            className="backdrop-blur-2xl text-white px-5 py-3.5 rounded-[32px] flex items-center gap-4 justify-between cursor-pointer"
+            className="backdrop-blur-2xl text-white px-5 py-3.5 rounded-[32px] flex items-center gap-4 justify-between cursor-pointer relative"
             style={{ background: 'rgba(10,10,15,0.85)', border: '1px solid rgba(244,63,94,0.5)', boxShadow: '0 0 28px rgba(244,63,94,0.25), 0 0 8px rgba(244,63,94,0.1), inset 0 1px 0 rgba(255,255,255,0.06)' }}
             onClick={() => { setIsSearchOpen(!isSearchOpen); if (isSearchOpen) setSearchTerm(''); }}
           >
-            <div className="flex items-center gap-3">
+            {/* Notification Hearts */}
+            {allLastMessages.some(m => m.receiver_id === currentUser?.id && !readChatIds.has(m.sender_id)) && [
+              { left: 10, size: 14, color: '#f43f5e', dur: 4.2, delay: 0 },
+              { left: 30, size: 10, color: '#fb7185', dur: 3.8, delay: 0.7 },
+              { left: 50, size: 16, color: '#f43f5e', dur: 4.8, delay: 0.3 },
+              { left: 70, size: 12, color: '#fda4af', dur: 3.6, delay: 1.1 },
+              { left: 90, size: 10, color: '#f43f5e', dur: 4.4, delay: 0.5 },
+            ].map((h, i) => (
+              <div
+                key={i}
+                className="bha"
+                style={{
+                  left: `${h.left}%`,
+                  '--bdur': `${h.dur}s`,
+                  '--bdelay': `${h.delay}s`,
+                  filter: `drop-shadow(0 0 6px ${h.color})`,
+                } as React.CSSProperties}
+              >
+                <svg width={h.size} height={h.size} viewBox="0 0 24 24" fill={h.color}>
+                  <path d="M12 21.593c-5.63-5.539-11-10.297-11-14.402 0-3.791 3.068-5.191 5.281-5.191 1.312 0 4.151.501 5.719 4.457 1.59-3.968 4.464-4.447 5.726-4.447 2.54 0 5.274 1.621 5.274 5.181 0 4.069-5.136 8.625-11 14.402z" />
+                </svg>
+              </div>
+            ))}
+
+            <div className="flex items-center gap-3 relative z-10">
               <div className="w-9 h-9 rounded-2xl flex items-center justify-center" style={{ background: '#f43f5e', boxShadow: '0 0 18px rgba(244,63,94,0.7)' }}>
                 <UserCheck className="w-5 h-5 text-white" />
               </div>
@@ -4135,7 +4261,7 @@ const AmiciPage = () => {
                 <span className="text-[9px] font-bold text-white/30 mt-0.5 tracking-widest">{friends.length} connessioni</span>
               </div>
             </div>
-            <div className="w-7 h-7 rounded-full flex items-center justify-center"
+            <div className="w-7 h-7 rounded-full flex items-center justify-center relative z-10"
               style={{ background: isSearchOpen ? 'rgba(244,63,94,0.3)' : 'rgba(255,255,255,0.06)' }}
             >
               <Search className="w-3.5 h-3.5" style={{ color: isSearchOpen ? '#f43f5e' : 'rgba(255,255,255,0.3)', filter: isSearchOpen ? 'drop-shadow(0 0 4px rgba(244,63,94,0.8))' : 'none' }} />
@@ -4364,14 +4490,24 @@ const AmiciPage = () => {
                           <MessageCircle className={cn("w-4 h-4", f.other_user?.is_online ? "text-emerald-400" : "text-white/30")} />
                         </button>
                         {/* Messaggio privato */}
-                        <button
-                          onClick={() => setMessagingFriend(normalizeUser(f.other_user!))}
-                          className="w-9 h-9 text-white/40 rounded-2xl flex items-center justify-center hover:text-white/70 active:scale-90 transition-all"
-                          style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}
-                          title="Messaggi"
-                        >
-                          <Send className="w-3.5 h-3.5" />
-                        </button>
+                        {(() => {
+                          const hasUnread = allLastMessages.some(m => m.sender_id === f.other_user?.id && m.receiver_id === currentUser?.id && !readChatIds.has(f.other_user?.id!));
+                          return (
+                            <button
+                              onClick={() => setMessagingFriend(normalizeUser(f.other_user!))}
+                              className={cn(
+                                "w-9 h-9 rounded-2xl flex items-center justify-center transition-all active:scale-90",
+                                hasUnread ? "text-white" : "text-white/40 hover:text-white/70"
+                              )}
+                              style={hasUnread
+                                ? { background: '#f43f5e', border: '1px solid rgba(244,63,94,0.5)', boxShadow: '0 0 14px rgba(244,63,94,0.5)' }
+                                : { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}
+                              title="Messaggi"
+                            >
+                              <Send className={cn("w-3.5 h-3.5", hasUnread ? "animate-pulse" : "")} />
+                            </button>
+                          );
+                        })()}
                       </div>
                     </motion.div>
                   </motion.div>
