@@ -225,9 +225,8 @@ const AppBottomNav = () => {
                   whileTap={{ scale: 0.9 }}
                   className={cn(
                     "flex flex-col items-center py-2.5 rounded-full aspect-square justify-center transition-all duration-300",
-                    activeTab === 'home' ? "text-white shadow-lg" : "text-stone-400 hover:text-white"
+                    activeTab === 'home' ? "bg-white text-stone-900 shadow-lg" : "text-stone-400 hover:text-white"
                   )}
-                  style={activeTab === 'home' ? { background: '#f43f5e', boxShadow: '0 0 20px rgba(244,63,94,0.5)' } : {}}
                 >
                   <Home className="w-5 h-5 mb-0.5" />
                   <span className="text-[6px] font-black uppercase tracking-wider">Home</span>
@@ -240,9 +239,8 @@ const AppBottomNav = () => {
                   whileTap={{ scale: 0.9 }}
                   className={cn(
                     "flex flex-col items-center py-2.5 rounded-full aspect-square justify-center transition-all duration-300",
-                    activeTab === 'bacheca' ? "text-white shadow-lg" : "text-stone-400 hover:text-white"
+                    activeTab === 'bacheca' ? "bg-white text-stone-900 shadow-lg" : "text-stone-400 hover:text-white"
                   )}
-                  style={activeTab === 'bacheca' ? { background: '#f43f5e', boxShadow: '0 0 20px rgba(244,63,94,0.5)' } : {}}
                 >
                   <Users className="w-5 h-5 mb-0.5" />
                   <span className="text-[6px] font-black uppercase tracking-wider">Bacheca</span>
@@ -255,9 +253,8 @@ const AppBottomNav = () => {
                   whileTap={{ scale: 0.9 }}
                   className={cn(
                     "flex flex-col items-center py-2.5 rounded-full aspect-square justify-center transition-all duration-300",
-                    activeTab === 'feed' ? "text-white shadow-lg" : "text-stone-400 hover:text-white"
+                    activeTab === 'feed' ? "bg-white text-stone-900 shadow-lg" : "text-stone-400 hover:text-white"
                   )}
-                  style={activeTab === 'feed' ? { background: '#f43f5e', boxShadow: '0 0 20px rgba(244,63,94,0.5)' } : {}}
                 >
                   <LayoutGrid className="w-5 h-5 mb-0.5" />
                   <span className="text-[6px] font-black uppercase tracking-wider">Feed</span>
@@ -270,9 +267,8 @@ const AppBottomNav = () => {
                   whileTap={{ scale: 0.9 }}
                   className={cn(
                     "flex flex-col items-center py-2.5 rounded-full aspect-square justify-center transition-all duration-300",
-                    activeTab === 'soullink' ? "text-white shadow-lg" : "text-stone-400 hover:text-white"
+                    activeTab === 'soullink' ? "bg-white text-stone-900 shadow-lg" : "text-stone-400 hover:text-white"
                   )}
-                  style={activeTab === 'soullink' ? { background: '#f43f5e', boxShadow: '0 0 20px rgba(244,63,94,0.5)' } : {}}
                 >
                   <div className="relative">
                     <UserCheck className="w-5 h-5 mb-0.5" />
@@ -293,9 +289,8 @@ const AppBottomNav = () => {
                   whileTap={{ scale: 0.9 }}
                   className={cn(
                     "flex flex-col items-center py-2.5 rounded-full aspect-square justify-center transition-all duration-300",
-                    activeTab === 'chat' ? "text-white shadow-lg" : "text-stone-400 hover:text-white"
+                    activeTab === 'chat' ? "bg-white text-stone-900 shadow-lg" : "text-stone-400 hover:text-white"
                   )}
-                  style={activeTab === 'chat' ? { background: '#f43f5e', boxShadow: '0 0 20px rgba(244,63,94,0.5)' } : {}}
                 >
                   <div className="relative" id="nav-chat-icon">
                     <MessageCircle className="w-5 h-5 mb-0.5" />
@@ -316,9 +311,8 @@ const AppBottomNav = () => {
                   whileTap={{ scale: 0.9 }}
                   className={cn(
                     "flex flex-col items-center py-2.5 rounded-full aspect-square justify-center transition-all duration-300",
-                    activeTab === 'soulmatch' ? "text-white shadow-lg" : "text-stone-400 hover:text-white"
+                    activeTab === 'soulmatch' ? "bg-rose-600 text-white shadow-lg shadow-rose-500/40" : "text-stone-400 hover:text-white"
                   )}
-                  style={activeTab === 'soulmatch' ? { background: '#f43f5e', boxShadow: '0 0 20px rgba(244,63,94,0.6)' } : {}}
                 >
                   <Heart className={cn("w-5 h-5 mb-0.5", activeTab === 'soulmatch' ? "fill-current" : "")} />
                   <span className="text-[6px] font-black uppercase tracking-wider">Match</span>
@@ -1838,7 +1832,7 @@ const ProfileDetailPage = () => {
   };
 
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center" style={{ background: '#0a0a0f' }}><motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 1.5 }}><Heart className="w-12 h-12 text-rose-500 fill-current" style={{ filter: 'drop-shadow(0 0 20px rgba(244,63,94,0.8))' }} /></motion.div></div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center bg-stone-50"><Sparkles className="w-8 h-8 text-rose-600 animate-pulse" /></div>;
   if (!profile) return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-stone-50 p-6 text-center">
       <div className="w-20 h-20 bg-stone-100 rounded-full flex items-center justify-center mb-6">
@@ -1857,25 +1851,7 @@ const ProfileDetailPage = () => {
   const matchScore = calculateMatchScore(currentUser, profile);
 
   return (
-    <div className="min-h-screen pt-16 pb-32 relative overflow-x-hidden" style={{ background: '#0a0a0f' }}>
-      {/* Floating hearts */}
-      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-        <style>{`
-          @keyframes floatHeartPD { 0%{transform:translateY(0) rotate(0deg);opacity:0;} 10%{opacity:1;} 80%{opacity:0.4;} 100%{transform:translateY(-110vh) rotate(20deg);opacity:0;} }
-          .fhpd { animation: floatHeartPD var(--dur,12s) ease-in-out var(--delay,0s) infinite; position:absolute; bottom:-10%; }
-        `}</style>
-        {[
-          { left: '5%', size: 8, color: '#f43f5e', blur: 3, dur: 11, delay: 0 },
-          { left: '22%', size: 5, color: '#a855f7', blur: 4, dur: 8, delay: 1.6 },
-          { left: '42%', size: 12, color: '#ec4899', blur: 5, dur: 13, delay: 0.7 },
-          { left: '65%', size: 7, color: '#f43f5e', blur: 2, dur: 10, delay: 2.3 },
-          { left: '83%', size: 9, color: '#9333ea', blur: 4, dur: 12, delay: 1.1 },
-        ].map((h, i) => (
-          <div key={i} className="fhpd" style={{ left: h.left, '--dur': `${h.dur}s`, '--delay': `${h.delay}s`, filter: `blur(${h.blur}px)`, opacity: 0.15 } as React.CSSProperties}>
-            <svg width={h.size} height={h.size} viewBox="0 0 24 24" fill={h.color}><path d="M12 21.593c-5.63-5.539-11-10.297-11-14.402 0-3.791 3.068-5.191 5.281-5.191 1.312 0 4.151.501 5.719 4.457 1.59-3.968 4.464-4.447 5.726-4.447 2.54 0 5.274 1.621 5.274 5.181 0 4.069-5.136 8.625-11 14.402z" /></svg>
-          </div>
-        ))}
-      </div>
+    <div className="min-h-screen bg-stone-50 pt-16 pb-32 relative overflow-x-hidden">
       <AnimatePresence>
         {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       </AnimatePresence>
@@ -1906,10 +1882,10 @@ const ProfileDetailPage = () => {
           <div className="flex items-end justify-between">
             <div>
 
-              <h1 className="text-3xl font-serif font-black text-white leading-tight drop-shadow-sm">
-                {profile.name}{profile.dob && calculateAge(profile.dob) > 0 ? <span className="font-light text-2xl text-white/60">, {calculateAge(profile.dob)}</span> : null}
+              <h1 className="text-3xl font-serif font-black text-stone-900 leading-tight drop-shadow-sm">
+                {profile.name}{profile.dob && calculateAge(profile.dob) > 0 ? <span className="font-light text-2xl text-stone-500">, {calculateAge(profile.dob)}</span> : null}
               </h1>
-              <p className="text-white/50 text-xs font-bold mt-1 uppercase tracking-widest">
+              <p className="text-stone-400 text-xs font-bold mt-1 uppercase tracking-widest">
                 {profile.gender} • {(profile.orientation || []).join(', ')}
               </p>
               {profile.city && (
@@ -1927,32 +1903,30 @@ const ProfileDetailPage = () => {
         </div>
       </div>
 
-      {/* ── ACTION STRIP (5 cols dark glass) ── */}
-      <div className="mx-4 mt-3 backdrop-blur-xl rounded-[28px] shadow-xl grid grid-cols-5 overflow-visible relative z-10 py-1" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
+      {/* ── ACTION STRIP (5 cols GLASMORPHISM) ── */}
+      <div className="mx-4 mt-3 bg-white/40 backdrop-blur-xl rounded-[28px] shadow-xl shadow-stone-900/5 border border-white/60 grid grid-cols-5 overflow-visible relative z-10 py-1">
         {/* Like */}
         <button onClick={() => handleInteract('like')} className="flex flex-col items-center py-3 gap-1 group">
           <div className={cn(
-            "w-10 h-10 rounded-full flex items-center justify-center transition-all shadow-sm",
-            "border border-white/10 bg-white/10",
-            userInteractions.includes('like') ? "text-emerald-400 scale-110" : "text-white/40 group-hover:bg-white/15 group-hover:text-emerald-400 group-hover:scale-110"
+            "w-10 h-10 rounded-full flex items-center justify-center transition-all bg-white/60 shadow-sm border border-white/80",
+            userInteractions.includes('like') ? "text-emerald-500 scale-110" : "text-stone-400 group-hover:bg-emerald-50 group-hover:text-emerald-500 group-hover:scale-110"
           )}>
             <ThumbsUp className={cn("w-4 h-4", userInteractions.includes('like') && "fill-current")} />
           </div>
-          <span className="text-sm font-black text-white">{profile.likes_count || 0}</span>
-          <span className={cn("text-[8px] font-black uppercase tracking-widest", userInteractions.includes('like') ? "text-emerald-400" : "text-white/30")}>Like</span>
+          <span className="text-sm font-black text-stone-900">{profile.likes_count || 0}</span>
+          <span className={cn("text-[8px] font-black uppercase tracking-widest", userInteractions.includes('like') ? "text-emerald-600" : "text-stone-400")}>Like</span>
         </button>
 
         {/* Heart */}
         <button onClick={() => handleInteract('heart')} className="flex flex-col items-center py-3 gap-1 group">
           <div className={cn(
-            "w-10 h-10 rounded-full flex items-center justify-center transition-all shadow-sm",
-            "border border-white/10 bg-white/10",
-            userInteractions.includes('heart') ? "text-rose-400 scale-110" : "text-white/40 group-hover:bg-white/15 group-hover:text-rose-400 group-hover:scale-110"
+            "w-10 h-10 rounded-full flex items-center justify-center transition-all bg-white/60 shadow-sm border border-white/80",
+            userInteractions.includes('heart') ? "text-rose-500 scale-110" : "text-stone-400 group-hover:bg-rose-50 group-hover:text-rose-500 group-hover:scale-110"
           )}>
             <Heart className={cn("w-4 h-4", userInteractions.includes('heart') && "fill-current")} />
           </div>
-          <span className="text-sm font-black text-white">{profile.hearts_count || 0}</span>
-          <span className={cn("text-[8px] font-black uppercase tracking-widest", userInteractions.includes('heart') ? "text-rose-400" : "text-white/30")}>Cuori</span>
+          <span className="text-sm font-black text-stone-900">{profile.hearts_count || 0}</span>
+          <span className={cn("text-[8px] font-black uppercase tracking-widest", userInteractions.includes('heart') ? "text-rose-600" : "text-stone-400")}>Cuori</span>
         </button>
 
         {/* Amici */}
@@ -2023,10 +1997,10 @@ const ProfileDetailPage = () => {
       <div className="mx-4 mt-4 space-y-4">
 
         {/* Compatibility card */}
-        <div className="rounded-[24px] p-5 shadow-sm overflow-hidden relative" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
+        <div className="bg-white rounded-[24px] border border-stone-100 p-5 shadow-sm overflow-hidden relative">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-montserrat font-black text-white flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-rose-400" /> Compatibilità
+            <h2 className="text-base font-montserrat font-black text-stone-900 flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-rose-500" /> Compatibilità
             </h2>
             {currentUser && (
               <span className="text-[9px] font-black text-rose-600 bg-rose-50 px-2 py-1 rounded-full uppercase tracking-widest border border-rose-100">Calcolo AI</span>
@@ -2035,7 +2009,7 @@ const ProfileDetailPage = () => {
           <div className="flex items-center gap-5">
             <div className="relative w-20 h-20 shrink-0 flex items-center justify-center">
               <svg className="w-full h-full -rotate-90">
-                <circle cx="40" cy="40" r="36" stroke="currentColor" strokeWidth="7" fill="transparent" className="text-white/10" />
+                <circle cx="40" cy="40" r="36" stroke="currentColor" strokeWidth="7" fill="transparent" className="text-stone-100" />
                 <circle cx="40" cy="40" r="36" stroke="currentColor" strokeWidth="7" fill="transparent"
                   strokeDasharray={226}
                   strokeDashoffset={226 - (226 * matchScore) / 100}
@@ -2044,8 +2018,8 @@ const ProfileDetailPage = () => {
                 />
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-xl font-black text-white leading-none">{matchScore}%</span>
-                <span className="text-[7px] font-bold text-white/40 uppercase tracking-tighter">Match</span>
+                <span className="text-xl font-black text-stone-900 leading-none">{matchScore}%</span>
+                <span className="text-[7px] font-bold text-stone-400 uppercase tracking-tighter">Match</span>
               </div>
             </div>
             <div className="space-y-1.5 flex-1">
@@ -2084,36 +2058,36 @@ const ProfileDetailPage = () => {
 
         {/* Bio */}
         {profile.description && (
-          <div className="rounded-[24px] p-5" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
-            <h2 className="text-base font-montserrat font-black text-white mb-2">Bio</h2>
-            <p className="text-white/60 leading-relaxed text-sm italic">"{profile.description}"</p>
+          <div className="bg-white rounded-[24px] border border-stone-100 p-5 shadow-sm">
+            <h2 className="text-base font-montserrat font-black text-stone-900 mb-2">Bio</h2>
+            <p className="text-stone-600 leading-relaxed text-sm italic">"{profile.description}"</p>
           </div>
         )}
 
         {/* Info grid */}
         <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-[20px] p-4" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
-            <p className="text-[9px] text-white/30 uppercase font-bold tracking-widest mb-1">Lavoro</p>
-            <p className="text-sm font-semibold text-white/80 flex items-center gap-1.5">
-              <Briefcase className="w-4 h-4 text-rose-400 shrink-0" />{profile.job || 'Privato'}
+          <div className="bg-white rounded-[20px] border border-stone-100 p-4 shadow-sm">
+            <p className="text-[9px] text-stone-400 uppercase font-bold tracking-widest mb-1">Lavoro</p>
+            <p className="text-sm font-semibold text-stone-800 flex items-center gap-1.5">
+              <Briefcase className="w-4 h-4 text-rose-500 shrink-0" />{profile.job || 'Privato'}
             </p>
           </div>
-          <div className="rounded-[20px] p-4" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
-            <p className="text-[9px] text-white/30 uppercase font-bold tracking-widest mb-1">Orientamento</p>
-            <p className="text-sm font-semibold text-white/80 flex items-center gap-1.5">
-              <Users className="w-4 h-4 text-rose-400 shrink-0" />{profile.orientation}
+          <div className="bg-white rounded-[20px] border border-stone-100 p-4 shadow-sm">
+            <p className="text-[9px] text-stone-400 uppercase font-bold tracking-widest mb-1">Orientamento</p>
+            <p className="text-sm font-semibold text-stone-800 flex items-center gap-1.5">
+              <Users className="w-4 h-4 text-rose-500 shrink-0" />{profile.orientation}
             </p>
           </div>
         </div>
 
         {/* Interests */}
         {profile.hobbies && (
-          <div className="rounded-[24px] p-5" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
-            <h2 className="text-base font-serif font-black text-white mb-3">Interessi</h2>
+          <div className="bg-white rounded-[24px] border border-stone-100 p-5 shadow-sm">
+            <h2 className="text-base font-serif font-black text-stone-900 mb-3">Interessi</h2>
             {profile.hobbies && (
               <div className="flex flex-wrap gap-2">
                 {profile.hobbies.split(',').map((h: string, i: number) => h.trim() && (
-                  <span key={i} className="px-3 py-1.5 text-white/80 rounded-full text-xs font-semibold" style={{ background: 'rgba(244,63,94,0.15)', border: '1px solid rgba(244,63,94,0.25)' }}>{h.trim()}</span>
+                  <span key={i} className="px-3 py-1 bg-stone-100 text-stone-700 rounded-full text-xs font-semibold">{h.trim()}</span>
                 ))}
               </div>
             )}
@@ -2121,23 +2095,23 @@ const ProfileDetailPage = () => {
         )}
 
         {/* Looking for */}
-        <div className="rounded-[24px] p-5" style={{ background: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.2)' }}>
-          <h2 className="text-base font-montserrat font-black text-white mb-2 flex items-center gap-2">
-            <Search className="w-4 h-4 text-rose-400" /> Cosa Cerca
+        <div className="bg-rose-50 rounded-[24px] border border-rose-100 p-5 shadow-sm">
+          <h2 className="text-base font-montserrat font-black text-stone-900 mb-2 flex items-center gap-2">
+            <Search className="w-4 h-4 text-rose-500" /> Cosa Cerca
           </h2>
-          <p className="text-xs text-white/40 font-semibold mb-1">Preferenza: <span className="text-white/70">{(profile.looking_for_gender || []).join(', ')}</span></p>
-          <p className="text-xs text-white/60 leading-relaxed">{profile.looking_for_other || 'In cerca di una connessione autentica e momenti speciali.'}</p>
+          <p className="text-xs text-stone-500 font-semibold mb-1">Preferenza: <span className="text-stone-800">{(profile.looking_for_gender || []).join(', ')}</span></p>
+          <p className="text-xs text-stone-600 leading-relaxed">{profile.looking_for_other || 'In cerca di una connessione autentica e momenti speciali.'}</p>
         </div>
 
         {/* Gallery */}
         {profile.photos && profile.photos.length > 0 && (
-          <div className="rounded-[24px] p-5" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
-            <div className="mb-3 flex items-center justify-center w-12 h-12 rounded-[18px]" style={{ background: 'rgba(244,63,94,0.15)' }}>
-              <Camera className="w-5 h-5 text-rose-400" />
+          <div className="bg-white rounded-[24px] border border-stone-100 p-5 shadow-sm">
+            <div className="mb-3 flex items-center justify-center w-12 h-12 bg-rose-50 rounded-[18px]">
+              <Camera className="w-5 h-5 text-rose-500" />
             </div>
             <div className="grid grid-cols-3 gap-2">
               {profile.photos.map((url, i) => (
-                <div key={i} className="aspect-square rounded-[16px] overflow-hidden" style={{ border: '1px solid rgba(244,63,94,0.25)' }}>
+                <div key={i} className="aspect-square rounded-[16px] overflow-hidden border border-stone-100 shadow-sm">
                   <img src={url} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                 </div>
               ))}
@@ -2160,38 +2134,34 @@ const ProfileDetailPage = () => {
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="w-full max-w-md rounded-t-[40px] p-8 shadow-2xl space-y-5"
-              style={{ background: '#1a1a22', border: '1px solid rgba(255,255,255,0.08)' }}
+              className="bg-white w-full max-w-md rounded-t-[40px] p-8 shadow-2xl space-y-5"
             >
-              <div className="w-10 h-1 rounded-full mx-auto mb-2" style={{ background: 'rgba(255,255,255,0.15)' }} />
+              <div className="w-10 h-1 bg-stone-200 rounded-full mx-auto mb-2" />
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-[16px] overflow-hidden shrink-0" style={{ border: '2px solid rgba(244,63,94,0.5)' }}>
+                <div className="w-12 h-12 rounded-[16px] overflow-hidden border border-stone-100 shadow-sm shrink-0">
                   <img src={(profile.photos && profile.photos.length > 0) ? profile.photos[0] : (profile.photo_url || `https://picsum.photos/seed/${profile.name}/400/600`)} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-serif font-black text-white">Scrivi a {profile.name}</h3>
-                  <p className="text-white/40 text-xs">Il tuo messaggio sarà visibile nel profilo</p>
+                  <h3 className="text-lg font-serif font-black text-stone-900">Scrivi a {profile.name}</h3>
+                  <p className="text-stone-400 text-xs">Il tuo messaggio sarà visibile nel profilo</p>
                 </div>
               </div>
               <textarea
                 value={messageText}
                 onChange={(e) => setMessageText(e.target.value)}
                 placeholder="Ciao! Mi piacerebbe conoscerti..."
-                className="w-full h-28 p-4 rounded-2xl text-sm outline-none resize-none font-medium text-white/80 placeholder:text-white/20"
-                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(244,63,94,0.2)' }}
+                className="w-full h-28 p-4 rounded-2xl bg-stone-50 border border-stone-200 text-sm outline-none focus:ring-2 focus:ring-rose-500/40 focus:bg-white transition-all resize-none font-medium text-stone-800"
                 autoFocus
               />
               <div className="flex gap-3">
                 <button
                   onClick={() => setIsMessageModalOpen(false)}
-                  className="flex-1 py-4 rounded-[18px] text-xs font-black uppercase tracking-widest transition-all"
-                  style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.5)' }}
+                  className="flex-1 py-4 bg-stone-100 text-stone-500 rounded-[18px] text-xs font-black uppercase tracking-widest hover:bg-stone-200 transition-all"
                 >Annulla</button>
                 <button
                   onClick={sendChatMessage}
                   disabled={!messageText.trim()}
-                  className="flex-1 text-white py-4 rounded-[18px] text-xs font-black uppercase tracking-widest disabled:opacity-40 active:scale-95"
-                  style={{ background: '#f43f5e', boxShadow: '0 0 20px rgba(244,63,94,0.4)' }}
+                  className="flex-1 bg-rose-600 text-white py-4 rounded-[18px] text-xs font-black uppercase tracking-widest shadow-lg shadow-rose-200 disabled:opacity-40 hover:bg-rose-700 transition-all active:scale-95"
                 >Invia ❤️</button>
               </div>
             </motion.div>
@@ -3159,15 +3129,6 @@ const SoulMatchPage = () => {
     <div className="min-h-screen pt-20 pb-40 px-4 transition-colors duration-500 relative" style={{ background: '#0a0a0f' }}>
       {/* Floating hearts */}
       <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-        <style>{`
-          @keyframes floatHeartSM {
-            0%   { transform: translateY(0) rotate(0deg); opacity: 0; }
-            10%  { opacity: 1; }
-            80%  { opacity: 0.5; }
-            100% { transform: translateY(-110vh) rotate(20deg); opacity: 0; }
-          }
-          .fhsm { animation: floatHeartSM var(--dur,12s) ease-in-out var(--delay,0s) infinite; position: absolute; bottom: -10%; }
-        `}</style>
         {[
           { left: '3%', size: 9, color: '#f43f5e', blur: 3, dur: 11, delay: 0 },
           { left: '18%', size: 6, color: '#a855f7', blur: 4, dur: 8, delay: 1.8 },
@@ -3176,7 +3137,7 @@ const SoulMatchPage = () => {
           { left: '75%', size: 11, color: '#9333ea', blur: 4, dur: 12, delay: 0.9 },
           { left: '91%', size: 7, color: '#fb7185', blur: 3, dur: 9, delay: 3 },
         ].map((h, i) => (
-          <div key={i} className="fhsm" style={{ left: h.left, '--dur': `${h.dur}s`, '--delay': `${h.delay}s`, filter: `blur(${h.blur}px)`, opacity: 0.14 } as React.CSSProperties}>
+          <div key={i} className="fha" style={{ left: h.left, '--dur': `${h.dur}s`, '--delay': `${h.delay}s`, filter: `blur(${h.blur}px)`, opacity: 0.14 } as React.CSSProperties}>
             <svg width={h.size} height={h.size} viewBox="0 0 24 24" fill={h.color}><path d="M12 21.593c-5.63-5.539-11-10.297-11-14.402 0-3.791 3.068-5.191 5.281-5.191 1.312 0 4.151.501 5.719 4.457 1.59-3.968 4.464-4.447 5.726-4.447 2.54 0 5.274 1.621 5.274 5.181 0 4.069-5.136 8.625-11 14.402z" /></svg>
           </div>
         ))}
@@ -3202,7 +3163,7 @@ const SoulMatchPage = () => {
                   "flex-1 flex flex-col items-center justify-center gap-1.5 px-1 py-3.5 rounded-[28px] transition-all relative overflow-hidden",
                   isActive ? "text-white shadow-lg shadow-rose-500/30" : "text-white/30 hover:text-white/50"
                 )}
-                style={isActive ? { background: '#f43f5e', boxShadow: '0 0 22px rgba(244,63,94,0.55)' } : { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}
+                style={isActive ? { background: 'linear-gradient(135deg, #f43f5e, #9333ea)' } : { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}
               >
                 <tab.icon className={cn("w-5 h-5", isActive ? "text-white" : "text-stone-300")} />
                 <div className="flex flex-col items-center">
@@ -3225,23 +3186,15 @@ const SoulMatchPage = () => {
             animate={{ opacity: 1, y: 0 }}
             className="relative"
           >
-            <div
-              className="flex items-center gap-2 rounded-2xl px-4 py-3"
-              style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(244,63,94,0.35)', boxShadow: '0 0 20px rgba(244,63,94,0.12), inset 0 1px 0 rgba(255,255,255,0.05)' }}
-            >
-              <Search className="w-4 h-4 shrink-0" style={{ color: '#f43f5e', filter: 'drop-shadow(0 0 6px rgba(244,63,94,0.8))' }} />
-              <input
-                type="text"
-                placeholder="Cerca tra i tuoi SoulLink..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="flex-1 bg-transparent outline-none text-white text-sm font-bold placeholder:text-white/25"
-              />
-              {searchQuery && (
-                <button onClick={() => setSearchQuery('')} className="text-white/30 hover:text-white/60 transition-colors">
-                  <X className="w-4 h-4" />
-                </button>
-              )}
+            <input
+              type="text"
+              placeholder="Cerca tra i tuoi amici..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full h-14 pl-14 pr-4 bg-white border border-stone-100 rounded-[22px] shadow-sm text-sm font-black focus:ring-2 focus:ring-rose-200 outline-none transition-all placeholder:text-stone-300"
+            />
+            <div className="absolute left-2.5 top-1/2 -translate-y-1/2 w-10 h-10 bg-stone-900 rounded-full flex items-center justify-center text-white shadow-lg">
+              <Search className="w-4 h-4" />
             </div>
           </motion.div>
         )}
@@ -3256,15 +3209,32 @@ const SoulMatchPage = () => {
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: idx * 0.05 }}
-                  onClick={() => mode === 'global' ? navigate(`/profile-detail/${p.id}`) : handleStartMatch(p)}
-                  className="aspect-[3/5.5] relative group cursor-pointer active:scale-95 transition-all shadow-xl overflow-hidden rounded-[32px]"
-                  style={{ border: '2px solid #f43f5e', boxShadow: '0 0 18px rgba(244,63,94,0.4), 0 0 4px rgba(244,63,94,0.2)' }}
+                  onClick={() => handleStartMatch(p)}
+                  className="bg-stone-200 aspect-[3/5.5] relative group cursor-pointer active:scale-95 transition-all border border-stone-100 shadow-xl overflow-hidden rounded-[32px]"
                 >
                   <img
                     src={p.photos?.[0] || p.photo_url || `https://picsum.photos/seed/${p.name}/400`}
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-stone-900/95 via-stone-900/10 to-transparent opacity-90 transition-opacity" />
+
+                  {/* Quick Feeling Button */}
+                  <button
+                    onClick={async (e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      await supabase.from('interactions').insert({
+                        from_user_id: currentUser?.id,
+                        to_user_id: p.id,
+                        type: 'heart',
+                        metadata: { source: 'soulmatch_grid_quick' }
+                      });
+                      alert(`✨ Soul Feeling inviato a ${p.name}!`);
+                    }}
+                    className="absolute top-4 right-4 z-30 p-2.5 bg-white/20 backdrop-blur-lg rounded-2xl text-white hover:text-rose-500 hover:bg-white transition-all shadow-lg active:scale-90"
+                  >
+                    <Heart className="w-5 h-5 fill-current" />
+                  </button>
 
                   {/* Match Score Badge (Permanent) - ONLY IF UNLOCKED */}
                   {currentUser && unlockedIds.includes(p.id) && (
@@ -3329,67 +3299,38 @@ const SoulMatchPage = () => {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="fixed inset-0 z-[40] flex flex-col items-center justify-center pt-24 pb-12 px-6 overflow-y-auto"
-            style={{ background: '#0a0a0f' }}
+            className="fixed inset-0 z-[40] bg-white flex flex-col items-center justify-center pt-24 pb-12 px-6 overflow-y-auto"
           >
-            {/* Floating hearts background (reuses fhsm keyframe) */}
-            <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-              {[
-                { left: '5%', size: 8, color: '#f43f5e', blur: 3, dur: 11, delay: 0 },
-                { left: '20%', size: 5, color: '#a855f7', blur: 4, dur: 8, delay: 1.5 },
-                { left: '40%', size: 13, color: '#ec4899', blur: 5, dur: 14, delay: 0.8 },
-                { left: '62%', size: 7, color: '#f43f5e', blur: 2, dur: 10, delay: 2.4 },
-                { left: '80%', size: 10, color: '#9333ea', blur: 4, dur: 12, delay: 1.0 },
-                { left: '93%', size: 6, color: '#fb7185', blur: 3, dur: 9, delay: 3.2 },
-              ].map((h, i) => (
-                <div key={i} className="fhsm" style={{ left: h.left, '--dur': `${h.dur}s`, '--delay': `${h.delay}s`, filter: `blur(${h.blur}px)`, opacity: 0.16 } as React.CSSProperties}>
-                  <svg width={h.size} height={h.size} viewBox="0 0 24 24" fill={h.color}><path d="M12 21.593c-5.63-5.539-11-10.297-11-14.402 0-3.791 3.068-5.191 5.281-5.191 1.312 0 4.151.501 5.719 4.457 1.59-3.968 4.464-4.447 5.726-4.447 2.54 0 5.274 1.621 5.274 5.181 0 4.069-5.136 8.625-11 14.402z" /></svg>
-                </div>
-              ))}
-            </div>
-
             {/* Main Content Area */}
-            <div className="relative z-10 flex-1 flex flex-col items-center justify-center w-full space-y-12 py-4" style={{ marginTop: '-50px' }}>
-
-              {/* DYNAMIC AVATAR COMPOSITION */}
+            <div className="flex-1 flex flex-col items-center justify-center w-full space-y-16 py-4">
+              {/* DYNAMIC AVATAR COMPOSITION - Larger and Distanced */}
               <div className="relative w-84 h-84 flex items-center justify-center">
-                {/* My photo — top-left, tilted left */}
                 <motion.div
                   animate={{ y: [0, -10, 0], rotate: [-8, -6, -8] }}
                   transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
-                  className="absolute top-0 left-0 w-52 h-52 overflow-hidden z-10"
-                  style={{
-                    borderRadius: "38% 62% 63% 37% / 41% 44% 56% 59%",
-                    border: '6px solid #f43f5e',
-                    boxShadow: '0 0 28px rgba(244,63,94,0.6), 0 0 8px rgba(244,63,94,0.3)'
-                  }}
+                  className="absolute top-0 left-0 w-52 h-52 border-[10px] border-white shadow-2xl overflow-hidden z-10 bg-rose-50"
+                  style={{ borderRadius: "38% 62% 63% 37% / 41% 44% 56% 59%" }}
                 >
                   <img src={currentUser?.photos?.[0] || currentUser?.photo_url || `https://picsum.photos/seed/me/400`} className="w-full h-full object-cover" />
                 </motion.div>
 
-                {/* Their photo — bottom-right, tilted right */}
                 <motion.div
                   animate={{ y: [0, 10, 0], rotate: [8, 10, 8] }}
                   transition={{ repeat: Infinity, duration: 4, ease: "easeInOut", delay: 0.5 }}
-                  className="absolute bottom-0 right-0 w-52 h-52 overflow-hidden z-10"
-                  style={{
-                    borderRadius: "62% 38% 37% 63% / 59% 56% 44% 41%",
-                    border: '6px solid #a855f7',
-                    boxShadow: '0 0 28px rgba(168,85,247,0.6), 0 0 8px rgba(168,85,247,0.3)'
-                  }}
+                  className="absolute bottom-0 right-0 w-52 h-52 border-[10px] border-white shadow-2xl overflow-hidden z-10 bg-purple-50"
+                  style={{ borderRadius: "62% 38% 37% 63% / 59% 56% 44% 41%" }}
                 >
                   <img src={targetUser.photos?.[0] || targetUser.photo_url || `https://picsum.photos/seed/${targetUser.name}/400`} className="w-full h-full object-cover" />
                 </motion.div>
 
-                {/* MATCH HEART center */}
+                {/* MATCH HEART (Visual indicator only) */}
                 <motion.div
                   initial={{ scale: 0, opacity: 0 }}
                   animate={{ scale: matchScore !== null ? [1, 1.15, 1] : 0, opacity: matchScore !== null ? 1 : 0 }}
                   transition={{ scale: { repeat: Infinity, duration: 2 }, opacity: { duration: 0.5 } }}
                   className="absolute z-20 w-32 h-32 flex flex-col items-center justify-center pointer-events-none"
-                  style={{ filter: 'drop-shadow(0 0 30px rgba(244,63,94,0.8))' }}
                 >
-                  <Heart className="w-full h-full text-rose-500 fill-current" />
+                  <Heart className="w-full h-full text-rose-600 fill-current drop-shadow-[0_0_40px_rgba(225,29,72,0.7)]" />
                   <div className="absolute inset-0 flex flex-col items-center justify-center text-white pb-3">
                     <span className="text-xl font-black tracking-tighter drop-shadow-lg">{matchScore}%</span>
                     <span className="text-[7px] font-bold uppercase tracking-[0.2em] opacity-80">Match</span>
@@ -3397,56 +3338,16 @@ const SoulMatchPage = () => {
                 </motion.div>
               </div>
 
-
-              {/* Feedback phrase — glass dark card */}
-              <div className="w-full max-w-sm min-h-[90px] flex items-center justify-center">
+              {/* Feedback Area - wider container for longer lines, non-bold */}
+              <div className="w-full max-w-md text-center min-h-[90px]">
                 {calculating ? (
-                  <div className="flex flex-col items-center gap-3">
-                    <motion.div
-                      animate={{ scale: [1, 1.3, 1] }}
-                      transition={{ repeat: Infinity, duration: 1.2 }}
-                    >
-                      <Heart className="w-8 h-8 text-rose-500 fill-current" style={{ filter: 'drop-shadow(0 0 16px rgba(244,63,94,0.9))' }} />
-                    </motion.div>
-                    <p className="text-[11px] font-black text-white/60 uppercase tracking-[0.4em] animate-pulse">
-                      Sincronizzazione Anime...
-                    </p>
-                  </div>
+                  <p className="text-[9px] font-black text-[#2E1139] uppercase tracking-[0.4em] animate-pulse">Sincronizzazione Anime...</p>
                 ) : matchScore !== null && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.3 }}
-                    className="rounded-[24px] px-6 py-5 text-center"
-                    style={{
-                      background: 'rgba(255,255,255,0.05)',
-                      border: '1px solid rgba(244,63,94,0.2)',
-                      backdropFilter: 'blur(12px)',
-                      boxShadow: '0 0 40px rgba(244,63,94,0.08)'
-                    }}
-                  >
-                    <p className="text-white/90 text-[15px] italic leading-relaxed font-light" style={{ fontFamily: 'Georgia, serif' }}>
-                      {matchScore >= 80
-                        ? `✨ "Sintonia rara — le vostre anime vibrano all'unisono. Questa connessione vale ogni rischio."`
-                        : matchScore >= 60
-                          ? `💫 "Grande potenziale — le vostre differenze si completano come i pezzi di un puzzle straordinario."`
-                          : matchScore >= 40
-                            ? `🌙 "Contrasti intriganti — lasciatevi sorprendere da ciò che ancora non conoscete l'uno dell'altra."`
-                            : `🌊 "Anime divergenti — ma ogni incontro porta un significato che va oltre il tempo."`}
-                    </p>
-                    <div className="mt-3 flex justify-center">
-                      <span
-                        className="text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full"
-                        style={{
-                          background: matchScore >= 80 ? 'rgba(244,63,94,0.2)' : matchScore >= 60 ? 'rgba(168,85,247,0.2)' : 'rgba(255,255,255,0.08)',
-                          color: matchScore >= 80 ? '#f43f5e' : matchScore >= 60 ? '#a855f7' : 'rgba(255,255,255,0.4)',
-                          border: `1px solid ${matchScore >= 80 ? 'rgba(244,63,94,0.3)' : matchScore >= 60 ? 'rgba(168,85,247,0.3)' : 'rgba(255,255,255,0.1)'}`
-                        }}
-                      >
-                        {matchScore >= 80 ? '🔥 Affinità Stellare' : matchScore >= 60 ? '💜 Alta Compatibilità' : matchScore >= 40 ? '🌙 Da Scoprire' : '🌊 Anime Libere'}
-                      </span>
-                    </div>
-                  </motion.div>
+                  <p className="text-[#2E1139] text-[15px] italic leading-relaxed px-4">
+                    {matchScore >= 80 ? '"Sintonia rara: le vostre anime vibrano all\'unisono verso l\'infinito."' :
+                      matchScore >= 50 ? '"Grande potenziale: le vostre differenze completano un puzzle affascinante."' :
+                        '"Contrasti intriganti: lasciatevi sorprendere da una nuova prospettiva."'}
+                  </p>
                 )}
               </div>
             </div>
@@ -3456,9 +3357,17 @@ const SoulMatchPage = () => {
               {matchScore && !calculating && !feelingSent && (
                 <motion.div
                   initial={{ top: "100vh", opacity: 0, x: 0 }}
-                  animate={{ top: 120, opacity: 1, x: [0, 20, -20, 0] }}
+                  animate={{
+                    top: 120,
+                    opacity: 1,
+                    x: [0, 20, -20, 0] // Balloon swaying
+                  }}
                   exit={{ opacity: 0, scale: 2 }}
-                  transition={{ top: { duration: 7, ease: "linear" }, opacity: { duration: 1 }, x: { duration: 3, repeat: Infinity, ease: "easeInOut" } }}
+                  transition={{
+                    top: { duration: 7, ease: "linear" },
+                    opacity: { duration: 1 },
+                    x: { duration: 3, repeat: Infinity, ease: "easeInOut" }
+                  }}
                   className="fixed right-32 z-[100] cursor-pointer"
                   onClick={async (e) => {
                     e.stopPropagation();
@@ -3473,32 +3382,57 @@ const SoulMatchPage = () => {
                   }}
                 >
                   <div className="relative flex items-center justify-center group">
-                    {/* 8 companion hearts orbiting */}
-                    {[
-                      { x: [-15, 15, -15], y: [0, -22, 0], w: 5, color: '#fb7185', op: 0.65, dur: 4.0, delay: 0 },
-                      { x: [0, -18, 18, 0], y: [0, 26, -26, 0], w: 4, color: '#f43f5e', op: 0.50, dur: 5.2, delay: 0.5 },
-                      { x: [0, -10, 10, 0], y: [0, 32, -32, 0], w: 6, color: '#fda4af', op: 0.40, dur: 3.2, delay: 1.0 },
-                      { x: [0, 16, -16, 0], y: [-8, 20, -8, -8], w: 3, color: '#f43f5e', op: 0.70, dur: 6.0, delay: 0.2 },
-                      { x: [-20, 20, -20], y: [0, -32, 0], w: 5, color: '#e879a0', op: 0.60, dur: 4.5, delay: 0.8 },
-                      { x: [0, -12, 12, 0], y: [-12, 22, -12, -12], w: 7, color: '#fda4af', op: 0.30, dur: 2.6, delay: 1.3 },
-                      { x: [0, 10, -10, 0], y: [0, 18, -18, 0], w: 4, color: '#f43f5e', op: 0.55, dur: 5.8, delay: 0.4 },
-                      { x: [-10, 10, -10], y: [0, 28, -28, 0], w: 3, color: '#fb7185', op: 0.45, dur: 3.8, delay: 0.9 },
-                    ].map((h, i) => (
-                      <motion.div
-                        key={i}
-                        animate={{ x: h.x, y: h.y }}
-                        transition={{ duration: h.dur, repeat: Infinity, ease: 'easeInOut', delay: h.delay }}
-                        className="absolute pointer-events-none"
-                        style={{
-                          top: `${20 + (i % 4) * 18}%`,
-                          left: `${10 + (i % 5) * 18}%`,
-                          opacity: h.op,
-                          filter: `drop-shadow(0 0 4px ${h.color})`
-                        }}
-                      >
-                        <Heart className={`w-${h.w} h-${h.w} fill-current`} style={{ color: h.color }} />
-                      </motion.div>
-                    ))}
+                    {/* Companion Hearts */}
+                    <motion.div
+                      animate={{ x: [0, -15, 15, 0], y: [0, -20, 20, 0] }}
+                      transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                      className="absolute -top-6 -left-10 text-rose-300 opacity-60"
+                    >
+                      <Heart className="w-5 h-5 fill-current" />
+                    </motion.div>
+                    <motion.div
+                      animate={{ x: [0, 20, -20, 0], y: [0, 25, -25, 0] }}
+                      transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+                      className="absolute -bottom-4 -right-12 text-rose-300 opacity-50"
+                    >
+                      <Heart className="w-4 h-4 fill-current" />
+                    </motion.div>
+                    <motion.div
+                      animate={{ x: [0, -10, 10, 0], y: [0, 30, -30, 0] }}
+                      transition={{ duration: 3, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+                      className="absolute top-8 -right-14 text-rose-200 opacity-40"
+                    >
+                      <Heart className="w-6 h-6 fill-current" />
+                    </motion.div>
+                    <motion.div
+                      animate={{ x: [0, 15, -15, 0], y: [-10, 20, -10, -10] }}
+                      transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 0.2 }}
+                      className="absolute -top-12 right-2 text-rose-100 opacity-70"
+                    >
+                      <Heart className="w-3 h-3 fill-current" />
+                    </motion.div>
+                    <motion.div
+                      animate={{ x: [-20, 20, -20], y: [0, -30, 0] }}
+                      transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut", delay: 0.8 }}
+                      className="absolute bottom-8 -left-16 text-rose-200 opacity-60"
+                    >
+                      <Heart className="w-5 h-5 fill-current" />
+                    </motion.div>
+                    <motion.div
+                      animate={{ scale: [1, 1.2, 1], x: [0, -10, 10, 0] }}
+                      transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+                      className="absolute -bottom-12 -left-4 text-rose-400 opacity-30"
+                    >
+                      <Heart className="w-7 h-7 fill-current" />
+                    </motion.div>
+                    <motion.div
+                      animate={{ rotate: [0, 45, -45, 0], y: [0, 15, -15, 0] }}
+                      transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                      className="absolute top-12 left-10 text-rose-50 opacity-80 shadow-sm"
+                    >
+                      <Heart className="w-2 h-2 fill-current" />
+                    </motion.div>
+
                     <Heart className="w-20 h-20 text-rose-400 fill-current drop-shadow-[0_10px_40px_rgba(251,113,133,0.6)] group-hover:scale-110 transition-transform" />
                     <Send className="absolute w-7 h-7 text-white rotate-[-25deg] group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
                   </div>
@@ -6381,10 +6315,18 @@ const FeedComponent = ({ userId, isOwner, global = false }: { userId: any, isOwn
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {isOwner && (
-        <div className="flex items-center justify-end px-1">
-          <span className="text-[9px] text-white/30 font-black uppercase tracking-widest">durata 30 giorni</span>
+        <div className="flex items-center justify-between px-2">
+          <h2 className="text-xl font-montserrat font-black text-emerald-600 flex items-center gap-3">
+            <div className="w-10 h-10 bg-emerald-50 rounded-2xl flex items-center justify-center">
+              <LayoutGrid className="w-5 h-5 text-emerald-600" />
+            </div>
+            <div className="flex flex-col">
+              <span>I MIEI POST</span>
+              <span className="text-[10px] text-stone-400 font-semibold mt-1 uppercase tracking-widest leading-none">durata 30 giorni</span>
+            </div>
+          </h2>
         </div>
       )}
 
@@ -6392,15 +6334,14 @@ const FeedComponent = ({ userId, isOwner, global = false }: { userId: any, isOwn
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="p-5 rounded-[28px] flex flex-col gap-4 relative overflow-hidden"
-          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(244,63,94,0.15)', boxShadow: '0 0 20px rgba(244,63,94,0.06)' }}
+          className="bg-white p-6 rounded-[32px] shadow-sm border border-stone-100 flex flex-col gap-4 relative overflow-hidden"
         >
-          <div className="absolute top-0 left-0 w-1 h-full" style={{ background: 'rgba(244,63,94,0.4)' }} />
+          <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500 opacity-20" />
           <textarea
             value={newPostDesc}
             onChange={(e) => setNewPostDesc(e.target.value)}
             placeholder="A cosa stai pensando oggi?"
-            className="w-full text-base outline-none resize-none bg-transparent placeholder:text-white/20 font-medium leading-relaxed text-white/80 min-h-[56px]"
+            className="w-full text-base outline-none resize-none bg-transparent placeholder:text-stone-300 font-medium leading-relaxed"
             rows={3}
           />
 
@@ -6422,9 +6363,7 @@ const FeedComponent = ({ userId, isOwner, global = false }: { userId: any, isOwn
 
           <div className="flex items-center justify-between border-t border-stone-50 pt-4 mt-2">
             <div className="flex items-center gap-2">
-              <label className="flex items-center gap-2 text-[11px] text-white font-black uppercase tracking-widest px-4 py-2.5 rounded-2xl cursor-pointer transition-all active:scale-95 shadow-lg shadow-rose-900/20"
-                style={{ background: '#f43f5e', border: '1px solid rgba(255,255,255,0.1)' }}
-              >
+              <label className="flex items-center gap-2 text-[11px] text-emerald-700 font-black uppercase tracking-widest bg-emerald-50 px-4 py-2.5 rounded-2xl cursor-pointer hover:bg-emerald-100 transition-all active:scale-95">
                 <ImageIcon className="w-4 h-4" />
                 {newPostPhotos.length < 3 ? "Aggiungi Foto" : "Max Raggiunto"}
                 <input type="file" accept="image/*" multiple className="hidden" disabled={newPostPhotos.length >= 3} onChange={handlePhotoUpload} />
@@ -6529,6 +6468,12 @@ const FeedComponent = ({ userId, isOwner, global = false }: { userId: any, isOwn
                           {post.author_gender && (
                             <span className="text-white/50 text-[9px] font-bold uppercase tracking-wider">{post.author_gender}</span>
                           )}
+                          {post.author_orientation && post.author_orientation.length > 0 && (
+                            <>
+                              <span className="text-rose-500/60 text-[9px]">•</span>
+                              <span className="text-white/40 text-[9px] font-bold uppercase tracking-wider">{post.author_orientation.join(', ')}</span>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -6561,6 +6506,9 @@ const FeedComponent = ({ userId, isOwner, global = false }: { userId: any, isOwn
                       <p className="text-white text-[13px] font-black font-montserrat leading-none">{post.author_name}</p>
                       <div className="flex items-center gap-1 mt-0.5">
                         {post.author_gender && <span className="text-white/40 text-[9px] font-bold uppercase tracking-wider">{post.author_gender}</span>}
+                        {post.author_orientation?.length > 0 && (
+                          <><span className="text-rose-500/50 text-[9px]">•</span><span className="text-white/30 text-[9px] font-bold uppercase tracking-wider">{post.author_orientation.join(', ')}</span></>
+                        )}
                       </div>
                     </div>
                     {isOwner && (
@@ -7201,10 +7149,7 @@ const ChatPage = () => {
   const [activeChats, setActiveChats] = useState<any[]>([]);
   const [friends, setFriends] = useState<SoulLink[]>([]);
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
-  const [readChatIds, setReadChatIds] = useState<Set<string>>(() => {
-    try { const s = localStorage.getItem('sm_read_chats'); return s ? new Set(JSON.parse(s)) : new Set(); } catch { return new Set(); }
-  });
-  useEffect(() => { localStorage.setItem('sm_read_chats', JSON.stringify([...readChatIds])); }, [readChatIds]);
+  const [readChatIds, setReadChatIds] = useState<Set<string>>(new Set());
   const [replyText, setReplyText] = useState('');
   const [isSendingReply, setIsSendingReply] = useState(false);
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
@@ -7440,7 +7385,7 @@ const ChatPage = () => {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen pt-16 pb-60 relative overflow-x-hidden" style={{ background: '#0a0a0f' }}>
+    <div className="min-h-screen pt-16 pb-28 relative overflow-x-hidden" style={{ background: '#0a0a0f' }}>
       {/* Floating hearts background */}
       <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
         <style>{`
@@ -7527,7 +7472,7 @@ const ChatPage = () => {
         initial={{ y: -100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ type: "spring", stiffness: 100, damping: 15, duration: 0.8 }}
-        className="flex justify-center gap-3 mx-4 mb-2 pt-2"
+        className="flex justify-center gap-3 mx-4 mb-4 pt-4"
       >
         {[
           { id: 'messaggi', label: 'Messaggi', icon: MessageSquare, count: chatRequests.filter(r => r.status === 'pending').length },
@@ -7586,7 +7531,7 @@ const ChatPage = () => {
 
                   {/* Chat Attive e Messaggi (WhatsApp Style with swiping) */}
                   {activeChats.length > 0 && (
-                    <div className="space-y-4 pt-2 pb-32">
+                    <div className="space-y-4 pt-2">
                       {activeChats.map((chat) => {
                         const hasUnread = !chat.isSender && !readChatIds.has(chat.other_user.id);
                         const isOpen = replyingTo === chat.other_user.id;
@@ -7600,7 +7545,6 @@ const ChatPage = () => {
                             exit={{ opacity: 0, transition: { duration: 0.2 } }}
                             transition={{ type: 'spring', stiffness: 220, damping: 24 }}
                             className="relative overflow-hidden rounded-[24px]"
-                            data-chat-card
                             style={{
                               boxShadow: notify
                                 ? '0 0 0 1.5px #f43f5e, 0 0 24px rgba(244,63,94,0.45), 0 4px 30px rgba(0,0,0,0.4)'
@@ -7625,17 +7569,10 @@ const ChatPage = () => {
                               onDragEnd={(_, info) => {
                                 if (info.offset.x < -80) { setConfirmDeleteChat(chat); }
                               }}
-                              onClick={(e) => {
+                              onClick={() => {
                                 const willOpen = replyingTo !== chat.other_user.id;
                                 setReplyingTo(willOpen ? chat.other_user.id : null);
-                                if (willOpen) {
-                                  setReadChatIds(prev => new Set([...prev, chat.other_user.id]));
-                                  setTimeout(() => {
-                                    (e.currentTarget as HTMLElement)
-                                      .closest('[data-chat-card]')
-                                      ?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-                                  }, 320);
-                                }
+                                if (willOpen) setReadChatIds(prev => new Set([...prev, chat.other_user.id]));
                               }}
                               className="group p-4 flex items-center gap-4 z-10 cursor-pointer relative overflow-hidden"
                               style={{
@@ -8150,7 +8087,7 @@ const ProfilePage = () => {
   const [liveChatsCount, setLiveChatsCount] = useState(0);
   const [activeChatTarget, setActiveChatTarget] = useState<any>(null);
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
-  const [activeTab, setActiveTab] = useState<'notifications' | 'gallery' | 'feed' | 'setup'>('notifications');
+  const [activeTab, setActiveTab] = useState<'notifications' | 'gallery' | 'feed'>('notifications');
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
@@ -8158,46 +8095,10 @@ const ProfilePage = () => {
   const [bannerData, setBannerData] = useState<any>(null);
   const [bannerText, setBannerText] = useState('');
   const [isWritingBanner, setIsWritingBanner] = useState(false);
-  const [soulLinkRequests, setSoulLinkRequests] = useState<any[]>([]);
-  const [setupForm, setSetupForm] = useState<any>({
-    conosciamoci_meglio: {},
-    orientation: [],
-    looking_for_gender: []
-  });
-  const [isSavingSetup, setIsSavingSetup] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [isDeletingProfile, setIsDeletingProfile] = useState(false);
   const navigate = useNavigate();
 
   const [hasViewedNotifs, setHasViewedNotifs] = useState(false);
   const [bounceNotif, setBounceNotif] = useState(false);
-
-  useEffect(() => {
-    if (user) {
-      setSetupForm({
-        name: user.name,
-        surname: user.surname,
-        dob: user.dob,
-        gender: user.gender,
-        orientation: (Array.isArray(user.orientation) ? user.orientation : user.orientation ? [user.orientation] : []) as string[],
-        city: user.city,
-        province: user.province,
-        job: user.job,
-        description: user.description,
-        hobbies: user.hobbies,
-        desires: user.desires,
-        body_type: user.body_type,
-        height_cm: user.height_cm,
-        conosciamoci_meglio: user.conosciamoci_meglio || {},
-        looking_for_gender: (Array.isArray(user.looking_for_gender) ? user.looking_for_gender : user.looking_for_gender ? [user.looking_for_gender] : []) as string[],
-        looking_for_age_min: user.looking_for_age_min || 18,
-        looking_for_age_max: user.looking_for_age_max || 99,
-        looking_for_body_type: user.looking_for_body_type || 'Tutte',
-        looking_for_city: user.looking_for_city || 'Indifferente',
-        looking_for_other: user.looking_for_other || ''
-      });
-    }
-  }, [user?.id]);
 
   useEffect(() => {
     const bounceInterval = setInterval(() => {
@@ -8301,17 +8202,6 @@ const ProfilePage = () => {
         }
       }
 
-      // Fetch pending soul link requests (richieste di amicizia in entrata)
-      const { data: soulLinksData } = await supabase
-        .from('soul_links')
-        .select(`
-          id, status, created_at,
-          requester:users!user_id(id, name, photos, photo_url, city, is_online, dob)
-        `)
-        .eq('friend_id', userId)
-        .eq('status', 'pending');
-      if (soulLinksData) setSoulLinkRequests(soulLinksData);
-
       // Fetch banner data (Compatibilità Online con Supabase)
       try {
         const { data, error } = await supabase
@@ -8346,61 +8236,6 @@ const ProfilePage = () => {
       } catch (e) { navigate('/register'); }
     } else navigate('/register');
   }, [navigate]);
-
-  // Accept/reject soul link requests
-  const handleAcceptSoulLink = async (linkId: string) => {
-    const { error } = await supabase.from('soul_links').update({ status: 'accepted' }).eq('id', linkId);
-    if (!error) { setToast({ message: '🎉 Amicizia accettata!', type: 'success' }); if (user?.id) fetchData(user.id); }
-  };
-  const handleRejectSoulLink = async (linkId: string) => {
-    const { error } = await supabase.from('soul_links').delete().eq('id', linkId);
-    if (!error) { setToast({ message: 'Richiesta rifiutata.', type: 'info' }); if (user?.id) fetchData(user.id); }
-  };
-  const handleSaveSetup = async () => {
-    if (!user?.id) return;
-    setIsSavingSetup(true);
-
-    // Filter out read-only and computed fields
-    const submissionData = { ...setupForm };
-    delete submissionData.name;
-    delete submissionData.surname;
-    delete submissionData.dob;
-    delete submissionData.likes_count;
-    delete submissionData.hearts_count;
-
-    const { error } = await supabase.from('users').update(submissionData).eq('id', user.id);
-    if (!error) {
-      setToast({ message: '✅ Profilo aggiornato!', type: 'success' });
-      fetchData(user.id);
-
-      // Sync local storage if needed
-      const saved = localStorage.getItem('soulmatch_user');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        localStorage.setItem('soulmatch_user', JSON.stringify({ ...parsed, ...submissionData }));
-      }
-    } else {
-      setToast({ message: 'Errore durante il salvataggio: ' + error.message, type: 'error' });
-    }
-    setIsSavingSetup(false);
-  };
-
-  const handleDeleteProfile = async () => {
-    if (!user?.id) return;
-    setIsDeletingProfile(true);
-    try {
-      const { error } = await supabase.rpc('delete_user_account');
-      if (error) throw new Error(error.message);
-      await supabase.auth.signOut();
-      localStorage.removeItem('soulmatch_user');
-      setToast({ message: 'Profilo eliminato. Arrivederci!', type: 'info' });
-      setTimeout(() => { window.dispatchEvent(new Event('user-auth-change')); navigate('/'); }, 2000);
-    } catch (err: any) {
-      setToast({ message: 'Errore: ' + err.message, type: 'error' });
-    } finally {
-      setIsDeletingProfile(false);
-    }
-  };
 
   const handleRequestAction = async (requestId: string, status: 'approved' | 'rejected') => {
     const { error } = await supabase
@@ -8520,9 +8355,9 @@ const ProfilePage = () => {
   };
 
   if (loading) return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-4" style={{ background: '#0a0a0f' }}>
-      <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 1.5 }}><Heart className="w-12 h-12 text-rose-500 fill-current" style={{ filter: 'drop-shadow(0 0 20px rgba(244,63,94,0.8))' }} /></motion.div>
-      <p className="text-white/30 text-sm font-medium animate-pulse">Caricamento profilo...</p>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-stone-50 gap-4">
+      <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 1.5 }}><Heart className="w-12 h-12 text-rose-600 fill-current drop-shadow-xl" /></motion.div>
+      <p className="text-stone-400 text-sm font-medium animate-pulse">Caricamento profilo...</p>
     </div>
   );
 
@@ -8550,95 +8385,82 @@ const ProfilePage = () => {
   const heroPhoto = (user.photos && user.photos.length > 0) ? user.photos[0] : (user.photo_url || `https://picsum.photos/seed/${user.name}/400/600`);
 
   return (
-    <div className="min-h-screen pt-16 pb-28 relative overflow-x-hidden" style={{ background: '#0a0a0f' }}>
-      {/* Floating hearts */}
-      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-        <style>{`
-          @keyframes floatHeartPP { 0%{transform:translateY(0) rotate(0deg);opacity:0;} 10%{opacity:1;} 80%{opacity:0.4;} 100%{transform:translateY(-110vh) rotate(20deg);opacity:0;} }
-          .fhpp { animation: floatHeartPP var(--dur,12s) ease-in-out var(--delay,0s) infinite; position:absolute; bottom:-10%; }
-        `}</style>
-        {[
-          { left: '6%', size: 8, color: '#f43f5e', blur: 3, dur: 11, delay: 0 },
-          { left: '24%', size: 5, color: '#a855f7', blur: 4, dur: 8, delay: 1.6 },
-          { left: '45%', size: 12, color: '#ec4899', blur: 5, dur: 13, delay: 0.7 },
-          { left: '68%', size: 7, color: '#f43f5e', blur: 2, dur: 10, delay: 2.3 },
-          { left: '85%', size: 9, color: '#9333ea', blur: 4, dur: 12, delay: 1.1 },
-        ].map((h, i) => (
-          <div key={i} className="fhpp" style={{ left: h.left, '--dur': `${h.dur}s`, '--delay': `${h.delay}s`, filter: `blur(${h.blur}px)`, opacity: 0.15 } as React.CSSProperties}>
-            <svg width={h.size} height={h.size} viewBox="0 0 24 24" fill={h.color}><path d="M12 21.593c-5.63-5.539-11-10.297-11-14.402 0-3.791 3.068-5.191 5.281-5.191 1.312 0 4.151.501 5.719 4.457 1.59-3.968 4.464-4.447 5.726-4.447 2.54 0 5.274 1.621 5.274 5.181 0 4.069-5.136 8.625-11 14.402z" /></svg>
-          </div>
-        ))}
-      </div>
+    <div className="min-h-screen bg-stone-50 pt-16 pb-28 relative overflow-x-hidden">
       <AnimatePresence>
         {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       </AnimatePresence>
 
       {/* ── HERO PHOTO ── */}
-      <div className="relative w-full h-[68vh] min-h-[420px] overflow-hidden">
+      <div className="relative w-full h-[55vh] min-h-[340px] overflow-hidden">
         <img
           src={heroPhoto}
           alt={user.name}
           className="w-full h-full object-cover object-top"
         />
-        {/* Strong bottom fade to page background */}
-        <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, rgba(10,10,15,0.1) 0%, transparent 30%, rgba(10,10,15,0.7) 70%, #0a0a0f 100%)' }} />
+        {/* Gradient overlay: transparent at top, full colour at bottom */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-[stone-50]" />
 
-        {/* Settings button REMOVED — use Setup tab instead */}
+        {/* Floating Actions */}
+        <div className="absolute top-4 right-4 flex flex-col gap-2 z-20">
+          <button
+            onClick={() => navigate('/edit-profile')}
+            className="w-10 h-10 bg-white/80 backdrop-blur-md rounded-full flex items-center justify-center text-stone-600 shadow-lg active:scale-90 transition-all border border-white"
+            title="Modifica profilo"
+          >
+            <Settings2 className="w-5 h-5" />
+          </button>
+        </div>
 
-        {/* Name + badge over gradient */}
-        <div className="absolute bottom-20 left-0 right-0 px-6 pb-4 z-10">
+
+        {/* Name + badge floated over gradient */}
+        <div className="absolute bottom-0 left-0 right-0 px-6 pb-4 z-10">
           <div className="flex items-end justify-between">
-            <div className="min-w-0 flex-1">
-              <h1 className="font-montserrat font-black text-2xl text-white truncate drop-shadow-lg">
-                {user.name}{calculateAge(user.dob) > 0 && <span className="font-light text-xl text-white/60">, {calculateAge(user.dob)}</span>}
+            <div>
+              <h1 className="text-3xl font-serif font-black text-stone-900 leading-tight drop-shadow-sm">
+                {user.name} <span className="text-stone-500 font-light text-2xl">{calculateAge(user.dob)}</span>
               </h1>
               {user.city && (
-                <p className="text-[11px] font-black uppercase tracking-widest text-white/70 flex items-center gap-1.5 mt-1">
-                  <MapPin className="w-3 h-3 text-rose-400" /> {user.city}{user.province ? `, ${user.province}` : ''}
-                </p>
+                <p className="text-stone-500 text-sm font-semibold mt-0.5">{user.city}{user.province ? `, ${user.province}` : ''}</p>
               )}
             </div>
             <div className={cn(
-              "flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm ml-3 shrink-0",
-              user.is_paid ? "bg-rose-600 text-white" : "bg-white/15 backdrop-blur text-white/60 border border-white/20"
+              "flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm",
+              user.is_paid ? "bg-rose-600 text-white" : "bg-white/80 backdrop-blur text-stone-500 border border-stone-200"
             )}>
-              <div className={cn("w-1.5 h-1.5 rounded-full", user.is_paid ? "bg-white animate-pulse" : "bg-white/30")} />
+              <div className={cn("w-1.5 h-1.5 rounded-full", user.is_paid ? "bg-white animate-pulse" : "bg-stone-300")} />
               {user.is_paid ? 'Premium' : 'Base'}
             </div>
           </div>
         </div>
       </div>
 
-      {/* ── STATS ROW — overlaps hero bottom ── */}
-      <div
-        className="mx-6 -mt-14 rounded-[28px] flex justify-between overflow-hidden relative z-10 backdrop-blur-xl"
-        style={{ background: 'rgba(10,10,15,0.55)', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}
-      >
+      {/* ── STATS ROW ── */}
+      <div className="mx-4 mt-3 bg-white rounded-[28px] shadow-sm border border-stone-100 flex justify-between overflow-hidden">
         {[
-          { icon: ThumbsUp, val: user.likes_count || 0, label: 'Like', color: 'text-emerald-400' },
-          { icon: Heart, val: user.hearts_count || 0, label: 'Cuori', color: 'text-rose-400' }
+          { icon: ThumbsUp, val: user.likes_count || 0, label: 'Like', color: 'text-blue-500' },
+          { icon: Heart, val: user.hearts_count || 0, label: 'Cuori', color: 'text-rose-500' }
         ].map((s, i) => (
-          <div key={i} className="flex-1 flex flex-col items-center py-4 gap-1 border-r border-white/5 last:border-0">
-            <span className="text-xl font-black text-white">{s.val}</span>
+          <div key={i} className="flex-1 flex flex-col items-center py-4 gap-1 border-r border-stone-100 last:border-0 border-dashed">
+            <span className="text-xl font-black text-stone-900">{s.val}</span>
             <s.icon className={cn("w-4 h-4", s.color)} />
-            <span className="text-[9px] text-white/30 font-bold uppercase tracking-widest">{s.label}</span>
+            <span className="text-[9px] text-stone-400 font-bold uppercase tracking-widest">{s.label}</span>
           </div>
         ))}
       </div>
 
-      {/* ── BANNER MANAGEMENT ── */}
-      <div className="mx-4 mt-5 rounded-[24px] p-5" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
+      {/* ── ISOLA BANNER MANAGEMENT ── */}
+      <div className="mx-4 mt-5 bg-white rounded-[24px] shadow-sm border border-stone-100 p-5">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-[11px] font-black text-white/80 uppercase tracking-widest flex items-center gap-2">
-            <MessageSquare className="w-4 h-4 text-rose-400" />
+          <h3 className="text-[11px] font-black text-stone-900 uppercase tracking-widest flex items-center gap-2">
+            <MessageSquare className="w-4 h-4 text-rose-500" />
             Il tuo Banner Globale (24h)
           </h3>
         </div>
 
         {bannerData?.message ? (
           <div className="space-y-4">
-            <div className="rounded-[16px] p-4 relative" style={{ background: 'rgba(244,63,94,0.1)', border: '1px solid rgba(244,63,94,0.2)' }}>
-              <p className="text-xs font-semibold text-white/80 italic pr-6 leading-relaxed">"{bannerData.message.message}"</p>
+            <div className="bg-rose-50 rounded-[16px] p-4 border border-rose-100 relative">
+              <p className="text-xs font-semibold text-rose-900 italic pr-6 leading-relaxed">"{bannerData.message.message}"</p>
               <button onClick={async () => {
                 await supabase.from('banner_messages').delete().eq('id', bannerData.message.id);
                 setBannerData(null);
@@ -8675,56 +8497,66 @@ const ProfilePage = () => {
                 <textarea
                   value={bannerText}
                   onChange={e => setBannerText(e.target.value)}
-                  placeholder="Scrivi qui... es. Chi viene all'arena domani sera? Caffè?"
-                  className="w-full rounded-[16px] p-4 text-[12px] font-medium resize-none focus:outline-none min-h-[80px] text-white/80 placeholder:text-white/20"
-                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(244,63,94,0.25)' }}
+                  placeholder="Scrivi qui... es. Chi viene all'arena domani sera? Caffe?"
+                  className="w-full bg-stone-50 border border-stone-200 rounded-[16px] p-4 text-[12px] font-medium resize-none focus:outline-none focus:ring-2 focus:ring-rose-200 min-h-[80px]"
                   maxLength={80}
                 />
                 <div className="flex gap-2">
                   <button onClick={async () => {
                     if (!bannerText.trim()) return;
                     setIsWritingBanner(false);
+                    // Rimuoviamo il vecchio messaggio se esiste (ne permettiamo 1)
                     await supabase.from('banner_messages').delete().eq('user_id', user.id);
-                    const newBanner = { user_id: user.id, message: bannerText, name: user.name, photo_url: user.photos?.[0] || user.photo_url, city: user.city, dob: user.dob };
+
+                    const newBanner = {
+                      user_id: user.id,
+                      message: bannerText,
+                      name: user.name,
+                      photo_url: user.photos?.[0] || user.photo_url,
+                      city: user.city,
+                      dob: user.dob
+                    };
                     const { data, error } = await supabase.from('banner_messages').insert([newBanner]).select().single();
                     setBannerText('');
-                    if (!error && data) { setBannerData({ message: data, replies: [] }); setToast({ message: 'Messaggio flash pubblicato in bacheca!', type: 'success' }); }
-                  }} className="flex-1 text-white py-2.5 rounded-[12px] text-[10px] font-black uppercase tracking-widest" style={{ background: '#f43f5e', boxShadow: '0 0 16px rgba(244,63,94,0.4)' }}>
+                    if (!error && data) {
+                      setBannerData({ message: data, replies: [] });
+                      setToast({ message: 'Messaggio flash pubblicato in bacheca!', type: 'success' });
+                    }
+                  }} className="flex-1 bg-stone-900 text-white py-2.5 rounded-[12px] text-[10px] font-black uppercase tracking-widest shadow-md">
                     Pubblica Flash
                   </button>
-                  <button onClick={() => setIsWritingBanner(false)} className="px-4 py-2.5 rounded-[12px] text-[10px] font-black uppercase tracking-widest text-white/50" style={{ background: 'rgba(255,255,255,0.07)' }}>
+                  <button onClick={() => setIsWritingBanner(false)} className="px-4 bg-stone-100 text-stone-500 py-2.5 rounded-[12px] text-[10px] font-black uppercase tracking-widest border border-stone-200">
                     Annulla
                   </button>
                 </div>
               </div>
             ) : (
-              <button onClick={() => setIsWritingBanner(true)} className="w-full rounded-[16px] p-5 flex flex-col items-center justify-center gap-2 transition-colors" style={{ background: 'rgba(255,255,255,0.04)', border: '1px dashed rgba(255,255,255,0.15)' }}>
-                <Plus className="w-5 h-5 text-rose-400" />
-                <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">Aggiungi messaggio in Bacheca</span>
+              <button onClick={() => setIsWritingBanner(true)} className="w-full bg-stone-50 border border-dashed border-stone-300 rounded-[16px] p-5 flex flex-col items-center justify-center gap-2 hover:bg-stone-100 transition-colors">
+                <Plus className="w-5 h-5 text-stone-400" />
+                <span className="text-[10px] font-black text-stone-500 uppercase tracking-widest">Aggiungi messaggio in Bacheca</span>
               </button>
             )}
           </div>
         )}
       </div>
 
-      {/* ── TAB BAR dark glass ── */}
-      <div className="mx-4 mt-5 rounded-[24px] flex p-1.5 backdrop-blur-xl" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}>
+      {/* ── TAB BAR ── */}
+      <div className="mx-4 mt-5 bg-white rounded-[24px] shadow-sm border border-stone-100 flex p-1.5">
         {[
-          { id: 'notifications', label: 'Amici', icon: Bell, badge: hasViewedNotifs ? 0 : soulLinkRequests.length },
+          { id: 'notifications', label: 'Messaggi', icon: Bell, badge: hasViewedNotifs ? 0 : chatRequests.length },
           { id: 'gallery', label: 'Galleria', icon: Camera, badge: 0 },
-          { id: 'feed', label: 'Post', icon: ImageIcon, badge: 0 },
-          { id: 'setup', label: 'Setup', icon: Settings2, badge: 0 },
+          { id: 'feed', label: 'Post', icon: ImageIcon, badge: 0 }
         ].map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id as any)}
             className={cn(
               "flex-1 py-3 rounded-[18px] flex flex-col items-center gap-1 transition-all duration-300 relative",
-              activeTab === tab.id ? "text-white" : "text-white/30"
+              activeTab === tab.id ? "text-rose-600" : "text-stone-400"
             )}
           >
             {activeTab === tab.id && (
-              <motion.div layoutId="profileTabBg" className="absolute inset-x-2 inset-y-1 rounded-full" style={{ background: '#f43f5e', boxShadow: '0 0 16px rgba(244,63,94,0.5)' }} />
+              <motion.div layoutId="profileTabBg" className="absolute inset-x-2 inset-y-1 bg-rose-50 rounded-full" />
             )}
             <div className="relative z-10">
               <tab.icon className="w-5 h-5" />
@@ -8745,102 +8577,115 @@ const ProfilePage = () => {
 
           {activeTab === 'notifications' && (
             <motion.div key="tab-notif" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
-              {soulLinkRequests.length === 0 ? (
-                <div className="rounded-[28px] p-10 flex flex-col items-center gap-4" style={{ background: 'rgba(255,255,255,0.04)', border: '1px dashed rgba(255,255,255,0.08)' }}>
-                  <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.06)' }}>
-                    <CheckCircle className="w-8 h-8 text-white/15" />
+              {chatRequests.length === 0 && activeChats.length === 0 ? (
+                <div className="bg-white rounded-[28px] border border-stone-100 p-10 flex flex-col items-center gap-4">
+                  <div className="w-16 h-16 bg-stone-100 rounded-full flex items-center justify-center">
+                    <CheckCircle className="w-8 h-8 text-stone-300" />
                   </div>
-                  <p className="text-white/30 text-sm font-bold">Nessuna richiesta di amicizia.</p>
+                  <p className="text-stone-400 text-sm font-bold">Tutto tranquillo! Nessuna novità.</p>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  <h4 className="text-[10px] uppercase font-black tracking-widest text-rose-400 flex items-center gap-1.5 px-2">
-                    <Users className="w-3.5 h-3.5" /> Richieste di Amicizia
-                  </h4>
-                  {soulLinkRequests.map((req: any) => {
-                    const requester = req.requester;
-                    if (!requester) return null;
-                    const photo = requester.photos?.[0] || requester.photo_url;
-                    return (
-                      <motion.div
-                        key={req.id}
-                        initial={{ opacity: 0, x: -16 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        className="rounded-[20px] p-4 flex items-center gap-4"
-                        style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
-                      >
-                        <div
-                          className="w-14 h-14 rounded-[18px] overflow-hidden shrink-0"
-                          style={{ border: '2px solid #f43f5e', boxShadow: '0 0 12px rgba(244,63,94,0.4)' }}
-                          onClick={() => navigate(`/profile-detail/${requester.id}`)}
-                        >
-                          {photo
-                            ? <img src={photo} className="w-full h-full object-cover" />
-                            : <div className="w-full h-full flex items-center justify-center" style={{ background: 'rgba(244,63,94,0.15)' }}><Heart className="w-6 h-6 text-rose-400" /></div>
-                          }
+                <div className="space-y-4">
+                  {/* Chat Attive (Live Chats) */}
+                  {activeChats.length > 0 && (
+                    <div className="space-y-3">
+                      <h4 className="text-[10px] uppercase font-black tracking-widest text-sky-500 flex items-center gap-1.5 px-2">
+                        <MessageSquare className="w-3.5 h-3.5" /> Chat in corso
+                      </h4>
+                      {activeChats.map((chat, index) => (
+                        <div key={chat.other_user.id} onClick={() => setActiveChatTarget(chat.other_user)} className="bg-white rounded-[24px] border border-stone-100 shadow-sm overflow-hidden cursor-pointer hover:bg-stone-50 transition-colors">
+                          <div className="flex items-center gap-4 p-4">
+                            <div className="w-14 h-14 rounded-[18px] overflow-hidden border border-stone-100 shadow-sm shrink-0 relative">
+                              <ProfileAvatar user={chat.other_user} className="w-full h-full" iconSize="w-6 h-6" />
+                              <div className={cn(
+                                "absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 border-2 border-white rounded-full",
+                                chat.other_user.is_online ? "bg-emerald-500" : "bg-rose-500"
+                              )}></div>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="text-sm font-black text-stone-900 truncate">
+                                {chat.other_user.name}
+                              </h3>
+                              <p className="text-[11px] text-stone-500 truncate font-medium mt-1 mb-1">
+                                {chat.isSender ? 'Tu: ' : ''}{chat.last_msg}
+                              </p>
+                              <span className="text-[9px] text-stone-400 font-bold uppercase tracking-widest block">
+                                {new Date(chat.created_at).toLocaleString([], { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                            <div className="w-10 h-10 bg-rose-600 text-white rounded-[14px] flex items-center justify-center shadow-md shrink-0">
+                              <ChevronRight className="w-5 h-5" />
+                            </div>
+                          </div>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-white font-black text-sm truncate">{requester.name}</p>
-                          {requester.city && <p className="text-white/40 text-[11px] font-semibold truncate flex items-center gap-1"><MapPin className="w-3 h-3 text-rose-400" />{requester.city}</p>}
-                          <p className="text-white/30 text-[10px] mt-1">{new Date(req.created_at).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })}</p>
-                        </div>
-                        <div className="flex flex-col gap-2 shrink-0">
-                          <button
-                            onClick={() => handleAcceptSoulLink(req.id)}
-                            className="w-10 h-10 rounded-[14px] flex items-center justify-center text-white"
-                            style={{ background: '#f43f5e', boxShadow: '0 0 12px rgba(244,63,94,0.5)' }}
-                          >
-                            <CheckCircle className="w-5 h-5" />
-                          </button>
-                          <button
-                            onClick={() => handleRejectSoulLink(req.id)}
-                            className="w-10 h-10 rounded-[14px] flex items-center justify-center text-white/50"
-                            style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)' }}
-                          >
-                            <X className="w-5 h-5" />
-                          </button>
-                        </div>
-                      </motion.div>
-                    );
-                  })}
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Messaggi / Richieste */}
+                  {chatRequests.length > 0 && (
+                    <div className="space-y-3 pt-2 border-t border-stone-100/50">
+                      <h4 className="text-[10px] uppercase font-black tracking-widest text-amber-500 flex items-center gap-1.5 px-2">
+                        <MessageCircle className="w-3.5 h-3.5" /> Posta / Richieste
+                      </h4>
+                      {chatRequests.map((req, index) => (
+                        <ChatRequestItem
+                          key={req.id}
+                          req={req}
+                          index={index}
+                          bounceNotif={bounceNotif}
+                          handleDeleteChatRequest={handleDeleteChatRequest}
+                          replyingTo={replyingTo}
+                          setReplyingTo={setReplyingTo}
+                          replyText={replyText}
+                          setReplyText={setReplyText}
+                          handleSendReply={handleSendReply}
+                          isSendingReply={isSendingReply}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </motion.div>
           )}
 
           {activeTab === 'gallery' && (
-            <motion.div key="tab-gallery" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="space-y-4">
-              {/* Counter */}
-              <div className="flex items-center justify-between px-1">
-                <p className="text-white/40 text-[10px] font-black uppercase tracking-widest">Galleria foto</p>
-                <span className="text-[10px] text-rose-400 font-black uppercase tracking-widest">{user.photos?.length || 0}/9</span>
+            <motion.div key="tab-gallery" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+              className="space-y-8"
+            >
+              <div className="flex items-center justify-between px-2">
+                <h2 className="text-xl font-montserrat font-black text-red-600 flex items-center gap-3">
+                  <div className="w-10 h-10 bg-rose-50 rounded-2xl flex items-center justify-center">
+                    <Camera className="w-5 h-5 text-rose-600" />
+                  </div>
+                  MY GALLERY
+                </h2>
+                <span className="text-[10px] text-stone-400 font-black uppercase tracking-widest">{user.photos?.length || 0}/5</span>
               </div>
-              {/* Dark glow container */}
-              <div className="rounded-[28px] p-4" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(244,63,94,0.2)', boxShadow: '0 0 24px rgba(244,63,94,0.08)' }}>
+              <div className="bg-white rounded-[28px] border border-stone-100 p-5 shadow-sm">
                 <div className="grid grid-cols-3 gap-2">
                   {user.photos?.map((url, i) => (
-                    <div key={i} className="aspect-square rounded-[16px] overflow-hidden relative group"
-                      style={{ border: i === 0 ? '2px solid #f43f5e' : '1px solid rgba(255,255,255,0.08)', boxShadow: i === 0 ? '0 0 12px rgba(244,63,94,0.3)' : 'none' }}
-                    >
+                    <div key={i} className="aspect-square rounded-[20px] overflow-hidden relative group shadow-md border border-stone-50">
                       <img src={url} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
-                      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2" style={{ background: 'rgba(0,0,0,0.5)' }}>
-                        <label className="w-9 h-9 bg-white/90 rounded-xl flex items-center justify-center text-stone-700 cursor-pointer active:scale-90">
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                        <label className="w-9 h-9 bg-white rounded-xl flex items-center justify-center text-stone-600 cursor-pointer hover:text-rose-600 shadow-lg active:scale-90">
                           <RefreshCw className="w-4 h-4" />
                           <input type="file" accept="image/*" className="hidden" onChange={(e) => replaceProfilePhoto(i, e)} />
                         </label>
-                        <button onClick={() => { if (window.confirm("Eliminare la foto?")) removeProfilePhoto(i); }} className="w-9 h-9 bg-white/90 rounded-xl flex items-center justify-center text-rose-600 active:scale-90">
+                        <button onClick={() => { if (window.confirm("Eliminare la foto?")) removeProfilePhoto(i); }} className="w-9 h-9 bg-white rounded-xl flex items-center justify-center text-stone-600 hover:text-rose-600 shadow-lg active:scale-90">
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
-                      {i === 0 && <div className="absolute top-2 left-2 text-[7px] text-white px-1.5 py-0.5 rounded-md font-black uppercase" style={{ background: '#f43f5e' }}>Principale</div>}
+                      {i === 0 && <div className="absolute top-2 left-2 bg-rose-600 text-[7px] text-white px-1.5 py-0.5 rounded-md font-black uppercase">Principale</div>}
                     </div>
                   ))}
-                  {(user.photos?.length || 0) < 9 && (
-                    <label className="aspect-square rounded-[16px] flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-all group" style={{ border: '1px dashed rgba(244,63,94,0.3)', background: 'rgba(244,63,94,0.04)' }}>
-                      <div className="w-9 h-9 rounded-xl flex items-center justify-center group-hover:scale-110 transition-all" style={{ background: 'rgba(244,63,94,0.15)' }}>
-                        <Plus className="w-5 h-5 text-rose-400" />
+                  {(user.photos?.length || 0) < 5 && (
+                    <label className="aspect-square rounded-[20px] border-2 border-dashed border-stone-200 flex flex-col items-center justify-center gap-1.5 cursor-pointer hover:bg-rose-50 hover:border-rose-300 transition-all group">
+                      <div className="w-9 h-9 bg-stone-100 rounded-xl flex items-center justify-center group-hover:bg-rose-100 transition-all">
+                        <Plus className="w-5 h-5 text-stone-400 group-hover:text-rose-500" />
                       </div>
-                      <span className="text-[9px] font-black text-rose-400/60 uppercase tracking-widest">Aggiungi</span>
+                      <span className="text-[9px] font-black text-stone-400 uppercase tracking-widest group-hover:text-rose-400">Aggiungi</span>
                       <input type="file" multiple accept="image/*" className="hidden" onChange={addProfilePhoto} />
                     </label>
                   )}
@@ -8852,296 +8697,6 @@ const ProfilePage = () => {
           {activeTab === 'feed' && (
             <motion.div key="tab-feed" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="space-y-4">
               <FeedComponent userId={user.id} isOwner={true} />
-            </motion.div>
-          )}
-
-          {activeTab === 'setup' && (
-            <motion.div key="tab-setup" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="space-y-8 pb-8">
-              {/* SAVE BUTTON STICKY TOP */}
-              <div className="sticky top-0 z-20 pb-2">
-                <button
-                  onClick={handleSaveSetup}
-                  disabled={isSavingSetup}
-                  className="w-full py-4 text-white font-black uppercase tracking-widest rounded-[20px] text-sm transition-all active:scale-95 disabled:opacity-50"
-                  style={{ background: '#f43f5e', boxShadow: '0 0 24px rgba(244,63,94,0.4)', border: '1px solid rgba(255,255,255,0.2)' }}
-                >
-                  {isSavingSetup ? 'Salvataggio...' : 'Salva Modifiche Profilo'}
-                </button>
-              </div>
-
-              {/* Anagrafica (Locked) */}
-              <div className="space-y-4">
-                <p className="text-[10px] text-white/40 font-black uppercase tracking-widest ml-1">Anagrafica (Verificata)</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-[20px] p-4 opacity-50" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}>
-                    <p className="text-[8px] text-rose-400 font-black uppercase mb-1">Nome</p>
-                    <p className="text-sm font-medium text-white">{setupForm.name}</p>
-                  </div>
-                  <div className="rounded-[20px] p-4 opacity-50" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}>
-                    <p className="text-[8px] text-rose-400 font-black uppercase mb-1">Data di Nascita</p>
-                    <p className="text-sm font-medium text-white">{setupForm.dob}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Identity */}
-              <div className="space-y-4">
-                <p className="text-[10px] text-white/40 font-black uppercase tracking-widest ml-1">Il mio Genere</p>
-                <div className="grid grid-cols-2 gap-2">
-                  {['Uomo', 'Donna', 'Non-binario', 'Transgender', 'Genderfluid', 'Queer', 'Altro'].map(g => (
-                    <button
-                      key={g}
-                      onClick={() => setSetupForm((f: any) => ({ ...f, gender: g }))}
-                      className={cn(
-                        "py-3 rounded-[16px] text-[10px] font-black tracking-widest uppercase transition-all border",
-                        setupForm.gender === g
-                          ? "bg-rose-600 border-rose-500 text-white shadow-[0_0_15px_rgba(244,63,94,0.4)]"
-                          : "bg-white/5 border-white/5 text-white/30 hover:border-white/20"
-                      )}
-                    >
-                      {g}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <p className="text-[10px] text-white/40 font-black uppercase tracking-widest ml-1">Orientamento Sessuale</p>
-                <div className="grid grid-cols-2 gap-2">
-                  {['Eterosessuale', 'Gay', 'Lesbica', 'Bisessuale', 'Pansessuale', 'Asessuale', 'Queer', 'Curioso/a'].map(o => {
-                    const sel = (setupForm.orientation || []).includes(o);
-                    return (
-                      <button
-                        key={o}
-                        onClick={() => {
-                          const next = sel ? setupForm.orientation.filter((x: string) => x !== o) : [...setupForm.orientation, o];
-                          setSetupForm((f: any) => ({ ...f, orientation: next }));
-                        }}
-                        className={cn(
-                          "py-3 rounded-[16px] text-[10px] font-black tracking-widest uppercase transition-all border",
-                          sel ? "bg-rose-600 border-rose-500 text-white shadow-[0_0_12px_rgba(244,63,94,0.3)]" : "bg-white/5 border-white/5 text-white/30"
-                        )}
-                      >
-                        {o}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Bio & Details */}
-              <div className="space-y-4">
-                <p className="text-[10px] text-white/40 font-black uppercase tracking-widest ml-1">Dettagli Profilo</p>
-
-                <div className="rounded-[20px] p-4" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                  <p className="text-[9px] text-rose-400 font-black uppercase mb-1">Città</p>
-                  <select
-                    value={setupForm.city}
-                    onChange={e => setSetupForm((f: any) => ({ ...f, city: e.target.value }))}
-                    className="w-full bg-transparent text-sm font-medium text-white outline-none appearance-none"
-                  >
-                    {ITALIAN_CITIES.map(c => <option key={c} value={c} className="bg-stone-900">{c}</option>)}
-                  </select>
-                </div>
-
-                <div className="rounded-[20px] p-4" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                  <p className="text-[9px] text-rose-400 font-black uppercase mb-1">Lavoro</p>
-                  <input type="text" value={setupForm.job || ''} onChange={e => setSetupForm((f: any) => ({ ...f, job: e.target.value }))} placeholder="La tua professione" className="w-full text-sm font-medium outline-none text-white/80 placeholder:text-white/20 bg-transparent" />
-                </div>
-
-                <div className="rounded-[20px] p-4" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                  <p className="text-[9px] text-rose-400 font-black uppercase mb-1">Bio / Descrizione</p>
-                  <textarea value={setupForm.description || ''} onChange={e => setSetupForm((f: any) => ({ ...f, description: e.target.value }))} placeholder="Raccontati..." className="w-full text-sm font-medium resize-none outline-none text-white/80 placeholder:text-white/20 bg-transparent min-h-[80px]" />
-                </div>
-
-                <div className="rounded-[20px] p-4" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                  <p className="text-[9px] text-rose-400 font-black uppercase mb-1">Interessi (separati da virgola)</p>
-                  <input type="text" value={setupForm.hobbies || ''} onChange={e => setSetupForm((f: any) => ({ ...f, hobbies: e.target.value }))} placeholder="es. musica, cinema, yoga" className="w-full text-sm font-medium outline-none text-white/80 placeholder:text-white/20 bg-transparent" />
-                </div>
-
-                <div className="rounded-[20px] p-4" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                  <p className="text-[9px] text-rose-400 font-black uppercase mb-1">Cosa cerchi / Desideri</p>
-                  <input type="text" value={setupForm.desires || ''} onChange={e => setSetupForm((f: any) => ({ ...f, desires: e.target.value }))} placeholder="es. Relazione seria, Amicizia..." className="w-full text-sm font-medium outline-none text-white/80 placeholder:text-white/20 bg-transparent" />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-[20px] p-4" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                    <p className="text-[9px] text-rose-400 font-black uppercase mb-1">Altezza (cm)</p>
-                    <input type="number" value={setupForm.height_cm || ''} onChange={e => setSetupForm((f: any) => ({ ...f, height_cm: parseInt(e.target.value) }))} placeholder="175" className="w-full text-sm font-medium outline-none text-white/80 bg-transparent" />
-                  </div>
-                  <div className="rounded-[20px] p-4" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                    <p className="text-[9px] text-rose-400 font-black uppercase mb-1">Corporatura</p>
-                    <select
-                      value={setupForm.body_type}
-                      onChange={e => setSetupForm((f: any) => ({ ...f, body_type: e.target.value }))}
-                      className="w-full bg-transparent text-sm font-medium text-white outline-none appearance-none"
-                    >
-                      {['Snella', 'Atletica', 'Normale', 'Curvy', 'Robusta'].map(t => <option key={t} value={t} className="bg-stone-900">{t}</option>)}
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* Conosciamoci Meglio */}
-              <div className="space-y-6">
-                <p className="text-[10px] text-white/40 font-black uppercase tracking-widest ml-1">Conosciamoci Meglio</p>
-                {[
-                  { label: 'Fumo', key: 'Fumo', options: ['Non fumo', 'Occasionalmente', 'Fumo', 'Misto'] },
-                  { label: 'Sport', key: 'Sport_e_Attivita', options: ['Molto Attivo/a', 'Naturale', 'Poco Sportivo/a', 'Odio lo sport'] },
-                  { label: 'Animali', key: 'Animale_Domestico', options: ['Cane', 'Gatto', 'Nessuno', 'Altro'] },
-                  { label: 'Stile di Vita', key: 'Stile_di_Vita', options: ['Casa e Relax', 'Viaggi ed Escursioni', 'Feste e Locali', 'Equilibrato'] },
-                  { label: 'Famiglia', key: 'Famiglia', options: ['Voglio figli', 'Non voglio figli', 'Cambio idea', 'Ne ho già'] }
-                ].map(q => (
-                  <div key={q.key} className="space-y-3">
-                    <p className="text-[9px] text-white/30 font-black uppercase tracking-widest ml-1">{q.label}</p>
-                    <div className="grid grid-cols-2 gap-2">
-                      {q.options.map(opt => (
-                        <button
-                          key={opt}
-                          onClick={() => setSetupForm((f: any) => ({
-                            ...f,
-                            conosciamoci_meglio: { ...(f.conosciamoci_meglio || {}), [q.key]: opt }
-                          }))}
-                          className={cn(
-                            "py-2.5 rounded-[14px] text-[9px] font-black tracking-widest uppercase transition-all border",
-                            setupForm.conosciamoci_meglio?.[q.key] === opt
-                              ? "bg-rose-500/20 border-rose-500 text-rose-400 shadow-[0_0_10px_rgba(244,63,94,0.2)]"
-                              : "bg-white/5 border-white/5 text-white/40 hover:border-white/20"
-                          )}
-                        >
-                          {opt}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Preferences matching */}
-              <div className="space-y-6">
-                <p className="text-[10px] text-white/40 font-black uppercase tracking-widest ml-1">Chi Cerchi (Preferenze)</p>
-
-                <div className="space-y-3">
-                  <p className="text-[9px] text-white/30 font-black uppercase tracking-widest ml-1">Genere Preferito</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {['Uomo', 'Donna', 'Tutti', 'Altro'].map(g => {
-                      const sel = (setupForm.looking_for_gender || []).includes(g);
-                      return (
-                        <button
-                          key={g}
-                          onClick={() => {
-                            const next = g === 'Tutti' ? ['Tutti'] : (sel ? setupForm.looking_for_gender.filter((x: string) => x !== g) : [...setupForm.looking_for_gender.filter((x: string) => x !== 'Tutti'), g]);
-                            setSetupForm((f: any) => ({ ...f, looking_for_gender: next }));
-                          }}
-                          className={cn(
-                            "py-3 rounded-[16px] text-[10px] font-black tracking-widest uppercase transition-all border",
-                            sel ? "bg-rose-600 border-rose-500 text-white" : "bg-white/5 border-white/5 text-white/30"
-                          )}
-                        >
-                          {g}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="rounded-[20px] p-4" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                  <p className="text-[9px] text-rose-400 font-black uppercase mb-3">Fascia d'Età desiderata</p>
-                  <div className="flex items-center gap-4">
-                    <div className="flex-1">
-                      <p className="text-[8px] text-white/30 font-black uppercase mb-1">Min</p>
-                      <input type="number" value={setupForm.looking_for_age_min} onChange={e => setSetupForm((f: any) => ({ ...f, looking_for_age_min: parseInt(e.target.value) }))} className="w-full bg-transparent text-sm font-medium text-white outline-none" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-[8px] text-white/30 font-black uppercase mb-1">Max</p>
-                      <input type="number" value={setupForm.looking_for_age_max} onChange={e => setSetupForm((f: any) => ({ ...f, looking_for_age_max: parseInt(e.target.value) }))} className="w-full bg-transparent text-sm font-medium text-white outline-none" />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="rounded-[20px] p-4" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                  <p className="text-[9px] text-rose-400 font-black uppercase mb-1">Città desiderata</p>
-                  <select
-                    value={setupForm.looking_for_city}
-                    onChange={e => setSetupForm((f: any) => ({ ...f, looking_for_city: e.target.value }))}
-                    className="w-full bg-transparent text-sm font-medium text-white outline-none appearance-none"
-                  >
-                    <option value="Indifferente" className="bg-stone-900">Indifferente</option>
-                    {ITALIAN_CITIES.map(c => <option key={c} value={c} className="bg-stone-900">{c}</option>)}
-                  </select>
-                </div>
-
-                <div className="space-y-3">
-                  <p className="text-[9px] text-white/30 font-black uppercase tracking-widest ml-1">Statura Partner</p>
-                  <div className="grid grid-cols-3 gap-2">
-                    {['Tutte', 'Snella', 'Atletica', 'Normale', 'Curvy', 'Robusta'].map(t => (
-                      <button
-                        key={t}
-                        onClick={() => setSetupForm((f: any) => ({ ...f, looking_for_body_type: t }))}
-                        className={cn(
-                          "py-2.5 rounded-[12px] text-[8px] font-black tracking-widest uppercase transition-all border",
-                          setupForm.looking_for_body_type === t
-                            ? "bg-stone-100 border-stone-100 text-stone-900 shadow-[0_0_12px_rgba(255,255,255,0.2)]"
-                            : "bg-white/5 border-white/5 text-white/40"
-                        )}
-                      >
-                        {t}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="rounded-[20px] p-4" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                  <p className="text-[9px] text-rose-400 font-black uppercase mb-1">Altre Note</p>
-                  <textarea value={setupForm.looking_for_other || ''} onChange={e => setSetupForm((f: any) => ({ ...f, looking_for_other: e.target.value }))} placeholder="es. Solo non fumatori..." className="w-full text-sm font-medium resize-none outline-none text-white/80 placeholder:text-white/20 bg-transparent min-h-[60px]" />
-                </div>
-              </div>
-
-              {/* Logout & Delete Block */}
-              <div className="pt-4 space-y-4">
-                <button onClick={() => setShowLogoutConfirm(true)} className="w-full py-4 text-rose-400/70 text-xs font-black uppercase tracking-widest rounded-[20px] flex items-center justify-center gap-2" style={{ background: 'rgba(244,63,94,0.06)', border: '1px solid rgba(244,63,94,0.15)' }}>
-                  <LogOut className="w-5 h-5" /> Disconnetti Account
-                </button>
-
-                <div className="pt-4 border-t border-white/5">
-                  <p className="text-[10px] text-white/20 font-black uppercase tracking-widest text-center mb-4">Zona Pericolo</p>
-
-                  {!showDeleteConfirm ? (
-                    <button
-                      onClick={() => setShowDeleteConfirm(true)}
-                      className="w-full py-4 rounded-[20px] border border-rose-900/40 text-rose-900 text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-rose-900/10 transition-all opacity-50 hover:opacity-100"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                      Elimina Profilo Definitivamente
-                    </button>
-                  ) : (
-                    <div className="bg-rose-950/20 border-2 border-rose-500 p-6 rounded-[32px] space-y-4 animate-in fade-in zoom-in duration-300">
-                      <div className="flex items-center gap-3 text-rose-500">
-                        <AlertTriangle className="w-6 h-6" />
-                        <h3 className="font-black uppercase tracking-widest text-xs">Cancellazione Account</h3>
-                      </div>
-                      <p className="text-white/40 text-[9px] font-bold uppercase tracking-wider leading-relaxed">
-                        Questa azione eliminerà per sempre tutti i tuoi messaggi, post e foto. Non potrai più recuperare i dati.
-                      </p>
-                      <div className="flex gap-3">
-                        <button
-                          onClick={handleDeleteProfile}
-                          disabled={isDeletingProfile}
-                          className="flex-1 py-4 bg-rose-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-rose-900/40 disabled:opacity-50"
-                        >
-                          {isDeletingProfile ? 'ELIMINAZIONE...' : 'SÌ, ELIMINA TUTTO'}
-                        </button>
-                        <button
-                          onClick={() => setShowDeleteConfirm(false)}
-                          className="flex-1 py-4 bg-white/10 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest"
-                        >
-                          ANNULLA
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
             </motion.div>
           )}
         </AnimatePresence>
