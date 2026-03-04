@@ -2713,7 +2713,7 @@ const BachecaPage = () => {
                 <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-rose-500 p-0.5 bg-gradient-to-br from-rose-500 to-purple-600 shadow-lg shadow-rose-500/30">
                   <img src={p.photos?.[0] || p.photo_url || `https://picsum.photos/seed/${p.name}/200`} className="w-full h-full object-cover rounded-full" />
                 </div>
-                <span className="text-white/60 text-[9px] font-bold truncate w-16 text-center">{p.name}</span>
+                <span className="text-white text-[11px] font-bold truncate w-16 text-center">{p.name}</span>
               </Link>
             ))}
             <button
@@ -2726,7 +2726,7 @@ const BachecaPage = () => {
               )}>
                 <Filter className="w-5 h-5 text-white/60" />
               </div>
-              <span className="text-white/40 text-[9px] font-bold">Filtri</span>
+              <span className="text-white text-[11px] font-bold">Filtri</span>
             </button>
           </div>
         </div>
@@ -2737,10 +2737,10 @@ const BachecaPage = () => {
         {cityOptions.slice(0, 10).map(c => (
           <button key={c} onClick={() => setFilterCity(c)}
             className={cn(
-              "px-3 py-1.5 rounded-full text-[10px] font-black whitespace-nowrap transition-all shrink-0 backdrop-blur-sm",
+              "px-3 py-1.5 rounded-full text-[12px] font-black whitespace-nowrap transition-all shrink-0 backdrop-blur-sm",
               filterCity === c
                 ? "bg-rose-600/90 text-white shadow-lg shadow-rose-600/30"
-                : "bg-black/20 text-white/40 border border-white/8 hover:border-white/20 hover:text-white/60"
+                : "bg-black/20 text-white border border-white/8 hover:border-white/20 hover:text-white/60"
             )}>{c}</button>
         ))}
         <button
@@ -2794,7 +2794,7 @@ const BachecaPage = () => {
           >
             <div className="bg-black/25 backdrop-blur-2xl border border-white/8 rounded-[24px] p-4 space-y-4">
               <div className="space-y-2">
-                <p className="text-white/30 text-[9px] font-black uppercase tracking-widest">Genere Cercato</p>
+                <p className="text-white text-[11px] font-black uppercase tracking-widest">Genere Cercato</p>
                 <div className="relative">
                   <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-8 z-10" style={{ background: 'linear-gradient(to right, #0a0a0f, transparent)' }} />
                   <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-8 z-10" style={{ background: 'linear-gradient(to left, #0a0a0f, transparent)' }} />
@@ -2815,8 +2815,8 @@ const BachecaPage = () => {
                               : { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', opacity: 0.6 })
                           }}
                           className={cn(
-                            "px-5 py-2.5 rounded-[18px] text-[10px] font-black tracking-widest uppercase whitespace-nowrap transition-all",
-                            isA ? "text-white scale-105" : "text-white/40"
+                            "px-5 py-2.5 rounded-[18px] text-[12px] font-black tracking-widest uppercase whitespace-nowrap transition-all",
+                            isA ? "text-white scale-105" : "text-white"
                           )}
                         >
                           {g}
@@ -2827,7 +2827,7 @@ const BachecaPage = () => {
                 </div>
               </div>
               <div className="space-y-2">
-                <p className="text-white/30 text-[9px] font-black uppercase tracking-widest">Età {filterAge[0]}–{filterAge[1]}</p>
+                <p className="text-white text-[11px] font-black uppercase tracking-widest">Età {filterAge[0]}–{filterAge[1]}</p>
                 <div className="flex gap-3">
                   <input type="range" min="18" max="99" value={filterAge[0]} onChange={e => setFilterAge([+e.target.value, filterAge[1]])} className="flex-1 accent-rose-600" />
                   <input type="range" min="18" max="99" value={filterAge[1]} onChange={e => setFilterAge([filterAge[0], +e.target.value])} className="flex-1 accent-rose-600" />
@@ -2923,7 +2923,7 @@ const BachecaPage = () => {
                           {profile.name}{profile.dob && calculateAge(profile.dob) > 0 ? `, ${calculateAge(profile.dob)}` : ''}
                         </p>
                         {profile.city && (
-                          <p className="text-white/50 text-[9px] font-bold flex items-center gap-0.5 mt-0.5 truncate">
+                          <p className="text-white text-[11px] font-bold flex items-center gap-0.5 mt-0.5 truncate">
                             <MapPin className="w-2 h-2 text-rose-500 shrink-0" />{profile.city}
                           </p>
                         )}
@@ -7593,13 +7593,18 @@ const EditProfilePage = () => {
               <EPInputField label="Età Massima" type="number" value={user.looking_for_age_max} onChange={(v: string) => updateField('looking_for_age_max', parseInt(v))} />
             </div>
 
-            <EPSelectGroup
-              label="Statura Partner"
-              options={['Tutte', 'Snella', 'Atletica', 'Normale', 'Curvy', 'Robusta']}
-              currentValue={user.looking_for_body_type}
-              onSelect={(v: string) => updateField('looking_for_body_type', v)}
-              columns={3}
-            />
+            <div className="rounded-2xl p-4 bg-white border border-stone-100">
+              <label className="text-[10px] font-black uppercase tracking-[0.2em] text-stone-400 ml-1">Statura / Corporatura Partner</label>
+              <select
+                value={user.looking_for_body_type}
+                onChange={(e) => updateField('looking_for_body_type', e.target.value)}
+                className="w-full bg-transparent text-sm font-medium text-stone-900 outline-none appearance-none mt-1"
+              >
+                {['Tutte', 'Snella', 'Atletica', 'Normale', 'Curvy', 'Robusta'].map(t => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+            </div>
 
             <EPSelectDropdown label="Città desiderata" value={user.looking_for_city} onChange={(v: string) => updateField('looking_for_city', v)} options={['Indifferente', ...ITALIAN_CITIES]} placeholder="Seleziona Città (o Indifferente)" />
             <EPTextAreaField label="Altre preferenze" value={user.looking_for_other} onChange={(v: string) => updateField('looking_for_other', v)} placeholder="es. Solo non fumatori, amanti dei gatti..." />
@@ -9581,24 +9586,17 @@ const ProfilePage = () => {
                   </select>
                 </div>
 
-                <div className="space-y-3">
-                  <p className="text-[9px] text-white/30 font-black uppercase tracking-widest ml-1">Statura Partner</p>
-                  <div className="grid grid-cols-3 gap-2">
+                <div className="rounded-[20px] p-4" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                  <p className="text-[9px] text-rose-400 font-black uppercase mb-1">Statura / Corporatura Partner</p>
+                  <select
+                    value={setupForm.looking_for_body_type}
+                    onChange={e => setSetupForm((f: any) => ({ ...f, looking_for_body_type: e.target.value }))}
+                    className="w-full bg-transparent text-sm font-medium text-white outline-none appearance-none"
+                  >
                     {['Tutte', 'Snella', 'Atletica', 'Normale', 'Curvy', 'Robusta'].map(t => (
-                      <button
-                        key={t}
-                        onClick={() => setSetupForm((f: any) => ({ ...f, looking_for_body_type: t }))}
-                        className={cn(
-                          "py-2.5 rounded-[12px] text-[8px] font-black tracking-widest uppercase transition-all border",
-                          setupForm.looking_for_body_type === t
-                            ? "bg-stone-100 border-stone-100 text-stone-900 shadow-[0_0_12px_rgba(255,255,255,0.2)]"
-                            : "bg-white/5 border-white/5 text-white/40"
-                        )}
-                      >
-                        {t}
-                      </button>
+                      <option key={t} value={t} className="bg-stone-900">{t}</option>
                     ))}
-                  </div>
+                  </select>
                 </div>
 
                 <div className="rounded-[20px] p-4" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
