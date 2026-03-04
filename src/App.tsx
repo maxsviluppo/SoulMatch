@@ -65,13 +65,27 @@ const parseArrField = (val: any): string[] => {
   return s ? [s] : [];
 };
 
-const normalizeUser = (u: any): any => ({
-  ...u,
-  orientation: parseArrField(u?.orientation),
-  looking_for_gender: parseArrField(u?.looking_for_gender),
-  photos: parseArrField(u?.photos),
-  conosciamoci_meglio: (typeof u?.conosciamoci_meglio === 'string') ? JSON.parse(u.conosciamoci_meglio) : (u?.conosciamoci_meglio || {})
-});
+const normalizeUser = (u: any): any => {
+  let conosciamoci = {};
+  if (u?.conosciamoci_meglio) {
+    try {
+      conosciamoci = (typeof u.conosciamoci_meglio === 'string')
+        ? JSON.parse(u.conosciamoci_meglio)
+        : u.conosciamoci_meglio;
+    } catch (e) {
+      console.warn("Failed to parse conosciamoci_meglio for user:", u.id);
+      conosciamoci = {};
+    }
+  }
+
+  return {
+    ...u,
+    orientation: parseArrField(u?.orientation),
+    looking_for_gender: parseArrField(u?.looking_for_gender),
+    photos: parseArrField(u?.photos).filter(p => typeof p === 'string' && p.trim().length > 0),
+    conosciamoci_meglio: conosciamoci
+  };
+};
 
 // ── Shared Bottom Navigation Bar ──────────────────────────────────────────
 const AppBottomNav = () => {
@@ -901,8 +915,8 @@ const HomeSlider = () => {
           className="w-full h-full object-cover"
         />
       </AnimatePresence>
-      {/* Multi-layer dark gradient fade - lightened top overlay */}
-      <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/10 to-black" />
+      {/* Top darken overlay for menu visibility (50-100px focus) + Bottom fade */}
+      <div className="absolute inset-0 bg-gradient-to-b from-black/100 via-black/20 to-black" />
       <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent" />
     </div>
   );
@@ -1999,7 +2013,7 @@ const ProfileDetailPage = () => {
 
           {/* CSS mask: photo fades naturally at bottom */}
           <div className="absolute inset-0 pointer-events-none" style={{
-            background: 'linear-gradient(to bottom, transparent 30%, rgba(10,10,15,0.5) 65%, rgba(10,10,15,0.9) 85%, #0a0a0f 100%)'
+            background: 'linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, transparent 20%, transparent 70%, rgba(10,10,15,0.8) 90%, #0a0a0f 100%)'
           }} />
 
           {/* ── ONLINE / OFFLINE badge top-left ── */}
@@ -2477,8 +2491,8 @@ const BachecaPage = () => {
     if (currentUser && p.id === currentUser.id) return false;
     if (p.is_blocked || p.is_suspended) return false;
 
-    // Ensure "real" users have at least one photo or a photo URL
-    const hasPhoto = (p.photos && p.photos.length > 0) || p.photo_url;
+    // Ensure "real" users have at least one valid photo or a photo URL
+    const hasPhoto = (p.photos && p.photos.length > 0 && p.photos[0]?.trim()) || (p.photo_url && p.photo_url.trim());
     if (!hasPhoto) return false;
 
     // ─── 1. Secondary UI filters (city, age, body type) ───
@@ -2579,16 +2593,25 @@ const BachecaPage = () => {
 
 
   const [heroIndex, setHeroIndex] = useState(0);
-  const heroProfiles = filteredProfiles.slice(0, Math.min(5, filteredProfiles.length));
+  const heroProfiles = useMemo(() => filteredProfiles.slice(0, 5), [filteredProfiles]);
+
+  // Reset index if profiles change to prevent out of bounds
+  useEffect(() => {
+    if (heroIndex >= heroProfiles.length) {
+      setHeroIndex(0);
+    }
+  }, [heroProfiles.length]);
 
   // Auto-rotate hero slider
   useEffect(() => {
     if (heroProfiles.length < 2) return;
-    const timer = setInterval(() => setHeroIndex(i => (i + 1) % heroProfiles.length), 4000);
+    const timer = setInterval(() => {
+      setHeroIndex(prev => (prev + 1) % heroProfiles.length);
+    }, 5000);
     return () => clearInterval(timer);
   }, [heroProfiles.length]);
 
-  const heroProfile = heroProfiles[heroIndex];
+  const heroProfile = heroProfiles[heroIndex] || null;
 
   return (
     <div className="min-h-screen pt-16 pb-28 relative overflow-x-hidden" style={{ background: '#0a0a0f' }}>
@@ -2642,7 +2665,7 @@ const BachecaPage = () => {
       {/* ── HERO PHOTO SLIDER ── */}
       {!loading && heroProfile && (
 
-        <div className="relative w-full h-[80vh] min-h-[500px] overflow-hidden">
+        <div className="relative w-full h-[80vh] min-h-[500px] overflow-hidden rounded-[40px]">
           <AnimatePresence mode="sync">
             <motion.img
               key={heroProfile.id}
@@ -2654,8 +2677,8 @@ const BachecaPage = () => {
               className="absolute inset-0 w-full h-full object-cover object-top"
             />
           </AnimatePresence>
-          {/* Dark cinematic gradient - strong fade into background */}
-          <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, #0a0a0f 0%, #0a0a0f 5%, rgba(10,10,15,0.85) 35%, rgba(0,0,0,0.3) 65%, transparent 100%)' }} />
+          {/* Dark cinematic gradient - strong fade into background + top shadow */}
+          <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, transparent 25%), linear-gradient(to top, #0a0a0f 0%, #0a0a0f 5%, rgba(10,10,15,0.85) 35%, rgba(0,0,0,0.3) 65%, transparent 100%)' }} />
 
           {/* Info overlay — clickable to navigate to profile */}
           <div
@@ -2834,7 +2857,15 @@ const BachecaPage = () => {
                 </div>
               </div>
               <button
-                onClick={() => { setFilterCity('Tutte'); setFilterAge([18, 99]); setFilterBodyType('Tutte'); setSelectedGenders(['uomo', 'donna', 'non-binario', 'transgender']); setShowAdvanced(false); }}
+                onClick={() => {
+                  setFilterCity('Tutte');
+                  setFilterAge([18, 99]);
+                  setFilterBodyType('Tutte');
+                  setSearchTerm('');
+                  setShowSearch(false);
+                  setSelectedGenders((currentUser?.looking_for_gender || []).map((g: any) => typeof g === 'string' ? g.toLowerCase() : ''));
+                  setShowAdvanced(false);
+                }}
                 className="text-rose-400 text-[10px] font-black uppercase tracking-widest"
               >Azzera filtri</button>
             </div>
@@ -2860,7 +2891,15 @@ const BachecaPage = () => {
             <Search className="w-8 h-8 text-white/10 mx-auto mb-4" />
             <h3 className="text-sm font-black text-white/60 mb-2">Nessun profilo compatibile</h3>
             <button
-              onClick={() => { setFilterCity('Tutte'); setFilterAge([18, 99]); setFilterBodyType('Tutte'); setShowAdvanced(false); }}
+              onClick={() => {
+                setFilterCity('Tutte');
+                setFilterAge([18, 99]);
+                setFilterBodyType('Tutte');
+                setSearchTerm('');
+                setShowSearch(false);
+                setSelectedGenders((currentUser?.looking_for_gender || []).map((g: any) => typeof g === 'string' ? g.toLowerCase() : ''));
+                setShowAdvanced(false);
+              }}
               className="text-[10px] font-black uppercase tracking-widest bg-rose-600 text-white px-6 py-2.5 rounded-full shadow-lg shadow-rose-700/30 mt-4"
             >Azzera filtri</button>
           </div>
@@ -9057,7 +9096,7 @@ const ProfilePage = () => {
           }}
         />
         {/* Strong bottom fade to page background */}
-        <div className="absolute inset-0 pointer-events-none" style={{ background: 'linear-gradient(to bottom, transparent 40%, rgba(10,10,15,0.4) 60%, rgba(10,10,15,0.8) 85%, #0a0a0f 100%)' }} />
+        <div className="absolute inset-0 pointer-events-none" style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, transparent 20%, transparent 50%, rgba(10,10,15,0.6) 80%, #0a0a0f 100%)' }} />
 
         {/* Settings button REMOVED — use Setup tab instead */}
 
