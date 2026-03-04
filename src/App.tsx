@@ -2523,32 +2523,28 @@ const BachecaPage = () => {
     const wantsV = selectedGenders.map((g: string) => g.toLowerCase());
     const isWildcard = (arr: string[]) => arr.some(v => ['tutti', 'tutte', 'entrambi', 'qualsiasi', 'tutti i generi'].includes(v));
 
-    // A. GENDER MATCH (Cosa cerco IO)
-    const targetGender = target.gender?.toLowerCase() || '';
-    const viewerWantsTarget = wantsV.length === 0 || isWildcard(wantsV) || wantsV.includes(targetGender);
-    if (!viewerWantsTarget) return false;
-
-    // B. COMPATIBILITÀ ORIENTAMENTO (Più permissivo per la Bacheca)
+    // A. COMPATIBILITÀ ORIENTAMENTO (sempre applicata per prima — non bypassabile)
     const checkOri = (myMacro: string, myOris: string[], targetMacro: string) => {
-      if (myOris.length === 0) return true; // Se non specificato, aperto a tutto
-      if (myMacro === 'NB' || targetMacro === 'NB') return true; // NB è jolly in bacheca discovery
-
+      if (myOris.length === 0) return true; // Non specificato = aperto a tutto
+      if (myMacro === 'NB' || targetMacro === 'NB') return true; // NB è jolly
       if (myOris.includes('Eterosessuale')) {
         return (myMacro === 'M' && targetMacro === 'F') || (myMacro === 'F' && targetMacro === 'M') || targetMacro === 'TRANS';
       }
       if (myOris.includes('Gay') || myOris.includes('Lesbica')) {
         return myMacro === targetMacro || targetMacro === 'TRANS' || targetMacro === 'NB';
       }
-      // Bisessuale/Pansessuale/etc.
-      return true;
+      return true; // Bisessuale/Pansessuale/etc.
     };
 
     const orisV = viewer.orientation || [];
-    const vCompatibleWithT = checkOri(macroV, orisV, macroT);
+    if (!checkOri(macroV, orisV, macroT)) return false;
 
-    // In bacheca discovery, mostriamo chiunque il viewer possa gradire 
-    // senza forzare la reciprocità stretta (che resta per il SoulMatch)
-    if (!vCompatibleWithT) return false;
+    // B. FILTRO GENERE UI — raffina ulteriormente i risultati già compatibili
+    // Non può mai mostrare profili che l'orientamento ha già escluso
+    const targetGender = target.gender?.toLowerCase() || '';
+    if (wantsV.length > 0 && !isWildcard(wantsV)) {
+      if (!wantsV.includes(targetGender)) return false;
+    }
 
     return true;
   });
@@ -2923,7 +2919,7 @@ const BachecaPage = () => {
                   <Link to={`/profile-detail/${profile.id}`}>
                     <div
                       className="rounded-[22px] overflow-hidden relative transition-shadow duration-300"
-                      style={{ aspectRatio: isTall ? '3/5' : '3/4', background: '#1a1a22', boxShadow: '0 4px 32px rgba(0,0,0,0.5)' }}
+                      style={{ aspectRatio: '3/4', background: '#1a1a22', boxShadow: '0 4px 32px rgba(0,0,0,0.5)' }}
                     >
                       <img
                         src={profile.photos?.[0] || profile.photo_url || `https://picsum.photos/seed/${profile.name}/400/500`}
