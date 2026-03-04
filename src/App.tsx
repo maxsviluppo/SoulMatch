@@ -200,7 +200,7 @@ const AppBottomNav = () => {
         }}
         transition={{ type: 'spring', damping: 30, stiffness: 600, mass: 0.6 }}
         className={cn(
-          "pointer-events-auto shadow-2xl border border-white/8 bg-black/40 backdrop-blur-3xl p-2 gap-1 overflow-hidden flex items-center justify-center safe-pb",
+          "pointer-events-auto shadow-2xl border border-white/8 bg-black/40 backdrop-blur-3xl p-2 gap-1 overflow-hidden flex items-center justify-center",
           !isNavVisible && "cursor-pointer"
         )}
         onClick={() => !isNavVisible && setIsNavVisible(true)}
@@ -531,23 +531,24 @@ const BackgroundDecorations = () => {
 
   return (
     <div className="fixed inset-0 pointer-events-none overflow-hidden z-[-1] select-none">
-      {/* Soft Background Image */}
+      {/* Soft Background Image — dark tinted */}
       {bgImage && (
         <motion.div
           key={location.pathname}
           initial={{ opacity: 0 }}
-          animate={{ opacity: 0.08 }}
+          animate={{ opacity: 0.07 }}
           transition={{ duration: 2 }}
           className="absolute inset-0"
         >
-          <img src={bgImage} className="w-full h-full object-cover grayscale brightness-150 contrast-50" alt="" />
-          <div className="absolute inset-0 bg-gradient-to-b from-stone-50 via-transparent to-stone-50" />
+          <img src={bgImage} className="w-full h-full object-cover grayscale brightness-50 contrast-50" alt="" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black via-transparent to-black" />
         </motion.div>
       )}
 
-      {/* Floating Decorative Elements */}
-      <div className="absolute top-1/4 -left-20 w-[40rem] h-[40rem] bg-rose-200/5 rounded-full blur-[100px] animate-pulse" />
-      <div className="absolute bottom-1/4 -right-20 w-[40rem] h-[40rem] bg-emerald-200/5 rounded-full blur-[100px] animate-pulse delay-1000" />
+      {/* Floating glow orbs */}
+      <div className="absolute top-1/4 -left-20 w-[40rem] h-[40rem] bg-rose-900/10 rounded-full blur-[120px] animate-pulse" />
+      <div className="absolute bottom-1/4 -right-20 w-[40rem] h-[40rem] bg-rose-900/8 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: '1.2s' }} />
+      <div className="absolute top-2/3 left-1/3 w-[30rem] h-[30rem] bg-purple-900/6 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '2s' }} />
     </div>
   );
 };
@@ -597,7 +598,10 @@ const Navbar = () => {
   }
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 px-6 py-3 flex justify-between items-center bg-black/20 backdrop-blur-3xl border-b border-white/5 shadow-lg overflow-hidden safe-pt">
+    <nav
+      className="fixed top-0 left-0 right-0 z-50 px-6 flex justify-between items-center bg-black/20 backdrop-blur-3xl border-b border-white/5 shadow-lg overflow-hidden"
+      style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top))', paddingBottom: '0.75rem' }}
+    >
       {/* Floating hearts decoration — background only */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <style>{`
@@ -840,37 +844,46 @@ const HomeSlider = () => {
   useEffect(() => {
     fetch('/api/settings/home_slider')
       .then(res => res.json())
-      .then(data => setImages(data))
+      .then(data => {
+        if (Array.isArray(data) && data.length > 0) {
+          setImages(data);
+        }
+      })
       .catch(() => { });
   }, []);
 
   const fallbackImages = [
-    "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?q=80&w=2000&auto=format&fit=crop"
+    "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?q=80&w=2000&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1491438590914-bc09fcaaf77a?q=80&w=2000&auto=format&fit=crop",
+    "https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?q=80&w=2000&auto=format&fit=crop"
   ];
+
   const displayImages = images.length > 0 ? images : fallbackImages;
 
   useEffect(() => {
     if (displayImages.length <= 1) return;
     const itv = setInterval(() => {
       setIndex(prev => (prev + 1) % displayImages.length);
-    }, 5000);
+    }, 4000); // Slightly faster for mobile engagement
     return () => clearInterval(itv);
-  }, [displayImages]);
+  }, [displayImages.length]);
 
   return (
-    <div className="absolute top-0 left-0 right-0 h-[450px] w-full overflow-hidden">
+    <div className="absolute top-0 left-0 right-0 h-[650px] w-full overflow-hidden">
       <AnimatePresence mode="wait">
         <motion.img
           key={index}
           src={displayImages[index]}
           initial={{ opacity: 0, scale: 1.1 }}
-          animate={{ opacity: 1, scale: 1 }}
+          animate={{ opacity: 0.85, scale: 1 }}
           exit={{ opacity: 0, scale: 1.05 }}
-          transition={{ duration: 1.5 }}
+          transition={{ duration: 1.8 }}
           className="w-full h-full object-cover"
         />
       </AnimatePresence>
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/5 to-stone-50" />
+      {/* Multi-layer dark gradient fade - lightened top overlay */}
+      <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/10 to-black" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent" />
     </div>
   );
 };
@@ -920,7 +933,45 @@ const HomePage = () => {
   };
 
   return (
-    <div className="min-h-screen pt-[450px] pb-12 px-4 flex flex-col items-center justify-center bg-stone-50 relative overflow-x-hidden">
+    <div className="min-h-screen pt-[580px] pb-12 px-4 flex flex-col items-center justify-center bg-black relative overflow-x-hidden">
+      {/* Floating blurred hearts background — same as Navbar */}
+      <div className="pointer-events-none fixed inset-0 overflow-hidden z-0">
+        <style>{`
+          @keyframes floatHeart {
+            0%   { transform: translateY(100vh) translateX(0px) scale(0.6) rotate(-10deg); opacity: 0; }
+            10%  { opacity: 0.18; }
+            90%  { opacity: 0.08; }
+            100% { transform: translateY(-10vh) translateX(var(--hx,20px)) scale(1.1) rotate(10deg); opacity: 0; }
+          }
+          .fh { animation: floatHeart var(--hd,12s) ease-in-out var(--hdelay,0s) infinite; position: absolute; bottom: -40px; }
+        `}</style>
+        {[
+          { left: '5%', size: 28, color: '#f43f5e', blur: 8, hd: 14, hdelay: 0, hx: '15px' },
+          { left: '12%', size: 16, color: '#ec4899', blur: 12, hd: 18, hdelay: 2, hx: '-20px' },
+          { left: '20%', size: 40, color: '#a855f7', blur: 16, hd: 16, hdelay: 0.5, hx: '25px' },
+          { left: '28%', size: 22, color: '#f43f5e', blur: 10, hd: 12, hdelay: 4, hx: '-15px' },
+          { left: '36%', size: 50, color: '#fb7185', blur: 20, hd: 20, hdelay: 1, hx: '10px' },
+          { left: '45%', size: 18, color: '#9333ea', blur: 10, hd: 15, hdelay: 6, hx: '-18px' },
+          { left: '53%', size: 32, color: '#f43f5e', blur: 14, hd: 17, hdelay: 0.8, hx: '22px' },
+          { left: '61%', size: 24, color: '#ec4899', blur: 10, hd: 13, hdelay: 3, hx: '-10px' },
+          { left: '69%', size: 44, color: '#f43f5e', blur: 18, hd: 19, hdelay: 1.5, hx: '18px' },
+          { left: '77%', size: 14, color: '#a855f7', blur: 8, hd: 11, hdelay: 5, hx: '-22px' },
+          { left: '84%', size: 36, color: '#ec4899', blur: 16, hd: 16, hdelay: 2.5, hx: '12px' },
+          { left: '91%', size: 20, color: '#f43f5e', blur: 10, hd: 14, hdelay: 7, hx: '-8px' },
+        ].map((h, i) => (
+          <div key={i} className="fh" style={{
+            left: h.left,
+            '--hd': `${h.hd}s`,
+            '--hdelay': `${h.hdelay}s`,
+            '--hx': h.hx,
+            filter: `blur(${h.blur}px)`,
+          } as React.CSSProperties}>
+            <svg width={h.size} height={h.size} viewBox="0 0 24 24" fill={h.color}>
+              <path d="M12 21.593c-5.63-5.539-11-10.297-11-14.402 0-3.791 3.068-5.191 5.281-5.191 1.312 0 4.151.501 5.719 4.457 1.59-3.968 4.464-4.447 5.726-4.447 2.54 0 5.274 1.621 5.274 5.181 0 4.069-5.136 8.625-11 14.402z" />
+            </svg>
+          </div>
+        ))}
+      </div>
       <HomeSlider />
 
       <motion.div
@@ -931,15 +982,15 @@ const HomePage = () => {
         {/* Hero text */}
         <div className="space-y-4">
 
-          <h1 className="text-5xl font-serif font-black leading-[1.1] tracking-tight text-stone-900 drop-shadow-sm">
-            Trova la tua <br /><span className="text-rose-600 italic">compagnia</span> ideale.
+          <h1 className="text-5xl font-serif font-black leading-[1.1] tracking-tight text-white drop-shadow-lg">
+            Trova la tua <br /><span className="text-rose-500 italic">compagnia</span> ideale.
           </h1>
 
-          <p className="text-stone-500 text-[11px] font-black uppercase tracking-[0.2em] mb-4 flex items-center justify-center gap-2">
+          <p className="text-rose-400/80 text-[11px] font-black uppercase tracking-[0.2em] mb-4 flex items-center justify-center gap-2">
             Membri Certificati e Sicurezza Garantita
           </p>
 
-          <p className="text-lg text-stone-600 leading-relaxed px-4 font-medium opacity-80">
+          <p className="text-lg text-white/50 leading-relaxed px-4 font-medium">
             SoulMatch è il luogo sicuro dove incontrare persone reali. Ogni profilo è verificato manualmente per la tua sicurezza.
           </p>
         </div>
@@ -959,39 +1010,39 @@ const HomePage = () => {
               className="mx-4 mb-2 rounded-3xl overflow-hidden shadow-lg relative z-20"
             >
               {/* Progress bar */}
-              <div className="absolute top-0 left-0 right-0 h-1 bg-rose-100">
+              <div className="absolute top-0 left-0 right-0 h-1 bg-rose-900/40">
                 <div
                   className="h-full bg-rose-500 transition-all"
                   style={{ width: `${Math.min(100, (daysUsed / 15) * 100)}%` }}
                 />
               </div>
 
-              <div className="bg-white border border-rose-200 p-5 pt-6">
+              <div className="bg-white/5 backdrop-blur-2xl border border-rose-500/20 p-5 pt-6" style={{ boxShadow: '0 0 24px rgba(225,29,72,0.1)' }}>
                 <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 bg-rose-100 rounded-2xl flex items-center justify-center shrink-0">
-                    <AlertTriangle className="w-5 h-5 text-rose-600" />
+                  <div className="w-10 h-10 bg-rose-500/20 rounded-2xl flex items-center justify-center shrink-0" style={{ boxShadow: '0 0 12px rgba(225,29,72,0.3)' }}>
+                    <AlertTriangle className="w-5 h-5 text-rose-400" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2 flex-wrap">
-                      <h4 className="font-black text-rose-900 text-base">Documento non valido</h4>
+                      <h4 className="font-black text-rose-300 text-base">Documento non valido</h4>
                       <span className={cn(
                         "text-[11px] font-black uppercase px-2.5 py-1 rounded-full border",
                         daysLeft <= 3
-                          ? "bg-red-100 text-red-700 border-red-200"
+                          ? "bg-red-500/20 text-red-300 border-red-500/30"
                           : daysLeft <= 7
-                            ? "bg-amber-100 text-amber-700 border-amber-200"
-                            : "bg-rose-100 text-rose-700 border-rose-200"
+                            ? "bg-amber-500/20 text-amber-300 border-amber-500/30"
+                            : "bg-rose-500/20 text-rose-300 border-rose-500/30"
                       )}>
                         {daysLeft > 0 ? `${daysLeft} giorni rimasti` : 'Scaduto'}
                       </span>
                     </div>
-                    <p className="text-sm text-stone-600 mt-1 leading-relaxed">
+                    <p className="text-sm text-white/50 mt-1 leading-relaxed">
                       Il tuo documento è stato respinto. Il tuo account è in modalità di sola ricezione.
-                      {expiryStr && <> Scade il <strong className="text-rose-700">{expiryStr}</strong>.</>}
+                      {expiryStr && <> Scade il <strong className="text-rose-400">{expiryStr}</strong>.</>}
                     </p>
                     <Link
                       to="/edit-profile"
-                      className="mt-3 inline-flex items-center gap-2 px-4 py-2.5 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white text-xs font-black rounded-xl uppercase tracking-widest transition-all shadow-sm shadow-rose-200"
+                      className="mt-3 inline-flex items-center gap-2 px-4 py-2.5 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white text-xs font-black rounded-xl uppercase tracking-widest transition-all shadow-sm shadow-rose-900/60"
                     >
                       <ArrowRight className="w-3.5 h-3.5" /> Carica Nuovo Documento
                     </Link>
@@ -1044,57 +1095,58 @@ const HomePage = () => {
 
           {!isLoggedIn && (
             <div className="flex justify-center mt-4">
-              <button onClick={() => window.location.href = '/register'} className="flex items-center w-full max-w-[280px] justify-center gap-2 bg-white border border-stone-200 text-stone-700 py-3 rounded-[16px] font-black text-[11px] hover:border-stone-300 hover:bg-stone-50 transition-all uppercase tracking-widest shadow-sm">
-                <svg className="w-4 h-4" viewBox="0 0 24 24"><path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" /><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" /><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" /><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" /></svg>
-                Google
+              <button onClick={() => window.location.href = '/register'} className="flex items-center w-full max-w-[280px] justify-center gap-2 bg-white/5 backdrop-blur-xl border border-white/10 text-white/70 py-3 rounded-[16px] font-black text-[11px] hover:bg-white/10 hover:border-white/20 transition-all uppercase tracking-widest">
+                <svg className="w-4 h-4" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" /><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" /><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" /><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" /></svg>
+                Continua con Google
               </button>
             </div>
           )}
         </div>
 
-        {/* Feature cards — horizontal list style */}
+        {/* Feature cards — dark glass style */}
         <div className="space-y-3 px-1">
-          <h2 className="text-left text-sm font-black text-stone-400 uppercase tracking-widest px-1">Perché SoulMatch</h2>
+          <h2 className="text-left text-sm font-black text-white/30 uppercase tracking-widest px-1">Perché SoulMatch</h2>
           {[
             {
               icon: UserPlus,
               title: "Iscrizione gratuita",
               desc: "Crea il tuo profilo in 2 minuti, nessuna carta richiesta",
-              color: "rose",
-              bg: "bg-rose-50",
-              iconColor: "text-rose-600",
+              glowColor: 'rgba(244,63,94,0.15)',
+              iconBg: 'rgba(244,63,94,0.15)',
+              iconColor: "text-rose-400",
+              borderColor: 'rgba(244,63,94,0.2)',
             },
             {
               icon: ShieldCheck,
               title: "Profili verificati",
               desc: "Ogni iscritto è verificato manualmente dal nostro team",
-              color: "emerald",
-              bg: "bg-emerald-50",
-              iconColor: "text-emerald-600",
+              glowColor: 'rgba(16,185,129,0.12)',
+              iconBg: 'rgba(16,185,129,0.15)',
+              iconColor: "text-emerald-400",
+              borderColor: 'rgba(16,185,129,0.2)',
             },
             {
               icon: Sparkles,
               title: "SoulMatch AI",
               desc: "Algoritmo di compatibilità che migliora con il tempo",
-              color: "amber",
-              bg: "bg-amber-50",
-              iconColor: "text-amber-600",
+              glowColor: 'rgba(245,158,11,0.12)',
+              iconBg: 'rgba(245,158,11,0.15)',
+              iconColor: "text-amber-400",
+              borderColor: 'rgba(245,158,11,0.2)',
             },
             {
               icon: MessageSquare,
               title: "Messaggi privati",
               desc: "Chatta in totale sicurezza con chi ti interessa",
-              color: "blue",
-              bg: "bg-blue-50",
-              iconColor: "text-blue-600",
+              glowColor: 'rgba(99,102,241,0.12)',
+              iconBg: 'rgba(99,102,241,0.15)',
+              iconColor: "text-indigo-400",
+              borderColor: 'rgba(99,102,241,0.2)',
             },
             {
               icon: Share2,
               title: "Condividi App",
               desc: "Invia SoulMatch ai tuoi amici e invitali!",
-              color: "rose",
-              bg: "bg-rose-600",
-              iconColor: "text-white",
               isSpecial: true,
               onClick: handleShare
             },
@@ -1107,18 +1159,24 @@ const HomePage = () => {
               transition={{ delay: i * 0.08 }}
               onClick={f.onClick}
               className={cn(
-                "border rounded-[20px] p-4 flex items-center gap-4 shadow-sm transition-all",
+                "rounded-[20px] p-4 flex items-center gap-4 transition-all backdrop-blur-xl",
                 f.isSpecial
-                  ? "bg-rose-600 border-rose-500 shadow-rose-200 shadow-lg active:scale-95 cursor-pointer"
-                  : "bg-white border-stone-100"
+                  ? "bg-rose-600 border border-rose-500/60 shadow-2xl shadow-rose-900/40 active:scale-95 cursor-pointer"
+                  : "border"
               )}
+              style={!f.isSpecial ? {
+                background: 'rgba(255,255,255,0.04)',
+                borderColor: f.borderColor,
+                boxShadow: `0 0 20px ${f.glowColor}`,
+              } : {}}
             >
-              <div className={cn('w-12 h-12 rounded-[16px] flex items-center justify-center shrink-0', f.isSpecial ? "bg-white/20" : f.bg)}>
+              <div className={cn('w-12 h-12 rounded-[16px] flex items-center justify-center shrink-0', f.isSpecial && "bg-white/20")}
+                style={!f.isSpecial ? { background: f.iconBg } : {}}>
                 <f.icon className={cn('w-6 h-6', f.isSpecial ? "text-white" : f.iconColor)} />
               </div>
               <div className="text-left">
-                <h3 className={cn("text-sm font-black", f.isSpecial ? "text-white" : "text-stone-900")}>{f.title}</h3>
-                <p className={cn("text-[11px] font-medium leading-snug mt-0.5", f.isSpecial ? "text-rose-100" : "text-stone-400")}>{f.desc}</p>
+                <h3 className={cn("text-sm font-black", f.isSpecial ? "text-white" : "text-white/80")}>{f.title}</h3>
+                <p className={cn("text-[11px] font-medium leading-snug mt-0.5", f.isSpecial ? "text-rose-100" : "text-white/35")}>{f.desc}</p>
               </div>
               {f.isSpecial && <ArrowRight className="w-4 h-4 text-white ml-auto" />}
             </motion.div>
@@ -1129,21 +1187,21 @@ const HomePage = () => {
         <div className="space-y-4 pt-4">
           <div className="flex items-center justify-between px-1">
             <div className="text-left">
-              <h2 className="text-xl font-montserrat font-black text-stone-900">Anteprima Bacheca</h2>
-              <p className="text-stone-400 text-[10px] uppercase tracking-widest font-bold">Demo interattiva — prova i tasti!</p>
+              <h2 className="text-xl font-montserrat font-black text-white">Anteprima Bacheca</h2>
+              <p className="text-white/30 text-[10px] uppercase tracking-widest font-bold">Demo interattiva — prova i tasti!</p>
             </div>
           </div>
 
-          {/* Mock device frame */}
-          <div className="relative rounded-[32px] overflow-hidden border-2 border-stone-200 shadow-2xl bg-stone-50">
+          {/* Mock device frame — dark glass */}
+          <div className="relative rounded-[32px] overflow-hidden border border-white/8 shadow-2xl" style={{ background: 'rgba(255,255,255,0.04)', backdropFilter: 'blur(24px)', boxShadow: '0 0 60px rgba(244,63,94,0.08)' }}>
             {/* Fake status bar */}
-            <div className="bg-white/90 backdrop-blur-sm px-5 py-2 flex items-center justify-between border-b border-stone-100">
-              <span className="text-[10px] font-black text-stone-400">SoulMatch</span>
+            <div className="bg-black/40 backdrop-blur-sm px-5 py-2 flex items-center justify-between border-b border-white/8">
+              <span className="text-[10px] font-black text-white/40">SoulMatch</span>
               <div className="flex items-center gap-1">
                 <div className="w-4 h-4 bg-rose-600 rounded-full flex items-center justify-center">
                   <Heart className="w-2 h-2 text-white fill-current" />
                 </div>
-                <span className="text-[10px] font-montserrat font-black text-rose-600">Bacheca</span>
+                <span className="text-[10px] font-montserrat font-black text-rose-400">Bacheca</span>
               </div>
             </div>
 
@@ -1158,38 +1216,38 @@ const HomePage = () => {
                   transition={{ delay: i * 0.07 }}
                   className="relative group h-full"
                 >
-                  <div
-                    className="aspect-[3/5.5] overflow-hidden bg-stone-200 relative shadow-md group-hover:shadow-lg transition-all border border-stone-100/50 rounded-[22px]"
-                  >
+                  <div className="aspect-[3/5.5] overflow-hidden bg-stone-900 relative shadow-xl group-hover:shadow-2xl transition-all border border-white/8 rounded-[22px]">
                     <img
                       src={p.img}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover opacity-80"
                       onContextMenu={e => e.preventDefault()}
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/100 via-black/40 to-transparent" />
+                    {/* Strong dark fade from bottom */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-black/10" />
 
                     {/* Quick Feeling Button Demo */}
                     <button
                       onClick={(e) => { e.preventDefault(); e.stopPropagation(); setDemoHearts(prev => ({ ...prev, [p.id]: !prev[p.id] })); }}
                       className={cn(
-                        "absolute top-3 right-3 z-30 p-2 bg-white/20 backdrop-blur-lg rounded-xl text-white transition-all shadow-lg active:scale-90",
-                        demoHearts[p.id] ? "text-rose-500 bg-white" : ""
+                        "absolute top-3 right-3 z-30 p-2 backdrop-blur-lg rounded-xl transition-all shadow-lg active:scale-90 border",
+                        demoHearts[p.id]
+                          ? "bg-rose-600 border-rose-500 text-white"
+                          : "bg-white/10 border-white/15 text-white"
                       )}
                     >
                       <Heart className={cn("w-4 h-4", demoHearts[p.id] ? "fill-current" : "")} />
                     </button>
 
                     <div className="absolute bottom-0 left-0 right-0 p-3">
-                      <p className="text-white text-[12px] font-montserrat font-black drop-shadow-md truncate">
-                        {p.name}, {p.age}
+                      <p className="text-white text-[13px] font-serif font-black drop-shadow-md truncate leading-tight">
+                        {p.name}<span className="text-white/60 font-sans text-[11px] font-bold">, {p.age}</span>
                       </p>
-                      <p className="text-white/90 text-[9px] font-bold truncate flex items-center gap-1 drop-shadow-sm mt-0.5">
+                      <p className="text-white/60 text-[9px] font-bold truncate flex items-center gap-1 mt-0.5">
                         <MapPin className="w-2 h-2" />{p.city}
                       </p>
-
-                      {/* Fake Match Badge */}
-                      <div className="mt-2 inline-flex items-center gap-1 px-2 py-0.5 bg-rose-600/30 backdrop-blur-md rounded-full border border-white/20">
-                        <span className="text-white text-[8px] font-black">{p.match}% Match</span>
+                      <div className="mt-1.5 inline-flex items-center gap-1 px-2 py-0.5 bg-rose-600/30 backdrop-blur-md rounded-full border border-rose-500/30">
+                        <Sparkles className="w-2 h-2 text-rose-300" />
+                        <span className="text-rose-200 text-[8px] font-black">{p.match}% Match</span>
                       </div>
                     </div>
                   </div>
@@ -1197,11 +1255,11 @@ const HomePage = () => {
               ))}
             </div>
 
-            {/* Subtle blur overlay with CTA */}
-            <div className="relative bg-gradient-to-t from-[stone-50] via-[stone-50]/60 to-transparent -mt-16 pt-16 pb-5 px-4 flex flex-col items-center gap-3">
-              <p className="text-xs text-stone-500 font-semibold text-center">Accedi per vedere tutti i profili reali nella tua zona</p>
+            {/* CTA overlay */}
+            <div className="relative -mt-20 pt-20 pb-5 px-4 flex flex-col items-center gap-3" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.95) 60%, transparent)' }}>
+              <p className="text-xs text-white/40 font-semibold text-center">Accedi per vedere tutti i profili reali nella tua zona</p>
               <div
-                className="bg-rose-600 text-white px-8 py-3 rounded-[16px] text-xs font-black uppercase tracking-widest shadow-lg shadow-rose-200 active:scale-95 transition-all cursor-pointer"
+                className="bg-rose-600 text-white px-8 py-3 rounded-[16px] text-xs font-black uppercase tracking-widest shadow-lg shadow-rose-900/60 active:scale-95 transition-all cursor-pointer"
                 onClick={() => alert("Questa è un'anteprima dimostrativa. Iscriviti per accedere alla Bacheca reale!")}
               >
                 {isLoggedIn ? "Apri Bacheca" : "Iscriviti Gratis"}
@@ -1209,24 +1267,22 @@ const HomePage = () => {
             </div>
           </div>
 
-          <p className="text-stone-300 text-[9px] italic text-center">Profile demo a scopo illustrativo</p>
+          <p className="text-white/20 text-[9px] italic text-center">Profile demo a scopo illustrativo</p>
         </div>
       </motion.div>
 
-      {/* ── DECORATIVE BOTTOM ELEMENT (tone-on-tone) ── */}
+      {/* ── DECORATIVE BOTTOM ELEMENT ── */}
       <div className="pointer-events-none select-none w-full mt-16 pb-8 flex flex-col items-center gap-4 relative overflow-hidden">
-        {/* Large faded heart */}
         <div className="relative flex items-center justify-center">
-          <Heart className="w-40 h-40 text-stone-200/60 fill-current" />
+          <Heart className="w-40 h-40 fill-current" style={{ color: 'rgba(244,63,94,0.06)', filter: 'blur(4px)' }} />
           <div className="absolute inset-0 flex items-center justify-center">
-            <Heart className="w-20 h-20 text-rose-200/40 fill-current" />
+            <Heart className="w-20 h-20 fill-current" style={{ color: 'rgba(244,63,94,0.12)', filter: 'blur(2px)' }} />
           </div>
         </div>
-        {/* Wavy line decoration */}
-        <svg viewBox="0 0 320 24" className="w-64 text-stone-200" fill="none">
-          <path d="M0 12 Q40 0 80 12 Q120 24 160 12 Q200 0 240 12 Q280 24 320 12" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" />
+        <svg viewBox="0 0 320 24" className="w-64" fill="none">
+          <path d="M0 12 Q40 0 80 12 Q120 24 160 12 Q200 0 240 12 Q280 24 320 12" stroke="rgba(255,255,255,0.08)" strokeWidth="2" fill="none" strokeLinecap="round" />
         </svg>
-        <p className="text-stone-300 text-[9px] font-black uppercase tracking-[0.3em]">SoulMatch &copy; 2025</p>
+        <p className="text-white/15 text-[9px] font-black uppercase tracking-[0.3em]">SoulMatch &copy; 2025</p>
       </div>
 
       <AppFooter />
@@ -1880,144 +1936,138 @@ const ProfileDetailPage = () => {
         {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       </AnimatePresence>
 
-      {/* ── HERO PHOTO ── */}
-      <div className="relative w-full h-[55vh] min-h-[320px] overflow-hidden">
+      {/* ── HERO PHOTO with bottom fade ── */}
+      <div className="relative w-full h-[calc(65vh+100px)] min-h-[480px] overflow-hidden" style={{ background: '#0a0a0f' }}>
         <ProfileAvatar user={profile} className="w-full h-full" iconSize="w-32 h-32" />
-        {/* Gradient: dark at bottom for text readability */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-[stone-50]" />
 
-        {/* Status badge top-right */}
-        <div className="absolute top-4 right-5 z-20">
+        {/* CSS mask: photo fades naturally at bottom */}
+        <div className="absolute inset-0 pointer-events-none" style={{
+          background: 'linear-gradient(to bottom, transparent 30%, rgba(10,10,15,0.5) 65%, rgba(10,10,15,0.9) 85%, #0a0a0f 100%)'
+        }} />
+
+        {/* ── ONLINE / OFFLINE badge top-left ── */}
+        <div className="absolute top-5 left-5 z-20">
           {profile.is_online ? (
-            <div className="flex items-center gap-1.5 bg-emerald-500/25 backdrop-blur-md px-3 py-1.5 rounded-full border border-emerald-400/40">
-              <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full backdrop-blur-md" style={{ background: 'rgba(16,185,129,0.25)', border: '1px solid rgba(52,211,153,0.5)' }}>
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
+              </span>
               <span className="text-[10px] font-black text-emerald-300 uppercase tracking-wider">Online</span>
             </div>
           ) : (
-            <div className="flex items-center gap-1.5 bg-black/25 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/20">
-              <div className="w-2 h-2 bg-stone-400 rounded-full" />
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full backdrop-blur-md" style={{ background: 'rgba(0,0,0,0.35)', border: '1px solid rgba(255,255,255,0.2)' }}>
+              <span className="w-2 h-2 rounded-full bg-stone-400" />
               <span className="text-[10px] font-black text-stone-300 uppercase tracking-wider">Offline</span>
             </div>
           )}
         </div>
 
-        {/* Name / age / city overlaid on gradient */}
-        <div className="absolute bottom-0 left-0 right-0 px-6 pb-5 z-10">
-          <div className="flex items-end justify-between">
-            <div>
+        {/* ── LIKE + HEART stats bar (same style as personal profile stats) ── */}
+        <div className="absolute top-5 right-5 z-20 flex gap-2">
+          <button
+            onClick={() => handleInteract('like')}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full backdrop-blur-md transition-all active:scale-95"
+            style={{
+              background: userInteractions.includes('like') ? 'rgba(52,211,153,0.25)' : 'rgba(0,0,0,0.35)',
+              border: userInteractions.includes('like') ? '1px solid rgba(52,211,153,0.5)' : '1px solid rgba(255,255,255,0.2)'
+            }}
+          >
+            <ThumbsUp className={cn("w-3.5 h-3.5", userInteractions.includes('like') ? "text-emerald-400 fill-current" : "text-white/60")} />
+            <span className={cn("text-[11px] font-black", userInteractions.includes('like') ? "text-emerald-300" : "text-white/70")}>{profile.likes_count || 0}</span>
+          </button>
+          <button
+            onClick={() => handleInteract('heart')}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full backdrop-blur-md transition-all active:scale-95"
+            style={{
+              background: userInteractions.includes('heart') ? 'rgba(244,63,94,0.25)' : 'rgba(0,0,0,0.35)',
+              border: userInteractions.includes('heart') ? '1px solid rgba(244,63,94,0.5)' : '1px solid rgba(255,255,255,0.2)'
+            }}
+          >
+            <Heart className={cn("w-3.5 h-3.5", userInteractions.includes('heart') ? "text-rose-400 fill-current" : "text-white/60")} />
+            <span className={cn("text-[11px] font-black", userInteractions.includes('heart') ? "text-rose-300" : "text-white/70")}>{profile.hearts_count || 0}</span>
+          </button>
+        </div>
 
-              <h1 className="text-3xl font-serif font-black text-white leading-tight drop-shadow-sm">
-                {profile.name}{profile.dob && calculateAge(profile.dob) > 0 ? <span className="font-light text-2xl text-white/60">, {calculateAge(profile.dob)}</span> : null}
-              </h1>
-              <p className="text-white/50 text-xs font-bold mt-1 uppercase tracking-widest">
-                {profile.gender} • {(profile.orientation || []).join(', ')}
-              </p>
-              {profile.city && (
-                <p className="flex items-center gap-1 text-stone-500 text-sm font-semibold mt-0.5">
-                  <MapPin className="w-3.5 h-3.5" />{profile.city}{profile.province ? `, ${profile.province}` : ''}
-                </p>
-              )}
-              {!!profile.is_paid && (
-                <div className="mt-3 inline-flex items-center gap-1.5 bg-amber-50 text-amber-600 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-amber-200 shadow-sm">
-                  <Sparkles className="w-3 h-3" /> Membro Premium
-                </div>
-              )}
+        {/* Name / age / city overlaid on gradient */}
+        <div className="absolute bottom-0 left-0 right-0 px-5 pb-5 z-10">
+          <h1 className="text-3xl font-montserrat font-black text-white leading-tight drop-shadow-lg">
+            {profile.name}{profile.dob && calculateAge(profile.dob) > 0 ? <span className="font-light text-2xl text-white/60">, {calculateAge(profile.dob)}</span> : null}
+          </h1>
+          <p className="text-white/50 text-[11px] font-bold mt-1 uppercase tracking-widest">
+            {profile.gender}{profile.orientation?.length ? ` • ${(profile.orientation as string[]).join(', ')}` : ''}
+          </p>
+          {profile.city && (
+            <p className="flex items-center gap-1 text-white/40 text-xs font-semibold mt-1">
+              <MapPin className="w-3 h-3 text-rose-400" />{profile.city}{profile.province ? `, ${profile.province}` : ''}
+            </p>
+          )}
+          {!!profile.is_paid && (
+            <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider" style={{ background: 'rgba(245,158,11,0.2)', border: '1px solid rgba(245,158,11,0.4)', color: '#fbbf24' }}>
+              <Sparkles className="w-3 h-3" /> Membro Premium
             </div>
+          )}
+
+          {/* ── FRIEND REQUEST button ── */}
+          <button
+            onClick={
+              soulLinkStatus === 'none' ? handleSendSoulLink :
+                soulLinkStatus === 'pending_received' ? handleAcceptSoulLink :
+                  soulLinkStatus === 'accepted' ? handleRemoveSoulLink :
+                    () => { }
+            }
+            className="mt-4 w-full py-3.5 rounded-[20px] font-black text-sm uppercase tracking-widest text-white transition-all active:scale-95 flex items-center justify-center gap-2"
+            style={
+              soulLinkStatus === 'accepted'
+                ? { background: 'rgba(139,92,246,0.3)', border: '1px solid rgba(139,92,246,0.6)', boxShadow: '0 0 20px rgba(139,92,246,0.2)' }
+                : soulLinkStatus === 'pending_sent'
+                  ? { background: 'rgba(245,158,11,0.2)', border: '1px solid rgba(245,158,11,0.4)', boxShadow: '0 0 16px rgba(245,158,11,0.1)' }
+                  : soulLinkStatus === 'pending_received'
+                    ? { background: 'rgba(52,211,153,0.25)', border: '1px solid rgba(52,211,153,0.5)', boxShadow: '0 0 20px rgba(52,211,153,0.2)' }
+                    : { background: '#f43f5e', boxShadow: '0 0 28px rgba(244,63,94,0.5)', border: '1px solid rgba(255,255,255,0.15)' }
+            }
+          >
+            {soulLinkStatus === 'accepted' ? <><UserCheck className="w-4 h-4" /> Siete Amici</> :
+              soulLinkStatus === 'pending_sent' ? <><Users className="w-4 h-4" /> Richiesta Inviata</> :
+                soulLinkStatus === 'pending_received' ? <><CheckCircle className="w-4 h-4" /> Accetta Amicizia</> :
+                  <><UserPlus className="w-4 h-4" /> Richiesta di Amicizia</>}
+          </button>
+
+          {/* ── MESSAGE + CHAT pills ── */}
+          <div className="mt-2 flex gap-2">
+            {/* Scrivi messaggio — solo se SoulLink accettato */}
+            <button
+              onClick={handleOpenMessageModal}
+              className="flex-1 py-3 rounded-[16px] font-black text-[11px] uppercase tracking-widest text-white transition-all active:scale-95 flex items-center justify-center gap-1.5"
+              style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)' }}
+            >
+              <Send className="w-3.5 h-3.5 text-rose-400" /> Scrivi Messaggio
+            </button>
+
+            {/* Chatta — solo se online */}
+            <button
+              onClick={profile.is_online ? handleInstantChat : undefined}
+              disabled={!profile.is_online}
+              className={cn(
+                "flex-1 py-3 rounded-[16px] font-black text-[11px] uppercase tracking-widest transition-all active:scale-95 flex items-center justify-center gap-1.5",
+                profile.is_online ? "text-white" : "text-white/30 cursor-not-allowed"
+              )}
+              style={profile.is_online ? {
+                background: chatStatus === 'approved' ? 'rgba(52,211,153,0.2)' : 'rgba(255,255,255,0.08)',
+                border: chatStatus === 'approved' ? '1px solid rgba(52,211,153,0.4)' : '1px solid rgba(255,255,255,0.15)'
+              } : {
+                background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)'
+              }}
+            >
+              <MessageCircle className={cn("w-3.5 h-3.5", profile.is_online ? (chatStatus === 'approved' ? "text-emerald-400" : "text-blue-400") : "text-white/20")} />
+              {profile.is_online
+                ? (chatStatus === 'approved' ? 'Chatta' : chatStatus === 'pending' ? 'Attendendo...' : 'Chatta')
+                : 'Offline'}
+            </button>
           </div>
         </div>
       </div>
 
-      {/* ── ACTION STRIP (5 cols dark glass) ── */}
-      <div className="mx-4 mt-3 backdrop-blur-xl rounded-[28px] shadow-xl grid grid-cols-5 overflow-visible relative z-10 py-1" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
-        {/* Like */}
-        <button onClick={() => handleInteract('like')} className="flex flex-col items-center py-3 gap-1 group">
-          <div className={cn(
-            "w-10 h-10 rounded-full flex items-center justify-center transition-all shadow-sm",
-            "border border-white/10 bg-white/10",
-            userInteractions.includes('like') ? "text-emerald-400 scale-110" : "text-white/40 group-hover:bg-white/15 group-hover:text-emerald-400 group-hover:scale-110"
-          )}>
-            <ThumbsUp className={cn("w-4 h-4", userInteractions.includes('like') && "fill-current")} />
-          </div>
-          <span className="text-sm font-black text-white">{profile.likes_count || 0}</span>
-          <span className={cn("text-[8px] font-black uppercase tracking-widest", userInteractions.includes('like') ? "text-emerald-400" : "text-white/30")}>Like</span>
-        </button>
-
-        {/* Heart */}
-        <button onClick={() => handleInteract('heart')} className="flex flex-col items-center py-3 gap-1 group">
-          <div className={cn(
-            "w-10 h-10 rounded-full flex items-center justify-center transition-all shadow-sm",
-            "border border-white/10 bg-white/10",
-            userInteractions.includes('heart') ? "text-rose-400 scale-110" : "text-white/40 group-hover:bg-white/15 group-hover:text-rose-400 group-hover:scale-110"
-          )}>
-            <Heart className={cn("w-4 h-4", userInteractions.includes('heart') && "fill-current")} />
-          </div>
-          <span className="text-sm font-black text-white">{profile.hearts_count || 0}</span>
-          <span className={cn("text-[8px] font-black uppercase tracking-widest", userInteractions.includes('heart') ? "text-rose-400" : "text-white/30")}>Cuori</span>
-        </button>
-
-        {/* Amici */}
-        <button
-          onClick={
-            soulLinkStatus === 'none' ? handleSendSoulLink :
-              soulLinkStatus === 'pending_received' ? handleAcceptSoulLink :
-                soulLinkStatus === 'accepted' ? handleRemoveSoulLink :
-                  () => { }
-          }
-          className="flex flex-col items-center py-3 gap-1 group relative"
-        >
-          <div className={cn(
-            "w-10 h-10 rounded-full flex items-center justify-center transition-all relative bg-white/60 shadow-sm border border-white/80 group-hover:scale-110",
-            soulLinkStatus === 'accepted' ? "text-violet-500" :
-              soulLinkStatus === 'pending_sent' ? "text-amber-500" :
-                soulLinkStatus === 'pending_received' ? "text-emerald-500" : "text-stone-400"
-          )}>
-            <Users className="w-4 h-4" />
-            {soulLinkStatus === 'pending_received' && (
-              <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white animate-pulse" />
-            )}
-          </div>
-          <span className="text-sm font-black text-stone-900">&nbsp;</span>
-          <span className={cn("text-[8px] font-black uppercase tracking-widest text-center leading-none px-1",
-            soulLinkStatus === 'accepted' ? "text-violet-600" :
-              soulLinkStatus === 'pending_sent' ? "text-amber-600" :
-                soulLinkStatus === 'pending_received' ? "text-emerald-600" : "text-stone-400"
-          )}>
-            {soulLinkStatus === 'accepted' ? 'Amici' :
-              soulLinkStatus === 'pending_sent' ? 'Attesa' :
-                soulLinkStatus === 'pending_received' ? 'Accetta' : 'Amici'}
-          </span>
-        </button>
-
-        {/* Message / Scrivi */}
-        <button onClick={handleOpenMessageModal} className="flex flex-col items-center py-3 gap-1 group relative">
-          <div className="w-10 h-10 rounded-full flex items-center justify-center transition-all bg-white/60 shadow-sm border border-white/80 text-stone-400 group-hover:scale-110 group-hover:text-rose-500">
-            <Send className="w-4 h-4" />
-          </div>
-          <span className="text-sm font-black text-stone-900">&nbsp;</span>
-          <span className="text-[8px] font-black uppercase tracking-widest text-stone-400">Scrivi</span>
-        </button>
-
-        {/* Chat */}
-        <button onClick={handleInstantChat} className="flex flex-col items-center py-3 gap-1 group relative">
-          <div className={cn(
-            "w-10 h-10 rounded-full flex items-center justify-center transition-all relative bg-white/60 shadow-sm border border-white/80 group-hover:scale-110",
-            chatStatus === 'approved' ? "text-emerald-500" :
-              chatStatus === 'pending' ? "text-amber-500" : "text-stone-400 group-hover:text-blue-500"
-          )}>
-            <MessageCircle className="w-4 h-4" />
-            <div className={cn(
-              "absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white",
-              profile.is_online ? "bg-emerald-500" : "bg-rose-400"
-            )} />
-          </div>
-          <span className="text-sm font-black text-stone-900">&nbsp;</span>
-          <span className={cn("text-[8px] font-black uppercase tracking-widest leading-none px-1 text-center",
-            chatStatus === 'approved' ? "text-emerald-600" :
-              chatStatus === 'pending' ? "text-amber-600" : "text-stone-400")}>
-            {chatStatus === 'approved' ? 'Attiva' : chatStatus === 'pending' ? 'Attesa' : 'Chat'}
-          </span>
-        </button>
-      </div>
 
       {/* ── CONTENT ── */}
       <div className="mx-4 mt-4 space-y-4">
@@ -2154,14 +2204,16 @@ const ProfileDetailPage = () => {
       {/* ── MESSAGE MODAL ── */}
       <AnimatePresence>
         {isMessageModalOpen && (
-          <div className="fixed inset-0 z-[100] flex items-end justify-center bg-stone-900/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-[200] flex items-end justify-center" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)' }}
+            onClick={(e) => e.target === e.currentTarget && setIsMessageModalOpen(false)}
+          >
             <motion.div
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
               className="w-full max-w-md rounded-t-[40px] p-8 shadow-2xl space-y-5"
-              style={{ background: '#1a1a22', border: '1px solid rgba(255,255,255,0.08)' }}
+              style={{ background: '#1a1a22', border: '1px solid rgba(255,255,255,0.08)', marginBottom: '380px' }}
             >
               <div className="w-10 h-1 rounded-full mx-auto mb-2" style={{ background: 'rgba(255,255,255,0.15)' }} />
               <div className="flex items-center gap-4">
@@ -2169,35 +2221,40 @@ const ProfileDetailPage = () => {
                   <img src={(profile.photos && profile.photos.length > 0) ? profile.photos[0] : (profile.photo_url || `https://picsum.photos/seed/${profile.name}/400/600`)} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-serif font-black text-white">Scrivi a {profile.name}</h3>
-                  <p className="text-white/40 text-xs">Il tuo messaggio sarà visibile nel profilo</p>
+                  <h3 className="text-lg font-montserrat font-black text-white">Scrivi a {profile.name}</h3>
+                  {soulLinkStatus !== 'accepted' ? (
+                    <p className="text-amber-400 text-[11px] font-bold mt-0.5">⚠️ Solo per SoulLinks — prima aggiungi come amico</p>
+                  ) : (
+                    <p className="text-white/40 text-xs font-montserrat">Il tuo messaggio arriverà a {profile.name}</p>
+                  )}
                 </div>
               </div>
               <textarea
                 value={messageText}
                 onChange={(e) => setMessageText(e.target.value)}
                 placeholder="Ciao! Mi piacerebbe conoscerti..."
-                className="w-full h-28 p-4 rounded-2xl text-sm outline-none resize-none font-medium text-white/80 placeholder:text-white/20"
-                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(244,63,94,0.2)' }}
+                className="w-full h-28 p-4 rounded-2xl text-sm outline-none resize-none font-medium text-white/80 placeholder:text-white/20 font-montserrat"
+                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(244,63,94,0.2)', fontFamily: 'Montserrat, sans-serif' }}
                 autoFocus
               />
               <div className="flex gap-3">
                 <button
                   onClick={() => setIsMessageModalOpen(false)}
-                  className="flex-1 py-4 rounded-[18px] text-xs font-black uppercase tracking-widest transition-all"
-                  style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.5)' }}
+                  className="flex-1 py-4 rounded-[18px] text-xs font-black uppercase tracking-widest font-montserrat transition-all"
+                  style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.5)', fontFamily: 'Montserrat, sans-serif' }}
                 >Annulla</button>
                 <button
                   onClick={sendChatMessage}
                   disabled={!messageText.trim()}
-                  className="flex-1 text-white py-4 rounded-[18px] text-xs font-black uppercase tracking-widest disabled:opacity-40 active:scale-95"
-                  style={{ background: '#f43f5e', boxShadow: '0 0 20px rgba(244,63,94,0.4)' }}
+                  className="flex-1 text-white py-4 rounded-[18px] text-xs font-black uppercase tracking-widest disabled:opacity-40 active:scale-95 font-montserrat"
+                  style={{ background: '#f43f5e', boxShadow: '0 0 20px rgba(244,63,94,0.4)', fontFamily: 'Montserrat, sans-serif' }}
                 >Invia ❤️</button>
               </div>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
+
     </div>
   );
 };
@@ -3605,15 +3662,18 @@ const SoulMatchPage = () => {
 
         {/* Empty States */}
         {!targetUser && !showRankings && currentList.length === 0 && (
-          <div className="py-20 text-center space-y-4">
-            <div className="w-20 h-20 bg-stone-100 rounded-full flex items-center justify-center mx-auto text-stone-300">
-              <Users className="w-10 h-10" />
+          <div className="py-28 text-center space-y-5">
+            <div className="w-24 h-24 bg-rose-500/10 rounded-[32px] flex items-center justify-center mx-auto text-rose-500 shadow-[0_0_30px_rgba(244,63,94,0.1)] border border-rose-500/20">
+              <Users className="w-12 h-12" />
             </div>
-            <div className="space-y-1 px-8">
-              <p className="text-stone-900 font-serif font-black">Nessun profilo trovato</p>
-              <p className="text-stone-400 text-[11px] font-medium leading-relaxed">
+            <div className="space-y-2 px-10">
+              <p className="text-white text-lg font-serif font-black tracking-tight">Ancora nessun'anima gemella</p>
+              <p className="text-white/40 text-[11px] font-black uppercase tracking-[0.2em] leading-relaxed">
                 {mode === 'friends' ? "Cerca amici per iniziare il match." : "I profili compatibili appariranno qui."}
               </p>
+              <div className="pt-4">
+                <div className="inline-block w-8 h-1 bg-rose-500/20 rounded-full" />
+              </div>
             </div>
           </div>
         )}
@@ -4053,13 +4113,13 @@ const AmiciPage = () => {
           initial={{ y: -100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{
-            type: "spring",
-            stiffness: 100,
-            damping: 15,
+            type: 'spring',
+            stiffness: 200,
+            damping: 18,
+            delay: 0.1,
             duration: 0.8
           }}
           className="flex items-center gap-2"
-          transition={{ type: 'spring', stiffness: 200, damping: 18, delay: 0.1 }}
         >
           <div
             className="backdrop-blur-2xl text-white px-5 py-3.5 rounded-[32px] flex items-center gap-4 justify-between cursor-pointer"
@@ -4181,20 +4241,24 @@ const AmiciPage = () => {
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="rounded-[28px] p-10 text-center space-y-4"
-                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px dashed rgba(255,255,255,0.08)' }}
+                  className="py-16 text-center space-y-5"
                 >
-                  <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto" style={{ background: 'rgba(255,255,255,0.05)' }}>
-                    <Users className="w-7 h-7 text-white/15" />
+                  <div className="w-24 h-24 bg-rose-500/10 rounded-[32px] flex items-center justify-center mx-auto text-rose-500 shadow-[0_0_30px_rgba(244,63,94,0.1)] border border-rose-500/20">
+                    <Users className="w-12 h-12" />
                   </div>
-                  <p className="text-white/30 text-xs font-medium px-4">
-                    {searchTerm ? `Nessun amico trovato per "${searchTerm}"` : 'Nessuna connessione confermata. Invia SoulLink dalla bacheca!'}
-                  </p>
-                  {!searchTerm && (
-                    <button onClick={() => navigate('/bacheca')} className="text-xs font-black text-rose-500 uppercase tracking-widest">
-                      Vai alla Bacheca
-                    </button>
-                  )}
+                  <div className="space-y-4 px-10">
+                    <div>
+                      <p className="text-white text-lg font-serif font-black tracking-tight">Nessun SoulLink trovato</p>
+                      <p className="text-white/40 text-[11px] font-black uppercase tracking-[0.2em] leading-relaxed mt-2">
+                        {searchTerm ? `Nessun amico per "${searchTerm}"` : 'Invia un SoulLink per iniziare.'}
+                      </p>
+                    </div>
+                    {!searchTerm && (
+                      <button onClick={() => navigate('/bacheca')} className="w-full py-3.5 bg-rose-600/20 text-rose-400 rounded-[20px] text-[11px] font-black uppercase tracking-[0.2em] shadow-lg shadow-rose-900/10 border border-rose-500/20 active:scale-95 transition-all">
+                        Scopri Nuove Anime
+                      </button>
+                    )}
+                  </div>
                 </motion.div>
               )}
               {friends
@@ -8229,8 +8293,9 @@ const ProfilePage = () => {
       }
 
       if (profileData) {
+        const normalized = normalizeUser(profileData);
         setUser({
-          ...profileData,
+          ...normalized,
           likes_count: (profileData.interactions as any[] || []).filter(i => i.type === 'like').length,
           hearts_count: (profileData.interactions as any[] || []).filter(i => i.type === 'heart').length
         });
@@ -8368,10 +8433,16 @@ const ProfilePage = () => {
     delete submissionData.likes_count;
     delete submissionData.hearts_count;
 
+    // Serialize arrays and objects to strings so they are cleanly saved in Postgres TEXT columns and can be parsed back
+    submissionData.orientation = JSON.stringify(submissionData.orientation || []);
+    submissionData.looking_for_gender = JSON.stringify(submissionData.looking_for_gender || []);
+    submissionData.conosciamoci_meglio = JSON.stringify(submissionData.conosciamoci_meglio || {});
+
     const { error } = await supabase.from('users').update(submissionData).eq('id', user.id);
     if (!error) {
       setToast({ message: '✅ Profilo aggiornato!', type: 'success' });
       fetchData(user.id);
+
 
       // Sync local storage if needed
       const saved = localStorage.getItem('soulmatch_user');
@@ -8574,19 +8645,23 @@ const ProfilePage = () => {
       </AnimatePresence>
 
       {/* ── HERO PHOTO ── */}
-      <div className="relative w-full h-[68vh] min-h-[420px] overflow-hidden">
+      <div className="relative w-full h-[calc(68vh+100px)] min-h-[520px] overflow-hidden" style={{ background: '#0a0a0f' }}>
         <img
           src={heroPhoto}
           alt={user.name}
-          className="w-full h-full object-cover object-top"
+          className="w-full h-full object-cover object-top opacity-90 transition-opacity duration-1000"
+          style={{
+            WebkitMaskImage: 'linear-gradient(to bottom, black 70%, transparent 100%)',
+            maskImage: 'linear-gradient(to bottom, black 70%, transparent 100%)'
+          }}
         />
         {/* Strong bottom fade to page background */}
-        <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, rgba(10,10,15,0.1) 0%, transparent 30%, rgba(10,10,15,0.7) 70%, #0a0a0f 100%)' }} />
+        <div className="absolute inset-0 pointer-events-none" style={{ background: 'linear-gradient(to bottom, transparent 40%, rgba(10,10,15,0.4) 60%, rgba(10,10,15,0.8) 85%, #0a0a0f 100%)' }} />
 
         {/* Settings button REMOVED — use Setup tab instead */}
 
         {/* Name + badge over gradient */}
-        <div className="absolute bottom-20 left-0 right-0 px-6 pb-4 z-10">
+        <div className="absolute bottom-[180px] left-0 right-0 px-6 pb-4 z-10">
           <div className="flex items-end justify-between">
             <div className="min-w-0 flex-1">
               <h1 className="font-montserrat font-black text-2xl text-white truncate drop-shadow-lg">
@@ -8611,8 +8686,8 @@ const ProfilePage = () => {
 
       {/* ── STATS ROW — overlaps hero bottom ── */}
       <div
-        className="mx-6 -mt-14 rounded-[28px] flex justify-between overflow-hidden relative z-10 backdrop-blur-xl"
-        style={{ background: 'rgba(10,10,15,0.55)', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}
+        className="mx-6 -mt-[156px] rounded-[28px] flex justify-between overflow-hidden relative z-10 backdrop-blur-xl"
+        style={{ background: 'rgba(10,10,15,0.20)', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 8px 32px rgba(0,0,0,0.1)' }}
       >
         {[
           { icon: ThumbsUp, val: user.likes_count || 0, label: 'Like', color: 'text-emerald-400' },
@@ -8884,48 +8959,111 @@ const ProfilePage = () => {
                 </div>
               </div>
 
-              {/* Identity */}
-              <div className="space-y-4">
+              {/* ── Horizontal Scroll Tag Selector helper (inline component) ── */}
+              {/* Il mio Genere */}
+              <div className="space-y-3">
                 <p className="text-[10px] text-white/40 font-black uppercase tracking-widest ml-1">Il mio Genere</p>
-                <div className="grid grid-cols-2 gap-2">
-                  {['Uomo', 'Donna', 'Non-binario', 'Transgender', 'Genderfluid', 'Queer', 'Altro'].map(g => (
-                    <button
-                      key={g}
-                      onClick={() => setSetupForm((f: any) => ({ ...f, gender: g }))}
-                      className={cn(
-                        "py-3 rounded-[16px] text-[10px] font-black tracking-widest uppercase transition-all border",
-                        setupForm.gender === g
-                          ? "bg-rose-600 border-rose-500 text-white shadow-[0_0_15px_rgba(244,63,94,0.4)]"
-                          : "bg-white/5 border-white/5 text-white/30 hover:border-white/20"
-                      )}
-                    >
-                      {g}
-                    </button>
-                  ))}
+                <div className="relative">
+                  {/* Blur fade left */}
+                  <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-10 z-10" style={{ background: 'linear-gradient(to right, #0a0a0f, transparent)' }} />
+                  {/* Blur fade right */}
+                  <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-10 z-10" style={{ background: 'linear-gradient(to left, #0a0a0f, transparent)' }} />
+                  <div className="flex gap-2 overflow-x-auto pb-1 hide-scrollbar px-4" style={{ scrollSnapType: 'x mandatory' }}>
+                    {['Uomo', 'Donna', 'Non-binario', 'Transgender (M→F)', 'Transgender (F→M)', 'Genderfluid', 'Genderqueer', 'Agender', 'Bigender', 'Pangender', 'Demi-genere', 'Intersessuale', 'Neutrois', 'Queer', 'Altro'].map(g => {
+                      const sel = setupForm.gender === g;
+                      return (
+                        <button
+                          key={g}
+                          onClick={() => setSetupForm((f: any) => ({ ...f, gender: g }))}
+                          style={{
+                            scrollSnapAlign: 'center', flexShrink: 0,
+                            ...(sel ? { background: '#f43f5e', boxShadow: '0 0 18px rgba(244,63,94,0.5)', border: '1px solid rgba(244,63,94,0.8)' }
+                              : { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', filter: 'blur(0.3px)', opacity: 0.55 })
+                          }}
+                          className={cn(
+                            "px-5 py-3 rounded-[20px] text-[11px] font-black tracking-widest uppercase whitespace-nowrap transition-all",
+                            sel ? "text-white scale-105" : "text-white/60"
+                          )}
+                        >
+                          {g}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
 
-              <div className="space-y-4">
+              {/* Orientamento Sessuale */}
+              <div className="space-y-3">
                 <p className="text-[10px] text-white/40 font-black uppercase tracking-widest ml-1">Orientamento Sessuale</p>
-                <div className="grid grid-cols-2 gap-2">
-                  {['Eterosessuale', 'Gay', 'Lesbica', 'Bisessuale', 'Pansessuale', 'Asessuale', 'Queer', 'Curioso/a'].map(o => {
-                    const sel = (setupForm.orientation || []).includes(o);
-                    return (
-                      <button
-                        key={o}
-                        onClick={() => {
-                          const next = sel ? setupForm.orientation.filter((x: string) => x !== o) : [...setupForm.orientation, o];
-                          setSetupForm((f: any) => ({ ...f, orientation: next }));
-                        }}
-                        className={cn(
-                          "py-3 rounded-[16px] text-[10px] font-black tracking-widest uppercase transition-all border",
-                          sel ? "bg-rose-600 border-rose-500 text-white shadow-[0_0_12px_rgba(244,63,94,0.3)]" : "bg-white/5 border-white/5 text-white/30"
-                        )}
-                      >
-                        {o}
-                      </button>
-                    );
-                  })}
+                <div className="relative">
+                  <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-10 z-10" style={{ background: 'linear-gradient(to right, #0a0a0f, transparent)' }} />
+                  <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-10 z-10" style={{ background: 'linear-gradient(to left, #0a0a0f, transparent)' }} />
+                  <div className="flex gap-2 overflow-x-auto pb-1 hide-scrollbar px-4" style={{ scrollSnapType: 'x mandatory' }}>
+                    {['Eterosessuale', 'Gay', 'Lesbica', 'Bisessuale', 'Pansessuale', 'Asessuale', 'Demisessuale', 'Sapiosexual', 'Polisessuale', 'Queer', 'Fluido', 'Aromantic', 'Curioso/a', 'Altro'].map(o => {
+                      const sel = (setupForm.orientation || []).includes(o);
+                      return (
+                        <button
+                          key={o}
+                          onClick={() => {
+                            const next = sel
+                              ? setupForm.orientation.filter((x: string) => x !== o)
+                              : [...(setupForm.orientation || []), o];
+                            setSetupForm((f: any) => ({ ...f, orientation: next }));
+                          }}
+                          style={{
+                            scrollSnapAlign: 'center', flexShrink: 0,
+                            ...(sel ? { background: '#f43f5e', boxShadow: '0 0 18px rgba(244,63,94,0.5)', border: '1px solid rgba(244,63,94,0.8)' }
+                              : { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', filter: 'blur(0.3px)', opacity: 0.55 })
+                          }}
+                          className={cn(
+                            "px-5 py-3 rounded-[20px] text-[11px] font-black tracking-widest uppercase whitespace-nowrap transition-all",
+                            sel ? "text-white scale-105" : "text-white/60"
+                          )}
+                        >
+                          {o}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Genere Preferito — horizontal scroll tags */}
+              <div className="space-y-3">
+                <p className="text-[10px] text-white/40 font-black uppercase tracking-widest ml-1">Genere Preferito</p>
+                <div className="relative">
+                  <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-10 z-10" style={{ background: 'linear-gradient(to right, #0a0a0f, transparent)' }} />
+                  <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-10 z-10" style={{ background: 'linear-gradient(to left, #0a0a0f, transparent)' }} />
+                  <div className="flex gap-2 overflow-x-auto pb-1 hide-scrollbar px-4" style={{ scrollSnapType: 'x mandatory' }}>
+                    {['Uomo', 'Donna', 'Tutti', 'Non-binario', 'Transgender', 'Genderfluid', 'Queer', 'Altro'].map(g => {
+                      const sel = (setupForm.looking_for_gender || []).includes(g);
+                      return (
+                        <button
+                          key={g}
+                          onClick={() => {
+                            const next = g === 'Tutti'
+                              ? ['Tutti']
+                              : (sel
+                                ? setupForm.looking_for_gender.filter((x: string) => x !== g)
+                                : [...(setupForm.looking_for_gender || []).filter((x: string) => x !== 'Tutti'), g]);
+                            setSetupForm((f: any) => ({ ...f, looking_for_gender: next }));
+                          }}
+                          style={{
+                            scrollSnapAlign: 'center', flexShrink: 0,
+                            ...(sel ? { background: '#f43f5e', boxShadow: '0 0 18px rgba(244,63,94,0.5)', border: '1px solid rgba(244,63,94,0.8)' }
+                              : { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', filter: 'blur(0.3px)', opacity: 0.55 })
+                          }}
+                          className={cn(
+                            "px-5 py-3 rounded-[20px] text-[11px] font-black tracking-widest uppercase whitespace-nowrap transition-all",
+                            sel ? "text-white scale-105" : "text-white/60"
+                          )}
+                        >
+                          {g}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
 
@@ -9020,30 +9158,6 @@ const ProfilePage = () => {
               {/* Preferences matching */}
               <div className="space-y-6">
                 <p className="text-[10px] text-white/40 font-black uppercase tracking-widest ml-1">Chi Cerchi (Preferenze)</p>
-
-                <div className="space-y-3">
-                  <p className="text-[9px] text-white/30 font-black uppercase tracking-widest ml-1">Genere Preferito</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {['Uomo', 'Donna', 'Tutti', 'Altro'].map(g => {
-                      const sel = (setupForm.looking_for_gender || []).includes(g);
-                      return (
-                        <button
-                          key={g}
-                          onClick={() => {
-                            const next = g === 'Tutti' ? ['Tutti'] : (sel ? setupForm.looking_for_gender.filter((x: string) => x !== g) : [...setupForm.looking_for_gender.filter((x: string) => x !== 'Tutti'), g]);
-                            setSetupForm((f: any) => ({ ...f, looking_for_gender: next }));
-                          }}
-                          className={cn(
-                            "py-3 rounded-[16px] text-[10px] font-black tracking-widest uppercase transition-all border",
-                            sel ? "bg-rose-600 border-rose-500 text-white" : "bg-white/5 border-white/5 text-white/30"
-                          )}
-                        >
-                          {g}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
 
                 <div className="rounded-[20px] p-4" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
                   <p className="text-[9px] text-rose-400 font-black uppercase mb-3">Fascia d'Età desiderata</p>
