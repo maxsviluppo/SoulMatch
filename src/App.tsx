@@ -2060,13 +2060,13 @@ const ProfileDetailPage = () => {
 
           {/* Photo Indicators */}
           {(profile.photos && profile.photos.length > 1) && (
-            <div className="absolute top-20 left-1/2 -translate-x-1/2 flex gap-1 z-30">
+            <div className="absolute top-10 left-1/2 -translate-x-1/2 flex gap-1 z-30">
               {profile.photos.map((_, idx) => (
                 <div
                   key={idx}
                   className={cn(
                     "h-1 rounded-full transition-all duration-300",
-                    idx === heroIndex ? "w-6 bg-white" : "w-1.5 bg-white/30"
+                    idx === heroIndex ? "w-6 bg-white/50" : "w-1.5 bg-white/15"
                   )}
                 />
               ))}
@@ -2203,7 +2203,7 @@ const ProfileDetailPage = () => {
           </div>
 
           {/* ── MATCH CORNER WIDGET - ONLY IF FRIENDS ── */}
-          {currentUser && soulLinkStatus === 'accepted' && (
+          {currentUser && soulLinkStatus === 'accepted' && matchScore > 0 && (
             <div className="absolute bottom-0 right-0 z-0 pointer-events-none overflow-visible">
               <style>{`
                 @keyframes orbitHeartB {
@@ -2243,7 +2243,7 @@ const ProfileDetailPage = () => {
 
               {/* Heart + score - ONLY IF FRIENDS */}
               <div className="absolute inset-0 flex items-end justify-end pb-14 pr-14">
-                <div className="relative flex items-center justify-center" style={{ width: 210, height: 210, transform: 'rotate(25deg) translateX(20px) translateY(-30px)' }}>
+                <div className="relative flex items-center justify-center" style={{ width: 189, height: 189, transform: 'rotate(20deg) translateX(25px) translateY(-35px)' }}>
                   {/* Dynamic hearts count: slowed duration by another 10% */}
                   {Array.from({ length: Math.max(1, Math.min(10, Math.round(matchScore / 10))) }).map((_, i) => (
                     <div key={i} className="orbit-heart-b" style={{ '--dur': `${3.2 + i * 0.45}s`, '--delay': `${i * 0.45}s` } as React.CSSProperties}>
@@ -2753,18 +2753,18 @@ const BachecaPage = () => {
           .fh { animation: floatHeart var(--dur,12s) ease-in-out var(--delay,0s) infinite; position: absolute; bottom: -10%; }
         `}</style>
         {[
-          { left: '8%', size: 14, color: '#f43f5e', blur: 2, dur: 14, delay: 0, dx: 30, r: '20deg', s: 1.2 },
-          { left: '18%', size: 8, color: '#fb7185', blur: 3, dur: 11, delay: 2, dx: -20, r: '-15deg', s: 0.9 },
-          { left: '30%', size: 20, color: '#9333ea', blur: 4, dur: 16, delay: 1, dx: 15, r: '10deg', s: 1.1 },
-          { left: '42%', size: 10, color: '#f43f5e', blur: 2, dur: 13, delay: 3.5, dx: -35, r: '25deg', s: 1.0 },
-          { left: '55%', size: 16, color: '#ec4899', blur: 3, dur: 15, delay: 0.5, dx: 20, r: '-20deg', s: 1.3 },
-          { left: '65%', size: 7, color: '#a855f7', blur: 4, dur: 10, delay: 2.5, dx: -10, r: '30deg', s: 0.8 },
-          { left: '75%', size: 22, color: '#f43f5e', blur: 5, dur: 18, delay: 1.5, dx: 25, r: '-10deg', s: 1.0 },
-          { left: '85%', size: 11, color: '#fb7185', blur: 2, dur: 12, delay: 4, dx: -15, r: '15deg', s: 0.9 },
-          { left: '22%', size: 18, color: '#ec4899', blur: 6, dur: 17, delay: 5, dx: 10, r: '-25deg', s: 1.2 },
-          { left: '48%', size: 9, color: '#9333ea', blur: 3, dur: 9, delay: 6, dx: -25, r: '20deg', s: 0.7 },
-          { left: '92%', size: 13, color: '#f43f5e', blur: 4, dur: 13, delay: 3, dx: -30, r: '-15deg', s: 1.1 },
-          { left: '5%', size: 6, color: '#a855f7', blur: 2, dur: 11, delay: 7, dx: 20, r: '10deg', s: 0.8 },
+          { left: '8%', size: 18, color: '#f43f5e', blur: 2, dur: 14, delay: 0, dx: 30, r: '20deg', s: 1.2 },
+          { left: '18%', size: 11, color: '#fb7185', blur: 3, dur: 11, delay: 2, dx: -20, r: '-15deg', s: 0.9 },
+          { left: '30%', size: 24, color: '#9333ea', blur: 4, dur: 16, delay: 1, dx: 15, r: '10deg', s: 1.1 },
+          { left: '42%', size: 14, color: '#f43f5e', blur: 2, dur: 13, delay: 3.5, dx: -35, r: '25deg', s: 1.0 },
+          { left: '55%', size: 20, color: '#ec4899', blur: 3, dur: 15, delay: 0.5, dx: 20, r: '-20deg', s: 1.3 },
+          { left: '65%', size: 10, color: '#a855f7', blur: 4, dur: 10, delay: 2.5, dx: -10, r: '30deg', s: 0.8 },
+          { left: '75%', size: 26, color: '#f43f5e', blur: 5, dur: 18, delay: 1.5, dx: 25, r: '-10deg', s: 1.0 },
+          { left: '85%', size: 15, color: '#fb7185', blur: 2, dur: 12, delay: 4, dx: -15, r: '15deg', s: 0.9 },
+          { left: '22%', size: 22, color: '#ec4899', blur: 6, dur: 17, delay: 5, dx: 10, r: '-25deg', s: 1.2 },
+          { left: '48%', size: 12, color: '#9333ea', blur: 3, dur: 9, delay: 6, dx: -25, r: '20deg', s: 0.7 },
+          { left: '92%', size: 18, color: '#f43f5e', blur: 4, dur: 13, delay: 3, dx: -30, r: '-15deg', s: 1.1 },
+          { left: '5%', size: 9, color: '#a855f7', blur: 2, dur: 11, delay: 7, dx: 20, r: '10deg', s: 0.8 },
         ].map((h, i) => (
           <div
             key={i}
@@ -2777,10 +2777,11 @@ const BachecaPage = () => {
               '--r': h.r,
               '--s': h.s,
               filter: `blur(${h.blur}px)`,
-              opacity: 0.18,
+              opacity: 0.3,
+              transform: 'scale(1.1)'
             } as React.CSSProperties}
           >
-            <svg width={h.size} height={h.size} viewBox="0 0 24 24" fill={h.color}>
+            <svg width={h.size} height={h.size} viewBox="0 0 24 24" fill={h.color} style={{ filter: `drop-shadow(0 0 15px ${h.color})` }}>
               <path d="M12 21.593c-5.63-5.539-11-10.297-11-14.402 0-3.791 3.068-5.191 5.281-5.191 1.312 0 4.151.501 5.719 4.457 1.59-3.968 4.464-4.447 5.726-4.447 2.54 0 5.274 1.621 5.274 5.181 0 4.069-5.136 8.625-11 14.402z" />
             </svg>
           </div>
@@ -3050,7 +3051,7 @@ const BachecaPage = () => {
                     )}
 
                     {/* Match Score Badge - ONLY IF FRIENDS */}
-                    {currentUser && unlockedIds.includes(profile.id) && friends.includes(profile.id) && (
+                    {currentUser && unlockedIds.includes(profile.id) && friends.includes(profile.id) && calculateMatchScore(currentUser, profile) > 0 && (
                       <div className="absolute top-0 left-0 z-20 pointer-events-none overflow-hidden rounded-tl-[22px]">
                         <svg width="80" height="80" viewBox="0 0 100 100" fill="none" className="w-[70px] h-[70px]">
                           <path d="M 0 0 L 100 0 Q 15 15 0 100 Z" fill="#e11d48" />
@@ -3282,8 +3283,8 @@ const SoulMatchConfirmBanner = ({ onConfirm }: { onConfirm: () => void }) => {
 // ── Feed Page ──
 // ── SoulMatch Page ──────────────────────────────────────────────────────
 const SoulMatchPage = () => {
-  const [profiles, setProfiles] = useState<UserProfile[]>([]);
-  const [friends, setFriends] = useState<string[]>([]); // Friend IDs
+  const [globalProfiles, setGlobalProfiles] = useState<UserProfile[]>([]);
+  const [friendProfiles, setFriendProfiles] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [mode, setMode] = useState<'global' | 'friends'>('global');
@@ -3299,13 +3300,15 @@ const SoulMatchPage = () => {
   const [showRankings, setShowRankings] = useState(false);
   const [unlockedIds, setUnlockedIds] = useState<string[]>([]);
 
+  const navigate = useNavigate();
+
   useEffect(() => {
     const saved = localStorage.getItem('soulmatch_unlocked_ids');
     if (saved) setUnlockedIds(JSON.parse(saved));
   }, []);
 
   useEffect(() => {
-    const handleReset = () => setTargetUser(null);
+    const handleReset = () => { setTargetUser(null); setShowRankings(false); };
     window.addEventListener('reset-soulmatch', handleReset);
     return () => window.removeEventListener('reset-soulmatch', handleReset);
   }, []);
@@ -3316,76 +3319,84 @@ const SoulMatchPage = () => {
     localStorage.setItem('soulmatch_unlocked_ids', JSON.stringify(next));
   };
 
-  const navigate = useNavigate();
-
-  // ── Helpers: stessa logica di compatibilità della Bacheca ──
-  const isOrientationCompatible = (viewer: UserProfile, target: UserProfile): boolean => {
-    const vOrient: string[] = Array.isArray(viewer.orientation) ? viewer.orientation : (viewer.orientation ? [viewer.orientation as any] : []);
-    const tOrient: string[] = Array.isArray(target.orientation) ? target.orientation : (target.orientation ? [target.orientation as any] : []);
-    const vGender = viewer.gender || '';
-    const tGender = target.gender || '';
-    const checkCompat = (orient: string[], subjectGender: string, targetGender: string): boolean => {
-      if (!orient.length) return true;
-      for (const o of orient) {
-        const ol = o.toLowerCase();
-        if (['bisessuale', 'pansessuale', 'polisessuale', 'fluido', 'queer', 'curioso/a', 'demisessuale', 'sapiosexual'].includes(ol)) return true;
-        if (ol === 'eterosessuale') { if (subjectGender.toLowerCase() !== targetGender.toLowerCase()) return true; }
-        else if (['gay', 'lesbica'].includes(ol)) { if (subjectGender.toLowerCase() === targetGender.toLowerCase()) return true; }
-        else return true;
+  const fetchGlobalProfiles = async (viewer: UserProfile) => {
+    try {
+      const { data } = await supabase.from('users').select('*');
+      if (data) {
+        const all = data.map(u => normalizeUser(u));
+        const compatible = all.filter(p => isUserCompatible(viewer, p) && (p.photos?.length || p.photo_url));
+        setGlobalProfiles(compatible);
       }
-      return false;
-    };
-    return checkCompat(vOrient, vGender, tGender) && checkCompat(tOrient, tGender, vGender);
-  };
-
-  const fetchProfiles = async (viewer: UserProfile) => {
-    const { data } = await supabase.from('users').select('*');
-    if (data) {
-      const all = data.map(u => normalizeUser(u));
-      // Applica compatibilità come in Bacheca
-      // Reciprocal compatibility
-      const compatible = all.filter(p => isUserCompatible(viewer, p) && (p.photos?.length || p.photo_url));
-      setProfiles(compatible);
+    } catch (e) {
+      console.error("fetchGlobalProfiles error:", e);
     }
   };
 
   const fetchFriends = async (userId: string) => {
-    const { data } = await supabase
-      .from('soul_links')
-      .select('sender_id, receiver_id')
-      .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
-      .eq('status', 'accepted');
-    if (data) {
-      const ids = data.map(sl => sl.sender_id === userId ? sl.receiver_id : sl.sender_id);
-      setFriends(ids);
+    try {
+      const { data: links } = await supabase
+        .from('soul_links')
+        .select('sender_id, receiver_id')
+        .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`)
+        .eq('status', 'accepted');
+
+      if (links && links.length > 0) {
+        const friendIds = links.map(sl => sl.sender_id === userId ? sl.receiver_id : sl.sender_id);
+        const { data: users } = await supabase
+          .from('users')
+          .select('*')
+          .in('id', friendIds);
+
+        if (users) {
+          setFriendProfiles(users.map(u => normalizeUser(u)));
+        }
+      } else {
+        setFriendProfiles([]);
+      }
+    } catch (e) {
+      console.error("fetchFriends error:", e);
     }
   };
 
   useEffect(() => {
     const init = async () => {
-      const saved = localStorage.getItem('soulmatch_user');
-      if (saved) {
-        const u = normalizeUser(JSON.parse(saved));
-        setCurrentUser(u);
-        await Promise.all([fetchProfiles(u), fetchFriends(u.id)]);
-      } else {
-        navigate('/register');
+      try {
+        const saved = localStorage.getItem('soulmatch_user');
+        if (saved) {
+          const u = JSON.parse(saved);
+          const { data: realUser } = await supabase.from('users').select('*').eq('id', u.id).single();
+          if (realUser) {
+            const norm = normalizeUser(realUser);
+            setCurrentUser(norm);
+            await Promise.all([fetchGlobalProfiles(norm), fetchFriends(norm.id)]);
+          } else {
+            const norm = normalizeUser(u);
+            setCurrentUser(norm);
+            await Promise.all([fetchGlobalProfiles(norm), fetchFriends(norm.id)]);
+          }
+        } else {
+          navigate('/register');
+        }
+      } catch (e) {
+        console.error("SoulMatchPage init exception:", e);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
     init();
   }, [navigate]);
 
-  // profiles già filtrati per compatibilità; filtriamo solo per mode/search
-  const currentList = profiles.filter(p => {
-    if (mode === 'friends' && !friends.includes(p.id)) return false;
-    if (searchQuery && !p.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-    return true;
-  });
+  const currentList = useMemo(() => {
+    const baseList = mode === 'global' ? globalProfiles : friendProfiles;
+    if (!searchQuery) return baseList;
+    return baseList.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()));
+  }, [mode, globalProfiles, friendProfiles, searchQuery]);
 
-  const ranked = [...currentList]
-    .map(p => ({ ...p, _score: calculateMatchScore(currentUser, p) }))
-    .sort((a, b) => b._score - a._score);
+  const ranked = useMemo(() => {
+    return [...currentList]
+      .map(p => ({ ...p, _score: calculateMatchScore(currentUser, p) }))
+      .sort((a, b) => b._score - a._score);
+  }, [currentList, currentUser]);
 
   const handleStartMatch = (user: UserProfile) => {
     setTargetUser(user);
@@ -3407,11 +3418,8 @@ const SoulMatchPage = () => {
     setTimeout(() => {
       setCalculating(false);
       setShowRankings(true);
-      // Unlock all current results
-      const allIds = currentList.map(p => p.id);
-      const next = [...new Set([...unlockedIds, ...allIds])];
-      setUnlockedIds(next);
-      localStorage.setItem('soulmatch_unlocked_ids', JSON.stringify(next));
+      const top10 = ranked.slice(0, 10);
+      top10.forEach(p => unlockId(p.id));
     }, 2500);
   };
 
@@ -3429,15 +3437,15 @@ const SoulMatchPage = () => {
           .fhsm { animation: floatHeartSM var(--dur,12s) ease-in-out var(--delay,0s) infinite; position: absolute; bottom: -10%; }
         `}</style>
         {[
-          { left: '3%', size: 9, color: '#f43f5e', blur: 3, dur: 11, delay: 0 },
-          { left: '18%', size: 6, color: '#a855f7', blur: 4, dur: 8, delay: 1.8 },
-          { left: '37%', size: 14, color: '#ec4899', blur: 5, dur: 13, delay: 0.6 },
-          { left: '57%', size: 8, color: '#f43f5e', blur: 2, dur: 10, delay: 2.2 },
-          { left: '75%', size: 11, color: '#9333ea', blur: 4, dur: 12, delay: 0.9 },
-          { left: '91%', size: 7, color: '#fb7185', blur: 3, dur: 9, delay: 3 },
+          { left: '3%', size: 12, color: '#f43f5e', blur: 3, dur: 11, delay: 0 },
+          { left: '18%', size: 9, color: '#a855f7', blur: 4, dur: 8, delay: 1.8 },
+          { left: '37%', size: 18, color: '#ec4899', blur: 5, dur: 13, delay: 0.6 },
+          { left: '57%', size: 11, color: '#f43f5e', blur: 2, dur: 10, delay: 2.2 },
+          { left: '75%', size: 15, color: '#9333ea', blur: 4, dur: 12, delay: 0.9 },
+          { left: '91%', size: 10, color: '#fb7185', blur: 3, dur: 9, delay: 3 },
         ].map((h, i) => (
-          <div key={i} className="fhsm" style={{ left: h.left, '--dur': `${h.dur}s`, '--delay': `${h.delay}s`, filter: `blur(${h.blur}px)`, opacity: 0.14 } as React.CSSProperties}>
-            <svg width={h.size} height={h.size} viewBox="0 0 24 24" fill={h.color}><path d="M12 21.593c-5.63-5.539-11-10.297-11-14.402 0-3.791 3.068-5.191 5.281-5.191 1.312 0 4.151.501 5.719 4.457 1.59-3.968 4.464-4.447 5.726-4.447 2.54 0 5.274 1.621 5.274 5.181 0 4.069-5.136 8.625-11 14.402z" /></svg>
+          <div key={i} className="fhsm" style={{ left: h.left, '--dur': `${h.dur}s`, '--delay': `${h.delay}s`, filter: `blur(${h.blur}px)`, opacity: 0.25, transform: 'scale(1.2)' } as React.CSSProperties}>
+            <svg width={h.size} height={h.size} viewBox="0 0 24 24" fill={h.color} style={{ filter: `drop-shadow(0 0 15px ${h.color})` }}><path d="M12 21.593c-5.63-5.539-11-10.297-11-14.402 0-3.791 3.068-5.191 5.281-5.191 1.312 0 4.151.501 5.719 4.457 1.59-3.968 4.464-4.447 5.726-4.447 2.54 0 5.274 1.621 5.274 5.181 0 4.069-5.136 8.625-11 14.402z" /></svg>
           </div>
         ))}
       </div>
@@ -3450,8 +3458,8 @@ const SoulMatchPage = () => {
           className="flex justify-center gap-3 pt-2"
         >
           {[
-            { id: 'global', label: 'Globale', icon: Globe, count: profiles.length },
-            { id: 'friends', label: 'SoulLinks', icon: Users, count: friends.length }
+            { id: 'global', label: 'Globale', icon: Globe, count: globalProfiles.length },
+            { id: 'friends', label: 'SoulLinks', icon: Users, count: friendProfiles.length }
           ].map(tab => {
             const isActive = mode === tab.id;
             return (
@@ -3527,7 +3535,7 @@ const SoulMatchPage = () => {
                   <div className="absolute inset-0 bg-gradient-to-t from-stone-900/95 via-stone-900/10 to-transparent opacity-90 transition-opacity" />
 
                   {/* Match Score Badge (Permanent) - ONLY IF UNLOCKED */}
-                  {currentUser && unlockedIds.includes(p.id) && (
+                  {currentUser && unlockedIds.includes(p.id) && calculateMatchScore(currentUser, p) > 0 && (
                     <div className="absolute top-0 left-0 z-20 pointer-events-none drop-shadow-[0_4px_10px_rgba(225,29,72,0.4)] overflow-hidden rounded-tl-[32px]">
                       <svg width="100" height="100" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-[88px] h-[88px]">
                         <path d="M 0 0 L 100 0 Q 15 15 0 100 Z" fill="#e11d48" />
@@ -3963,19 +3971,19 @@ const FeedPage = () => {
           .fhf { animation: floatHeartF var(--fdur,12s) ease-in-out var(--fdelay,0s) infinite; position: absolute; bottom: -10%; }
         `}</style>
         {[
-          { left: '6%', size: 12, color: '#f43f5e', blur: 3, fdur: 13, fdelay: 0, fdx: '25px', fr: '18deg', fs: 1.1 },
-          { left: '19%', size: 7, color: '#fb7185', blur: 4, fdur: 10, fdelay: 2, fdx: '-18px', fr: '-12deg', fs: 0.9 },
-          { left: '33%', size: 18, color: '#9333ea', blur: 5, fdur: 16, fdelay: 1, fdx: '14px', fr: '8deg', fs: 1.2 },
-          { left: '47%', size: 9, color: '#f43f5e', blur: 2, fdur: 12, fdelay: 3, fdx: '-30px', fr: '22deg', fs: 1.0 },
-          { left: '61%', size: 15, color: '#ec4899', blur: 3, fdur: 14, fdelay: 0.5, fdx: '18px', fr: '-18deg', fs: 1.1 },
-          { left: '74%', size: 6, color: '#a855f7', blur: 4, fdur: 11, fdelay: 2.5, fdx: '-8px', fr: '28deg', fs: 0.8 },
-          { left: '86%', size: 20, color: '#f43f5e', blur: 5, fdur: 17, fdelay: 1.5, fdx: '22px', fr: '-8deg', fs: 1.0 },
-          { left: '25%', size: 10, color: '#ec4899', blur: 6, fdur: 15, fdelay: 4, fdx: '8px', fr: '-22deg', fs: 1.2 },
-          { left: '53%', size: 8, color: '#9333ea', blur: 3, fdur: 9, fdelay: 5.5, fdx: '-22px', fr: '18deg', fs: 0.7 },
-          { left: '91%', size: 11, color: '#f43f5e', blur: 4, fdur: 12, fdelay: 2.8, fdx: '-27px', fr: '-14deg', fs: 1.1 },
+          { left: '6%', size: 15, color: '#f43f5e', blur: 3, fdur: 13, fdelay: 0, fdx: '25px', fr: '18deg', fs: 1.1 },
+          { left: '19%', size: 9, color: '#fb7185', blur: 4, fdur: 10, fdelay: 2, fdx: '-18px', fr: '-12deg', fs: 0.9 },
+          { left: '33%', size: 22, color: '#9333ea', blur: 5, fdur: 16, fdelay: 1, fdx: '14px', fr: '8deg', fs: 1.2 },
+          { left: '47%', size: 12, color: '#f43f5e', blur: 2, fdur: 12, fdelay: 3, fdx: '-30px', fr: '22deg', fs: 1.0 },
+          { left: '61%', size: 18, color: '#ec4899', blur: 3, fdur: 14, fdelay: 0.5, fdx: '18px', fr: '-18deg', fs: 1.1 },
+          { left: '74%', size: 9, color: '#a855f7', blur: 4, fdur: 11, fdelay: 2.5, fdx: '-8px', fr: '28deg', fs: 0.8 },
+          { left: '86%', size: 24, color: '#f43f5e', blur: 5, fdur: 17, fdelay: 1.5, fdx: '22px', fr: '-8deg', fs: 1.0 },
+          { left: '25%', size: 14, color: '#ec4899', blur: 6, fdur: 15, fdelay: 4, fdx: '8px', fr: '-22deg', fs: 1.2 },
+          { left: '53%', size: 10, color: '#9333ea', blur: 3, fdur: 9, fdelay: 5.5, fdx: '-22px', fr: '18deg', fs: 0.7 },
+          { left: '91%', size: 14, color: '#f43f5e', blur: 4, fdur: 12, fdelay: 2.8, fdx: '-27px', fr: '-14deg', fs: 1.1 },
         ].map((h, i) => (
-          <div key={i} className="fhf" style={{ left: h.left, '--fdur': `${h.fdur}s`, '--fdelay': `${h.fdelay}s`, '--fdx': h.fdx, '--fr': h.fr, '--fs': h.fs, filter: `blur(${h.blur}px)`, opacity: 0.16 } as React.CSSProperties}>
-            <svg width={h.size} height={h.size} viewBox="0 0 24 24" fill={h.color}>
+          <div key={i} className="fhf" style={{ left: h.left, '--fdur': `${h.fdur}s`, '--fdelay': `${h.fdelay}s`, '--fdx': h.fdx, '--fr': h.fr, '--fs': h.fs, filter: `blur(${h.blur}px)`, opacity: 0.28, transform: 'scale(1.15)' } as React.CSSProperties}>
+            <svg width={h.size} height={h.size} viewBox="0 0 24 24" fill={h.color} style={{ filter: `drop-shadow(0 0 20px ${h.color})` }}>
               <path d="M12 21.593c-5.63-5.539-11-10.297-11-14.402 0-3.791 3.068-5.191 5.281-5.191 1.312 0 4.151.501 5.719 4.457 1.59-3.968 4.464-4.447 5.726-4.447 2.54 0 5.274 1.621 5.274 5.181 0 4.069-5.136 8.625-11 14.402z" />
             </svg>
           </div>
@@ -4042,7 +4050,7 @@ const FeedPage = () => {
 
       {/* ── FEED POSTS ── */}
       <div className="px-4 relative z-10">
-        {currentUser?.id && <FeedComponent userId={null} isOwner={false} global={true} />}
+        {currentUser?.id && <FeedComponent userId={currentUser.id} isOwner={true} global={true} />}
       </div>
 
     </div>
@@ -4305,40 +4313,7 @@ const AmiciPage = () => {
 
   return (
     <div className="min-h-screen pt-[178px] pb-28 relative overflow-x-hidden" style={{ background: '#0a0a0f' }}>
-      {/* Floating hearts background */}
-      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-        <style>{`.fha{animation:floatHeart var(--dur,12s) ease-in-out var(--delay,0s) infinite;position:absolute;bottom:-10%}`}</style>
-        <style>{`
-          @keyframes floatHeart {
-            0%   { transform: translateY(0) translateX(0) rotate(0deg) scale(1); opacity: 0; }
-            10%  { opacity: 1; }
-            80%  { opacity: 0.5; }
-            100% { transform: translateY(-110vh) rotate(15deg); opacity: 0; }
-          }
-          .fha { animation: floatHeart var(--dur,12s) ease-in-out var(--delay,0s) infinite; position: absolute; bottom: -10%; }
-          @keyframes balloonHeart {
-            0%   { transform: translateY(0px) rotate(-6deg) scale(1); opacity: 0; }
-            8%   { opacity: 0.9; }
-            75%  { opacity: 0.7; }
-            100% { transform: translateY(-90px) rotate(8deg) scale(0.85); opacity: 0; }
-          }
-          .bha { animation: balloonHeart var(--bdur,5s) ease-in-out var(--bdelay,0s) infinite; position: absolute; bottom: 0px; pointer-events: none; z-index: 100; }
-        `}</style>
-        {[
-          { left: '5%', size: 10, color: '#f43f5e', blur: 3, dur: 13, delay: 0 },
-          { left: '18%', size: 7, color: '#a855f7', blur: 4, dur: 10, delay: 2 },
-          { left: '33%', size: 16, color: '#ec4899', blur: 5, dur: 15, delay: 1 },
-          { left: '50%', size: 8, color: '#f43f5e', blur: 2, dur: 11, delay: 3 },
-          { left: '67%', size: 14, color: '#9333ea', blur: 4, dur: 14, delay: 0.5 },
-          { left: '82%', size: 11, color: '#fb7185', blur: 3, dur: 12, delay: 2.5 },
-          { left: '93%', size: 6, color: '#f43f5e', blur: 3, dur: 9, delay: 4 },
-          { left: '25%', size: 13, color: '#ec4899', blur: 5, dur: 16, delay: 1.5 },
-        ].map((h, i) => (
-          <div key={i} className="fha" style={{ left: h.left, '--dur': `${h.dur}s`, '--delay': `${h.delay}s`, filter: `blur(${h.blur}px)`, opacity: 0.16 } as React.CSSProperties}>
-            <svg width={h.size} height={h.size} viewBox="0 0 24 24" fill={h.color}><path d="M12 21.593c-5.63-5.539-11-10.297-11-14.402 0-3.791 3.068-5.191 5.281-5.191 1.312 0 4.151.501 5.719 4.457 1.59-3.968 4.464-4.447 5.726-4.447 2.54 0 5.274 1.621 5.274 5.181 0 4.069-5.136 8.625-11 14.402z" /></svg>
-          </div>
-        ))}
-      </div>
+      {/* Background hearts removed */}
       <AnimatePresence>
         {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       </AnimatePresence>
@@ -4362,29 +4337,7 @@ const AmiciPage = () => {
             style={{ background: 'rgba(10,10,15,0.85)', border: '1px solid rgba(244,63,94,0.5)', boxShadow: '0 0 28px rgba(244,63,94,0.25), 0 0 8px rgba(244,63,94,0.1), inset 0 1px 0 rgba(255,255,255,0.06)' }}
             onClick={() => { setIsSearchOpen(!isSearchOpen); if (isSearchOpen) setSearchTerm(''); }}
           >
-            {/* Notification Hearts */}
-            {allLastMessages.some(m => m.receiver_id === currentUser?.id && !readChatIds.has(m.sender_id)) && [
-              { left: 10, size: 14, color: '#f43f5e', dur: 4.2, delay: 0 },
-              { left: 30, size: 10, color: '#fb7185', dur: 3.8, delay: 0.7 },
-              { left: 50, size: 16, color: '#f43f5e', dur: 4.8, delay: 0.3 },
-              { left: 70, size: 12, color: '#fda4af', dur: 3.6, delay: 1.1 },
-              { left: 90, size: 10, color: '#f43f5e', dur: 4.4, delay: 0.5 },
-            ].map((h, i) => (
-              <div
-                key={i}
-                className="bha"
-                style={{
-                  left: `${h.left}%`,
-                  '--bdur': `${h.dur}s`,
-                  '--bdelay': `${h.delay}s`,
-                  filter: `drop-shadow(0 0 6px ${h.color})`,
-                } as React.CSSProperties}
-              >
-                <svg width={h.size} height={h.size} viewBox="0 0 24 24" fill={h.color}>
-                  <path d="M12 21.593c-5.63-5.539-11-10.297-11-14.402 0-3.791 3.068-5.191 5.281-5.191 1.312 0 4.151.501 5.719 4.457 1.59-3.968 4.464-4.447 5.726-4.447 2.54 0 5.274 1.621 5.274 5.181 0 4.069-5.136 8.625-11 14.402z" />
-                </svg>
-              </div>
-            ))}
+            {/* Notification hearts removed */}
 
             <div className="flex items-center gap-3 relative z-10">
               <div className="w-9 h-9 rounded-2xl flex items-center justify-center" style={{ background: '#f43f5e', boxShadow: '0 0 18px rgba(244,63,94,0.7)' }}>
@@ -6647,6 +6600,8 @@ const FeedComponent = ({ userId, isOwner, global = false }: { userId: any, isOwn
   const [showSearch, setShowSearch] = useState(false);
   const [newPostDesc, setNewPostDesc] = useState('');
   const [newPostPhotos, setNewPostPhotos] = useState<string[]>([]);
+  const [isPostingOpen, setIsPostingOpen] = useState(false);
+  const [showOnlyMine, setShowOnlyMine] = useState(false);
   const [isPosting, setIsPosting] = useState(false);
   const [expandedComments, setExpandedComments] = useState<string[]>([]);
   const [commentTexts, setCommentTexts] = useState<Record<string, string>>({});
@@ -6734,8 +6689,8 @@ const FeedComponent = ({ userId, isOwner, global = false }: { userId: any, isOwn
             `)
         .order('created_at', { ascending: false });
 
-      if (!global) {
-        query = query.eq('user_id', userId);
+      if (!global || showOnlyMine) {
+        query = query.eq('user_id', userId || viewerId);
       }
 
       const { data: postsData, error } = await query;
@@ -6782,7 +6737,7 @@ const FeedComponent = ({ userId, isOwner, global = false }: { userId: any, isOwn
 
   useEffect(() => {
     fetchPosts();
-  }, [userId]);
+  }, [userId, global, showOnlyMine]);
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -6858,67 +6813,116 @@ const FeedComponent = ({ userId, isOwner, global = false }: { userId: any, isOwn
 
   return (
     <div className="space-y-6">
-      {isOwner && (
-        <div className="flex items-center justify-end px-1">
-          <span className="text-[9px] text-white/30 font-black uppercase tracking-widest">durata 30 giorni</span>
+      {/* ── HEADER ACTION BAR (Search + Mine + Plus) ── */}
+      {global && (
+        <div className="flex items-center gap-3 mb-6">
+          <button
+            onClick={() => setIsPostingOpen(!isPostingOpen)}
+            className={cn(
+              "w-12 h-12 rounded-2xl flex items-center justify-center transition-all shrink-0",
+              isPostingOpen ? "bg-rose-600 text-white shadow-[0_0_16px_rgba(244,63,94,0.5)]" : "bg-white/10 text-rose-500 border border-rose-500/30 shadow-[0_0_16px_rgba(244,63,94,0.2)]"
+            )}
+          >
+            <Plus className="w-6 h-6" />
+          </button>
+
+          <button
+            onClick={() => setShowOnlyMine(!showOnlyMine)}
+            className={cn(
+              "w-12 h-12 rounded-2xl flex items-center justify-center transition-all shrink-0",
+              showOnlyMine ? "bg-rose-600 text-white shadow-[0_0_16px_rgba(244,63,94,0.5)]" : "bg-white/5 text-white/40 border border-white/10"
+            )}
+          >
+            <User className="w-5 h-5" />
+          </button>
+
+          <div className="flex-1 flex items-center gap-2 rounded-2xl px-4 py-3"
+            style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(244,63,94,0.35)', boxShadow: '0 0 20px rgba(244,63,94,0.12), inset 0 1px 0 rgba(255,255,255,0.05)' }}
+          >
+            <Search className="w-4 h-4 shrink-0" style={{ color: '#f43f5e', filter: 'drop-shadow(0 0 6px rgba(244,63,94,0.8))' }} />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              placeholder="Cerca..."
+              className="flex-1 bg-transparent outline-none text-white text-sm font-bold placeholder:text-white/25"
+            />
+            {searchTerm && (
+              <button onClick={() => setSearchTerm('')} className="text-white/30 hover:text-white/60 transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         </div>
       )}
 
       {isOwner && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="p-5 rounded-[28px] flex flex-col gap-4 relative overflow-hidden"
-          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(244,63,94,0.15)', boxShadow: '0 0 20px rgba(244,63,94,0.06)' }}
-        >
-          <div className="absolute top-0 left-0 w-1 h-full" style={{ background: 'rgba(244,63,94,0.4)' }} />
-          <textarea
-            value={newPostDesc}
-            onChange={(e) => setNewPostDesc(e.target.value)}
-            placeholder="A cosa stai pensando oggi?"
-            className="w-full text-base outline-none resize-none bg-transparent placeholder:text-white/20 font-medium leading-relaxed text-white/80 min-h-[56px]"
-            rows={3}
-          />
-
-          {newPostPhotos.length > 0 && (
-            <div className="flex gap-3 mb-2 overflow-x-auto pb-2 scrollbar-hide">
-              {newPostPhotos.map((url, i) => (
-                <div key={i} className="w-24 h-24 shrink-0 rounded-[20px] overflow-hidden relative border-2 border-stone-50 shadow-md">
-                  <img src={url} className="w-full h-full object-cover" />
-                  <button
-                    onClick={() => setNewPostPhotos(p => p.filter((_, idx) => idx !== i))}
-                    className="absolute top-1.5 right-1.5 w-6 h-6 bg-rose-600 text-white rounded-full flex items-center justify-center text-xs shadow-xl active:scale-90 transition-transform"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div className="flex items-center justify-between border-t border-stone-50 pt-4 mt-2">
-            <div className="flex items-center gap-2">
-              <label className="flex items-center gap-2 text-[11px] text-white font-black uppercase tracking-widest px-4 py-2.5 rounded-2xl cursor-pointer transition-all active:scale-95 shadow-lg shadow-rose-900/20"
-                style={{ background: '#f43f5e', border: '1px solid rgba(255,255,255,0.1)' }}
-              >
-                <ImageIcon className="w-4 h-4" />
-                {newPostPhotos.length < 3 ? "Aggiungi Foto" : "Max Raggiunto"}
-                <input type="file" accept="image/*" multiple className="hidden" disabled={newPostPhotos.length >= 3} onChange={handlePhotoUpload} />
-              </label>
-            </div>
-            <button
-              onClick={submitPost}
-              disabled={isPosting || (newPostPhotos.length === 0 && !newPostDesc)}
-              className="bg-stone-900 text-white px-8 py-3 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] disabled:opacity-20 transition-all hover:bg-black shadow-lg active:scale-95"
-            >
-              Pubblica
-            </button>
-          </div>
-        </motion.div>
+        <div className="flex items-center justify-end px-1 -mt-2 mb-1">
+          <span className="text-[9px] text-white/30 font-black uppercase tracking-widest">Post durata 30 giorni</span>
+        </div>
       )}
 
-      {/* ── SEARCH BAR \u2500 sempre visibile ── */}
-      {!isOwner && (
+      <AnimatePresence>
+        {(isPostingOpen || (isOwner && !global)) && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="p-5 rounded-[28px] flex flex-col gap-4 relative overflow-hidden mb-6"
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(244,63,94,0.15)', boxShadow: '0 0 20px rgba(244,63,94,0.06)' }}
+          >
+            <div className="absolute top-0 left-0 w-1 h-full" style={{ background: 'rgba(244,63,94,0.4)' }} />
+            <textarea
+              value={newPostDesc}
+              onChange={(e) => setNewPostDesc(e.target.value)}
+              placeholder="A cosa stai pensando oggi?"
+              className="w-full text-base outline-none resize-none bg-transparent placeholder:text-white/20 font-medium leading-relaxed text-white/80 min-h-[56px]"
+              rows={3}
+            />
+
+            {newPostPhotos.length > 0 && (
+              <div className="flex gap-3 mb-2 overflow-x-auto pb-2 scrollbar-hide">
+                {newPostPhotos.map((url, i) => (
+                  <div key={i} className="w-24 h-24 shrink-0 rounded-[20px] overflow-hidden relative border-2 border-stone-50 shadow-md">
+                    <img src={url} className="w-full h-full object-cover" />
+                    <button
+                      onClick={() => setNewPostPhotos(p => p.filter((_, idx) => idx !== i))}
+                      className="absolute top-1.5 right-1.5 w-6 h-6 bg-rose-600 text-white rounded-full flex items-center justify-center text-xs shadow-xl active:scale-90 transition-transform"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="flex items-center justify-between border-t border-white/5 pt-4 mt-2">
+              <div className="flex items-center gap-2">
+                <label className="flex items-center gap-2 text-[11px] text-white font-black uppercase tracking-widest px-4 py-2.5 rounded-2xl cursor-pointer transition-all active:scale-95 shadow-lg shadow-rose-900/20"
+                  style={{ background: '#f43f5e', border: '1px solid rgba(255,255,255,0.1)' }}
+                >
+                  <ImageIcon className="w-4 h-4" />
+                  {newPostPhotos.length < 3 ? "Foto" : "Max"}
+                  <input type="file" accept="image/*" multiple className="hidden" disabled={newPostPhotos.length >= 3} onChange={handlePhotoUpload} />
+                </label>
+              </div>
+              <button
+                onClick={async () => {
+                  await submitPost();
+                  setIsPostingOpen(false);
+                }}
+                disabled={isPosting || (newPostPhotos.length === 0 && !newPostDesc)}
+                className="bg-stone-900 text-white px-8 py-3 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] disabled:opacity-20 transition-all hover:bg-black shadow-lg active:scale-95"
+              >
+                Pubblica
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── SEARCH BAR for profile views only ── */}
+      {!global && !isOwner && (
         <div className="mb-6 flex items-center gap-2 rounded-2xl px-4 py-3"
           style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(244,63,94,0.35)', boxShadow: '0 0 20px rgba(244,63,94,0.12), inset 0 1px 0 rgba(255,255,255,0.05)' }}
         >
@@ -6937,7 +6941,6 @@ const FeedComponent = ({ userId, isOwner, global = false }: { userId: any, isOwn
           )}
         </div>
       )}
-
 
       <div className="space-y-6">
         {(() => {
@@ -7009,8 +7012,8 @@ const FeedComponent = ({ userId, isOwner, global = false }: { userId: any, isOwn
                       </div>
                     </div>
 
-                    {/* Top-right: delete button */}
-                    {isOwner && (
+                    {/* Top-right: delete button - only for own posts */}
+                    {post.user_id === userId && (
                       <button
                         onClick={() => setPostToDelete(post.id)}
                         className="absolute top-3 right-3 z-20 w-9 h-9 flex items-center justify-center rounded-full bg-black/40 backdrop-blur-xl text-white/40 hover:text-rose-400 hover:bg-black/60 transition-all active:scale-90"
@@ -7039,7 +7042,7 @@ const FeedComponent = ({ userId, isOwner, global = false }: { userId: any, isOwn
                         {post.author_gender && <span className="text-white/40 text-[9px] font-bold uppercase tracking-wider">{post.author_gender}</span>}
                       </div>
                     </div>
-                    {isOwner && (
+                    {post.user_id === userId && (
                       <button onClick={() => setPostToDelete(post.id)} className="ml-auto w-8 h-8 flex items-center justify-center rounded-full bg-white/5 text-white/30 hover:text-rose-400 transition-all active:scale-90">
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -7149,6 +7152,7 @@ const FeedComponent = ({ userId, isOwner, global = false }: { userId: any, isOwn
           );
         })()}
       </div>
+
       {postToDelete && (
         <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="rounded-[24px] p-6 w-full max-w-[300px] shadow-2xl flex flex-col items-center text-center" style={{ background: '#1a1a22', border: '1px solid rgba(255,255,255,0.08)' }}>
@@ -8631,7 +8635,7 @@ const ProfilePage = () => {
   const [liveChatsCount, setLiveChatsCount] = useState(0);
   const [activeChatTarget, setActiveChatTarget] = useState<any>(null);
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
-  const [activeTab, setActiveTab] = useState<'notifications' | 'gallery' | 'feed' | 'setup'>('notifications');
+  const [activeTab, setActiveTab] = useState<'gallery' | 'setup'>('gallery');
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
@@ -8639,7 +8643,6 @@ const ProfilePage = () => {
   const [bannerData, setBannerData] = useState<any>(null);
   const [bannerText, setBannerText] = useState('');
   const [isWritingBanner, setIsWritingBanner] = useState(false);
-  const [soulLinkRequests, setSoulLinkRequests] = useState<any[]>([]);
   const [setupForm, setSetupForm] = useState<any>({
     conosciamoci_meglio: {},
     orientation: [],
@@ -8650,8 +8653,7 @@ const ProfilePage = () => {
   const [isDeletingProfile, setIsDeletingProfile] = useState(false);
   const navigate = useNavigate();
 
-  const [hasViewedNotifs, setHasViewedNotifs] = useState(false);
-  const [bounceNotif, setBounceNotif] = useState(false);
+  // Removed notification related states
 
   useEffect(() => {
     if (user) {
@@ -8680,19 +8682,7 @@ const ProfilePage = () => {
     }
   }, [user?.id]);
 
-  useEffect(() => {
-    const bounceInterval = setInterval(() => {
-      setBounceNotif(true);
-      setTimeout(() => setBounceNotif(false), 600);
-    }, 10000);
-    return () => clearInterval(bounceInterval);
-  }, []);
-
-  useEffect(() => {
-    if (activeTab === 'notifications') {
-      setHasViewedNotifs(true);
-    }
-  }, [activeTab]);
+  // Removed notification related effects
 
   const fetchData = async (userId: string) => {
     try {
@@ -8783,16 +8773,7 @@ const ProfilePage = () => {
         }
       }
 
-      // Fetch pending soul link requests (richieste di amicizia in entrata)
-      const { data: soulLinksData } = await supabase
-        .from('soul_links')
-        .select(`
-                            id, status, created_at,
-                            requester:users!user_id(id, name, photos, photo_url, city, is_online, dob)
-                            `)
-        .eq('friend_id', userId)
-        .eq('status', 'pending');
-      if (soulLinksData) setSoulLinkRequests(soulLinksData);
+      // Removed pending soul link requests fetching
 
       // Fetch banner data (Compatibilità Online con Supabase)
       try {
@@ -8829,15 +8810,7 @@ const ProfilePage = () => {
     } else navigate('/register');
   }, [navigate]);
 
-  // Accept/reject soul link requests
-  const handleAcceptSoulLink = async (linkId: string) => {
-    const { error } = await supabase.from('soul_links').update({ status: 'accepted' }).eq('id', linkId);
-    if (!error) { setToast({ message: '🎉 Amicizia accettata!', type: 'success' }); if (user?.id) fetchData(user.id); }
-  };
-  const handleRejectSoulLink = async (linkId: string) => {
-    const { error } = await supabase.from('soul_links').delete().eq('id', linkId);
-    if (!error) { setToast({ message: 'Richiesta rifiutata.', type: 'info' }); if (user?.id) fetchData(user.id); }
-  };
+  // Removed handleAccept/RejectSoulLink
   const handleSaveSetup = async () => {
     if (!user?.id) return;
     setIsSavingSetup(true);
@@ -9118,93 +9091,12 @@ const ProfilePage = () => {
         ))}
       </div>
 
-      {/* ── BANNER MANAGEMENT ── */}
-      <div className="mx-4 mt-5 rounded-[24px] p-5" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-[11px] font-black text-white/80 uppercase tracking-widest flex items-center gap-2">
-            <MessageSquare className="w-4 h-4 text-rose-400" />
-            Il tuo Banner Globale (24h)
-          </h3>
-        </div>
-
-        {bannerData?.message ? (
-          <div className="space-y-4">
-            <div className="rounded-[16px] p-4 relative" style={{ background: 'rgba(244,63,94,0.1)', border: '1px solid rgba(244,63,94,0.2)' }}>
-              <p className="text-xs font-semibold text-white/80 italic pr-6 leading-relaxed">"{bannerData.message.message}"</p>
-              <button onClick={async () => {
-                await supabase.from('banner_messages').delete().eq('id', bannerData.message.id);
-                setBannerData(null);
-              }} className="absolute top-3 right-3 text-rose-400 hover:text-rose-600">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {bannerData.replies && bannerData.replies.length > 0 && (
-              <div className="space-y-2 mt-4">
-                <h4 className="text-[9px] font-black uppercase text-stone-400 tracking-widest pl-1">Risposte ricevute agli interessati</h4>
-                {bannerData.replies.map((r: any) => (
-                  <div key={r.id} className="flex gap-3 bg-stone-50 p-3 rounded-[16px] border border-stone-100 items-center">
-                    <img src={r.photo_url || `https://picsum.photos/seed/${r.name}/100`} className="w-8 h-8 rounded-full shadow-sm object-cover" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[11px] font-black text-stone-900">{r.name}</p>
-                      <p className="text-[11px] text-stone-600 line-clamp-2 leading-tight">{r.reply_text}</p>
-                    </div>
-                    <button onClick={() => {
-                      setReplyingTo(r.from_user_id);
-                      setActiveTab('notifications'); // switch context to send DMs easily, or they can do it here via the same overlay. Setting state handled below.
-                    }} className="w-8 h-8 bg-white border border-stone-200 rounded-full flex items-center justify-center shadow-sm shrink-0">
-                      <MessageSquare className="w-3.5 h-3.5 text-rose-500" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {isWritingBanner ? (
-              <div className="space-y-2">
-                <textarea
-                  value={bannerText}
-                  onChange={e => setBannerText(e.target.value)}
-                  placeholder="Scrivi qui... es. Chi viene all'arena domani sera? Caffè?"
-                  className="w-full rounded-[16px] p-4 text-[12px] font-medium resize-none focus:outline-none min-h-[80px] text-white/80 placeholder:text-white/20"
-                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(244,63,94,0.25)' }}
-                  maxLength={80}
-                />
-                <div className="flex gap-2">
-                  <button onClick={async () => {
-                    if (!bannerText.trim()) return;
-                    setIsWritingBanner(false);
-                    await supabase.from('banner_messages').delete().eq('user_id', user.id);
-                    const newBanner = { user_id: user.id, message: bannerText, name: user.name, photo_url: user.photos?.[0] || user.photo_url, city: user.city, dob: user.dob };
-                    const { data, error } = await supabase.from('banner_messages').insert([newBanner]).select().single();
-                    setBannerText('');
-                    if (!error && data) { setBannerData({ message: data, replies: [] }); setToast({ message: 'Messaggio flash pubblicato in bacheca!', type: 'success' }); }
-                  }} className="flex-1 text-white py-2.5 rounded-[12px] text-[10px] font-black uppercase tracking-widest" style={{ background: '#f43f5e', boxShadow: '0 0 16px rgba(244,63,94,0.4)' }}>
-                    Pubblica Flash
-                  </button>
-                  <button onClick={() => setIsWritingBanner(false)} className="px-4 py-2.5 rounded-[12px] text-[10px] font-black uppercase tracking-widest text-white/50" style={{ background: 'rgba(255,255,255,0.07)' }}>
-                    Annulla
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <button onClick={() => setIsWritingBanner(true)} className="w-full rounded-[16px] p-5 flex flex-col items-center justify-center gap-2 transition-colors" style={{ background: 'rgba(255,255,255,0.04)', border: '1px dashed rgba(255,255,255,0.15)' }}>
-                <Plus className="w-5 h-5 text-rose-400" />
-                <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">Aggiungi messaggio in Bacheca</span>
-              </button>
-            )}
-          </div>
-        )}
-      </div>
+      {/* BANNER MANAGEMENT REMOVED */}
 
       {/* ── TAB BAR dark glass ── */}
       <div className="mx-4 mt-5 rounded-[24px] flex p-1.5 backdrop-blur-xl" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}>
         {[
-          { id: 'notifications', label: 'Amici', icon: Bell, badge: hasViewedNotifs ? 0 : soulLinkRequests.length },
           { id: 'gallery', label: 'Galleria', icon: Camera, badge: 0 },
-          { id: 'feed', label: 'Post', icon: ImageIcon, badge: 0 },
           { id: 'setup', label: 'Setup', icon: Settings2, badge: 0 },
         ].map((tab) => (
           <button
@@ -9235,70 +9127,7 @@ const ProfilePage = () => {
       <div className="mx-4 mt-4">
         <AnimatePresence mode="wait">
 
-          {activeTab === 'notifications' && (
-            <motion.div key="tab-notif" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
-              {soulLinkRequests.length === 0 ? (
-                <div className="rounded-[28px] p-10 flex flex-col items-center gap-4" style={{ background: 'rgba(255,255,255,0.04)', border: '1px dashed rgba(255,255,255,0.08)' }}>
-                  <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.06)' }}>
-                    <CheckCircle className="w-8 h-8 text-white/15" />
-                  </div>
-                  <p className="text-white/30 text-sm font-bold">Nessuna richiesta di amicizia.</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <h4 className="text-[10px] uppercase font-black tracking-widest text-rose-400 flex items-center gap-1.5 px-2">
-                    <Users className="w-3.5 h-3.5" /> Richieste di Amicizia
-                  </h4>
-                  {soulLinkRequests.map((req: any) => {
-                    const requester = req.requester;
-                    if (!requester) return null;
-                    const photo = requester.photos?.[0] || requester.photo_url;
-                    return (
-                      <motion.div
-                        key={req.id}
-                        initial={{ opacity: 0, x: -16 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        className="rounded-[20px] p-4 flex items-center gap-4"
-                        style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
-                      >
-                        <div
-                          className="w-14 h-14 rounded-[18px] overflow-hidden shrink-0"
-                          style={{ border: '2px solid #f43f5e', boxShadow: '0 0 12px rgba(244,63,94,0.4)' }}
-                          onClick={() => navigate(`/profile-detail/${requester.id}`)}
-                        >
-                          {photo
-                            ? <img src={photo} className="w-full h-full object-cover" />
-                            : <div className="w-full h-full flex items-center justify-center" style={{ background: 'rgba(244,63,94,0.15)' }}><Heart className="w-6 h-6 text-rose-400" /></div>
-                          }
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-white font-black text-sm truncate">{requester.name}</p>
-                          {requester.city && <p className="text-white/40 text-[11px] font-semibold truncate flex items-center gap-1"><MapPin className="w-3 h-3 text-rose-400" />{requester.city}</p>}
-                          <p className="text-white/30 text-[10px] mt-1">{new Date(req.created_at).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })}</p>
-                        </div>
-                        <div className="flex flex-col gap-2 shrink-0">
-                          <button
-                            onClick={() => handleAcceptSoulLink(req.id)}
-                            className="w-10 h-10 rounded-[14px] flex items-center justify-center text-white"
-                            style={{ background: '#f43f5e', boxShadow: '0 0 12px rgba(244,63,94,0.5)' }}
-                          >
-                            <CheckCircle className="w-5 h-5" />
-                          </button>
-                          <button
-                            onClick={() => handleRejectSoulLink(req.id)}
-                            className="w-10 h-10 rounded-[14px] flex items-center justify-center text-white/50"
-                            style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)' }}
-                          >
-                            <X className="w-5 h-5" />
-                          </button>
-                        </div>
-                      </motion.div>
-                    );
-                  })}
-                </div>
-              )}
-            </motion.div>
-          )}
+          {/* Tab content removed for notifications */}
 
           {activeTab === 'gallery' && (
             <motion.div key="tab-gallery" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="space-y-4">
@@ -9341,11 +9170,7 @@ const ProfilePage = () => {
             </motion.div>
           )}
 
-          {activeTab === 'feed' && (
-            <motion.div key="tab-feed" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="space-y-4">
-              <FeedComponent userId={user.id} isOwner={true} />
-            </motion.div>
-          )}
+          {/* FEED REMOVED FROM PROFILE */}
 
           {activeTab === 'setup' && (
             <motion.div key="tab-setup" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="space-y-8 pb-8">
