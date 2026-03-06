@@ -35,7 +35,13 @@ export interface UserProfile {
   height_cm?: number;
   is_validated?: boolean;
   is_blocked?: boolean;
+  is_suspended?: boolean;
   doc_rejected?: boolean;
+  doc_rejected_reason?: string;
+  suspension_reason?: string;
+  last_warning_reason?: string;
+  accepted_terms?: boolean;
+  accepted_privacy?: boolean;
 }
 
 export interface ChatRequest {

@@ -4820,6 +4820,11 @@ const AdminPage = () => {
   const [archiveSearch, setArchiveSearch] = useState('');
   const [docSubTab, setDocSubTab] = useState<'pending' | 'archive'>('pending');
   const [previewDoc, setPreviewDoc] = useState<{ url: string; name: string } | null>(null);
+  const [modals, setModals] = useState<{ warning: boolean; suspension: boolean; ban: boolean }>({ warning: false, suspension: false, ban: false });
+  const [modReason, setModReason] = useState('');
+  const [userPosts, setUserPosts] = useState<any[]>([]);
+  const [loadingPosts, setLoadingPosts] = useState(false);
+  const [reports, setReports] = useState<any[]>([]);
 
   // Dashboard Stats
   const stats = useMemo(() => {
@@ -4829,6 +4834,7 @@ const AdminPage = () => {
       premium: users.filter(u => u.is_paid).length,
       suspended: users.filter(u => u.is_suspended || u.is_blocked).length,
       pendingDocs: users.filter(u => u.id_document_url && !u.is_validated && !u.doc_rejected).length,
+      revenue: users.filter(u => u.is_paid).length * 9.99,
     };
   }, [users]);
 
@@ -4898,6 +4904,9 @@ const AdminPage = () => {
         }
       });
 
+      const { data: repData } = await supabase.from('reports').select('*');
+      setReports(repData || []);
+      
       setUsers(combined);
       if (sbError && combined.length === 0) {
         setToast({ message: "Sincronizzazione Supabase fallita.", type: 'error' });
@@ -4906,6 +4915,20 @@ const AdminPage = () => {
       setToast({ message: "Errore caricamento dati.", type: 'error' });
     }
     setLoadingData(false);
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    if (!window.confirm("Sei sicuro di voler eliminare definitivamente questo utente? L'azione è irreversibile.")) return;
+    try {
+      const { error } = await supabase.from('users').delete().eq('id', userId);
+      if (!error) {
+        setToast({ message: "Utente eliminato definitivamente.", type: 'success' });
+        fetchUsers();
+        if (selectedUser?.id === userId) setSelectedUser(null);
+      } else throw error;
+    } catch (e: any) {
+      setToast({ message: "Errore eliminazione: " + e.message, type: 'error' });
+    }
   };
 
   const fetchSliderImages = async () => {
@@ -4976,10 +4999,62 @@ const AdminPage = () => {
     try {
       const { error } = await supabase.from('users').update({ is_blocked: !isBlocked }).eq('id', userId);
       if (!error) {
-        setToast({ message: !isBlocked ? "Utente bloccato." : "Utente sbloccato.", type: 'success' });
+        setToast({ message: !isBlocked ? "Utente bannato permanentemente." : "Ban rimosso.", type: 'success' });
         fetchUsers();
       }
     } catch (e) { setToast({ message: "Errore.", type: 'error' }); }
+  };
+
+  const handleWarnUser = async (userId: string) => {
+    if (!modReason) return setToast({ message: "Inserisci una motivazione", type: 'error' });
+    try {
+      const { error } = await supabase.from('users').update({ 
+        last_warning_reason: modReason,
+        last_warning_at: new Date().toISOString()
+      }).eq('id', userId);
+      if (!error) {
+        setToast({ message: "Ammonizione inviata.", type: 'success' });
+        setModals(prev => ({ ...prev, warning: false }));
+        setModReason('');
+        fetchUsers();
+      }
+    } catch (e) { setToast({ message: "Errore.", type: 'error' }); }
+  };
+
+  const handleSuspendUser = async (userId: string) => {
+    if (!modReason) return setToast({ message: "Inserisci una motivazione", type: 'error' });
+    try {
+      const { error } = await supabase.from('users').update({ 
+        is_suspended: true,
+        suspension_reason: modReason,
+        suspended_at: new Date().toISOString()
+      }).eq('id', userId);
+      if (!error) {
+        setToast({ message: "Utente sospeso per 24 ore.", type: 'success' });
+        setModals(prev => ({ ...prev, suspension: false }));
+        setModReason('');
+        fetchUsers();
+      }
+    } catch (e) { setToast({ message: "Errore.", type: 'error' }); }
+  };
+
+  const fetchUserActivity = async (userId: string) => {
+    setLoadingPosts(true);
+    try {
+      const { data } = await supabase.from('posts').select('*').eq('user_id', userId).order('created_at', { ascending: false });
+      setUserPosts(data || []);
+    } catch (e) { }
+    setLoadingPosts(false);
+  };
+
+  const handleDeletePost = async (postId: string) => {
+    try {
+      const { error } = await supabase.from('posts').delete().eq('id', postId);
+      if (!error) {
+        setToast({ message: "Post rimosso dai moderatori.", type: 'success' });
+        setUserPosts(prev => prev.filter(p => p.id !== postId));
+      }
+    } catch (e) { }
   };
 
   const [selectedUser, setSelectedUser] = useState<any | null>(null);
@@ -4987,7 +5062,7 @@ const AdminPage = () => {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-[#0C0A09] flex flex-col items-center justify-center p-6 relative overflow-hidden">
+      <div className="min-h-screen bg-[#0C0A09] flex flex-col items-center justify-center p-6 relative overflow-hidden font-montserrat">
         {/* Background Decor */}
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-rose-900/10 rounded-full blur-[120px] animate-pulse" />
         <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-stone-900/20 rounded-full blur-[120px] animate-pulse delay-700" />
@@ -5007,7 +5082,7 @@ const AdminPage = () => {
             <div className="text-center mb-10">
               <div className="flex items-center justify-center gap-2 mb-2">
                 <Heart className="w-5 h-5 text-rose-500 fill-current" />
-                <h1 className="text-3xl font-serif font-black text-white tracking-tighter">SoulMatch</h1>
+                <h1 className="text-3xl font-black text-white tracking-tighter">SoulMatch</h1>
               </div>
               <p className="text-stone-50 text-[10px] font-black uppercase tracking-[0.4em]">Control Center</p>
             </div>
@@ -5058,7 +5133,7 @@ const AdminPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-stone-50 flex flex-col md:flex-row relative">
+    <div className="min-h-screen bg-stone-50 flex flex-col md:flex-row relative font-montserrat">
       <AnimatePresence>
         {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       </AnimatePresence>
@@ -5069,7 +5144,7 @@ const AdminPage = () => {
           <div className="w-8 h-8 bg-rose-600 rounded-lg flex items-center justify-center shadow-lg shadow-rose-900/20">
             <Heart className="w-4 h-4 text-white fill-current" />
           </div>
-          <span className="font-serif font-black tracking-tight text-sm">SoulMatch Admin</span>
+          <span className="font-black tracking-tight text-sm">SoulMatch Admin</span>
         </div>
         <button
           onClick={() => {
@@ -5101,7 +5176,7 @@ const AdminPage = () => {
                 <Heart className="w-5 h-5 text-white fill-current" />
               </div>
               <div className="flex flex-col">
-                <span className="text-xl font-serif font-black tracking-tight leading-none text-white">SoulMatch</span>
+                <span className="text-xl font-black tracking-tight leading-none text-white">SoulMatch</span>
                 <span className="text-[9px] font-black text-rose-500 uppercase tracking-widest mt-1">Control Center</span>
               </div>
             </div>
@@ -5174,7 +5249,7 @@ const AdminPage = () => {
             <div>
               <div className="flex items-center gap-2 mb-0.5">
                 <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <h2 className="text-xl md:text-2xl font-serif font-black text-stone-900 capitalize leading-none">{activeTab.replace('_', ' ')}</h2>
+                <h2 className="text-xl md:text-2xl font-black text-stone-900 capitalize leading-none">{activeTab.replace('_', ' ')}</h2>
               </div>
               <p className="text-[9px] md:text-[10px] text-stone-400 font-bold uppercase tracking-widest">SoulMatch Back-office</p>
             </div>
@@ -5219,14 +5294,16 @@ const AdminPage = () => {
               {activeTab === 'dashboard' && (
                 <div className="space-y-10">
                   {/* Stats Grid */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-5">
                     {[
                       { label: 'Utenti Iscritti', val: stats.total, sub: 'In crescita dell\'8%', icon: Users, color: 'stone' },
                       { label: 'Verificati', val: stats.verified, sub: 'Badge assegnati', icon: ShieldCheck, color: 'emerald' },
                       { label: 'VIP accounts', val: stats.premium, sub: 'Entrate attive', icon: Sparkles, color: 'amber' },
                       { label: 'In Attesa ID', val: stats.pendingDocs, sub: 'Richieste urgenti', icon: Bell, color: 'rose' },
+                      { label: 'Segnalazioni', val: reports.length, sub: 'Report attivi', icon: AlertTriangle, color: 'rose' },
+                      { label: 'Totale Guadagnato', val: '€ 0.00', icon: CreditCard, color: 'emerald' },
                     ].map((s, i) => (
-                      <div key={i} className="bg-white border border-stone-100 p-6 md:p-8 rounded-[32px] md:rounded-[40px] shadow-sm hover:shadow-xl transition-all group overflow-hidden relative">
+                      <div key={i} className="bg-white border border-stone-100 p-4 md:p-6 rounded-[24px] md:rounded-[32px] shadow-sm hover:shadow-lg transition-all group overflow-hidden relative">
                         <div className={cn("absolute top-0 right-0 w-24 md:w-32 h-24 md:h-32 blur-3xl rounded-full translate-x-12 -translate-y-12 opacity-10 transition-opacity group-hover:opacity-20",
                           s.color === 'rose' ? 'bg-rose-500' :
                             s.color === 'emerald' ? 'bg-emerald-500' :
@@ -5250,19 +5327,19 @@ const AdminPage = () => {
                   <div className="bg-white border border-stone-100 rounded-[32px] md:rounded-[48px] overflow-hidden shadow-sm">
                     <div className="px-6 md:px-10 py-6 md:py-8 border-b border-stone-50 flex flex-col sm:flex-row sm:items-center justify-between bg-stone-50/30 gap-4">
                       <div>
-                        <h4 className="text-lg md:text-xl font-serif font-black text-stone-900">Ultimi Iscritti</h4>
+                        <h4 className="text-lg md:text-xl font-black text-stone-900">Ultimi Iscritti</h4>
                         <p className="text-[10px] text-stone-400 font-bold uppercase tracking-widest mt-1">Sincronizzazione real-time</p>
                       </div>
                       <button onClick={() => setActiveTab('utenti')} className="bg-rose-600 hover:bg-rose-700 text-white px-5 py-2.5 rounded-2xl text-[9px] md:text-[10px] font-black uppercase tracking-widest shadow-lg shadow-rose-900/10 transition-all active:scale-95 text-center">Vedi Tabella Completa</button>
                     </div>
                     <div className="overflow-x-auto scrollbar-hide">
-                      <table className="w-full text-left min-w-[600px]">
+                      <table className="w-full text-left min-w-[500px] md:min-w-[600px]">
                         <thead>
                           <tr className="bg-white border-b border-stone-50">
-                            <th className="px-6 md:px-10 py-4 md:py-5 text-[9px] md:text-[10px] font-black text-stone-500 uppercase tracking-[0.2em]">Profilo Utente</th>
-                            <th className="px-6 md:px-10 py-4 md:py-5 text-[9px] md:text-[10px] font-black text-stone-500 uppercase tracking-[0.2em]">Località</th>
-                            <th className="px-6 md:px-10 py-4 md:py-5 text-[9px] md:text-[10px] font-black text-stone-500 uppercase tracking-[0.2em]">Privilegi</th>
-                            <th className="px-6 md:px-10 py-4 md:py-5 text-[9px] md:text-[10px] font-black text-stone-500 uppercase tracking-[0.2em]">Data</th>
+                            <th className="px-5 md:px-10 py-4 md:py-5 text-[9px] md:text-[10px] font-black text-stone-500 uppercase tracking-[0.2em]">Profilo Utente</th>
+                            <th className="hidden sm:table-cell px-6 md:px-10 py-4 md:py-5 text-[9px] md:text-[10px] font-black text-stone-500 uppercase tracking-[0.2em]">Località</th>
+                            <th className="px-4 md:px-10 py-4 md:py-5 text-[9px] md:text-[10px] font-black text-stone-500 uppercase tracking-[0.2em]">Privilegi</th>
+                            <th className="hidden md:table-cell px-6 md:px-10 py-4 md:py-5 text-[9px] md:text-[10px] font-black text-stone-500 uppercase tracking-[0.2em]">Data</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-stone-50">
@@ -5275,7 +5352,9 @@ const AdminPage = () => {
                               </td>
                             </tr>
                           ) : users.slice(0, 6).map((u: any) => (
-                            <tr key={u.id} className="hover:bg-stone-50/50 transition-all group">
+                            <tr key={u.id} 
+                                onClick={() => { setSelectedUser(u); fetchUserActivity(u.id); setActiveTab('utenti'); }}
+                                className="hover:bg-stone-50/50 transition-all group cursor-pointer active:scale-[0.99]">
                               <td className="px-6 md:px-10 py-4 md:py-5">
                                 <div className="flex items-center gap-3 md:gap-4">
                                   <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-stone-100 overflow-hidden ring-2 md:ring-4 ring-white shadow-md">
@@ -5287,13 +5366,13 @@ const AdminPage = () => {
                                   </div>
                                 </div>
                               </td>
-                              <td className="px-6 md:px-10 py-4 md:py-5">
+                              <td className="hidden sm:table-cell px-6 md:px-10 py-4 md:py-5">
                                 <div className="flex items-center gap-2">
                                   <MapPin className="w-3 h-3 text-rose-400" />
                                   <span className="text-xs font-bold text-stone-600 truncate">{u.city || '—'}</span>
                                 </div>
                               </td>
-                              <td className="px-6 md:px-10 py-4 md:py-5">
+                              <td className="px-4 md:px-10 py-4 md:py-5">
                                 <div className="flex gap-1.5 md:gap-2">
                                   {u.is_paid ?
                                     <span className="px-2 py-0.5 bg-amber-50 text-amber-600 text-[8px] md:text-[9px] font-black rounded-full border border-amber-100 shadow-sm uppercase tracking-tighter">VIP</span> :
@@ -5305,7 +5384,7 @@ const AdminPage = () => {
                                   }
                                 </div>
                               </td>
-                              <td className="px-6 md:px-10 py-4 md:py-5">
+                              <td className="hidden md:table-cell px-6 md:px-10 py-4 md:py-5">
                                 <span className="text-[9px] md:text-[10px] text-stone-400 font-bold whitespace-nowrap">{u.created_at ? new Date(u.created_at).toLocaleDateString('it-IT') : '—'}</span>
                               </td>
                             </tr>
@@ -5318,10 +5397,10 @@ const AdminPage = () => {
               )}
 
               {activeTab === 'utenti' && (
-                <div className="space-y-6">
+                <div className="space-y-6 font-montserrat">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
-                      <h4 className="text-xl font-serif font-black text-stone-900">Anagrafica Utenti</h4>
+                      <h4 className="text-xl font-black text-stone-900">Anagrafica Utenti</h4>
                       <p className="text-[10px] text-stone-400 font-bold uppercase tracking-widest mt-1">Real-time sync con Supabase</p>
                     </div>
                     <div className="relative w-full sm:w-72">
@@ -5389,19 +5468,20 @@ const AdminPage = () => {
 
                           <div className="flex items-center gap-2">
                             <button
-                              onClick={() => setSelectedUser(u)}
+                              onClick={() => { setSelectedUser(u); fetchUserActivity(u.id); }}
                               className="flex-1 bg-stone-900 hover:bg-black text-white py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm active:scale-95"
                             >
-                              Profilo Completo
+                              Moderazione & Info
                             </button>
                             <button
                               onClick={() => handleBlockUserToggle(u.id, u.is_blocked)}
                               className={cn(
                                 "w-12 h-12 rounded-2xl flex items-center justify-center transition-all active:scale-95 border",
-                                u.is_blocked ? "bg-emerald-50 text-emerald-600 border-emerald-100 shadow-sm" : "bg-stone-50 text-stone-400 border-stone-100 hover:text-rose-600"
+                                u.is_blocked ? "bg-rose-500 text-white border-rose-600 shadow-xl" : "bg-stone-50 text-stone-400 border-stone-100 hover:text-rose-600"
                               )}
+                              title={u.is_blocked ? "Rimuovi Ban" : "Ban Permanente"}
                             >
-                              {u.is_blocked ? <UserCheck className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}
+                              {u.is_blocked ? <XCircle className="w-5 h-5" /> : <ShieldCheck className="w-5 h-5" />}
                             </button>
                           </div>
                         </div>
@@ -5413,7 +5493,7 @@ const AdminPage = () => {
                   {users.length === 0 && (
                     <div className="py-32 text-center bg-white rounded-[40px] border border-stone-100">
                       <Users className="w-20 h-20 text-stone-100 mx-auto mb-6" />
-                      <h5 className="text-xl font-serif font-black text-stone-900">Database Vuoto</h5>
+                      <h5 className="text-xl font-black text-stone-900">Database Vuoto</h5>
                       <p className="text-stone-400 text-sm mt-2">Nessun utente reale trovato su Supabase.</p>
                     </div>
                   )}
@@ -5433,14 +5513,31 @@ const AdminPage = () => {
                               </div>
                               <div className="flex-1">
                                 <div className="flex items-center justify-center md:justify-start gap-3 mb-2">
-                                  <h3 className="text-3xl font-serif font-black text-stone-900">{selectedUser.name} {selectedUser.surname}</h3>
+                                  <h3 className="text-3xl font-black text-stone-900">{selectedUser.name} {selectedUser.surname}</h3>
                                   {selectedUser.is_paid && <div className="bg-amber-100 text-amber-700 p-1.5 rounded-lg shadow-sm"><Sparkles className="w-5 h-5" /></div>}
                                 </div>
                                 <p className="text-stone-400 font-bold uppercase tracking-widest text-xs mb-4">{selectedUser.gender} · {(selectedUser.dob ? calculateAge(selectedUser.dob) : '—')} anni · {selectedUser.city}</p>
                                 <div className="flex flex-wrap justify-center md:justify-start gap-2">
                                   <span className="px-3 py-1.5 bg-stone-900 text-white text-[10px] font-black rounded-xl border border-white/10 uppercase tracking-widest">{selectedUser.orientation?.join?.(',') || 'Eterosessuale'}</span>
                                   <span className="px-3 py-1.5 bg-stone-100 text-stone-600 text-[10px] font-black rounded-xl border border-stone-200 uppercase tracking-widest">{selectedUser.body_type}</span>
+                                  {selectedUser.is_suspended && <span className="px-3 py-1.5 bg-amber-500 text-white text-[10px] font-black rounded-xl uppercase tracking-widest flex items-center gap-1.5 pulse"><AlertTriangle className="w-3 h-3" /> Sospeso</span>}
+                                  {selectedUser.is_blocked && <span className="px-3 py-1.5 bg-rose-600 text-white text-[10px] font-black rounded-xl uppercase tracking-widest flex items-center gap-1.5"><XCircle className="w-3 h-3" /> Bannato</span>}
                                 </div>
+                              </div>
+                            </div>
+
+                            <div className="mb-10 space-y-4">
+                              <p className="text-[10px] text-stone-400 font-black uppercase tracking-widest">Azioni Moderazione Rapida</p>
+                              <div className="flex flex-wrap gap-2">
+                                <button onClick={() => setModals({ ...modals, warning: true })} className="flex-1 min-w-[140px] py-3.5 bg-blue-50 text-blue-700 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-blue-100 hover:bg-blue-100 transition-all flex items-center justify-center gap-2">
+                                  <Info className="w-4 h-4" /> Ammonisci
+                                </button>
+                                <button onClick={() => setModals({ ...modals, suspension: true })} className="flex-1 min-w-[140px] py-3.5 bg-amber-50 text-amber-700 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-amber-100 hover:bg-amber-100 transition-all flex items-center justify-center gap-2">
+                                  <Lock className="w-4 h-4" /> Sospendi 24h
+                                </button>
+                                <button onClick={() => handleBlockUserToggle(selectedUser.id, selectedUser.is_blocked)} className={cn("flex-1 min-w-[140px] py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all flex items-center justify-center gap-2", selectedUser.is_blocked ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-rose-50 text-rose-700 border-rose-100")}>
+                                  {selectedUser.is_blocked ? <><UserCheck className="w-4 h-4" /> Sblocca</> : <><XCircle className="w-4 h-4" /> Ban Perm.</>}
+                                </button>
                               </div>
                             </div>
 
@@ -5465,22 +5562,66 @@ const AdminPage = () => {
                               </div>
                             </div>
 
+                            <div className="bg-stone-50/50 p-6 rounded-3xl border border-stone-100 mb-6">
+                              <p className="text-[10px] text-stone-400 font-black uppercase tracking-widest mb-4">Contenuti Pubblicati ({userPosts.length})</p>
+                              {loadingPosts ? (
+                                <div className="py-10 text-center"><RefreshCw className="w-6 h-6 animate-spin mx-auto text-stone-300" /></div>
+                              ) : userPosts.length === 0 ? (
+                                <p className="text-xs text-stone-500 italic text-center py-6">Nessun post pubblicato.</p>
+                              ) : (
+                                <div className="grid grid-cols-2 gap-3 max-h-80 overflow-y-auto scrollbar-hide">
+                                  {userPosts.map((p: any) => (
+                                    <div key={p.id} className="relative group rounded-2xl overflow-hidden aspect-square border border-stone-200 bg-white">
+                                      <img src={Array.isArray(p.photos) ? p.photos[0] : (p.image_url || p.photo_url)} className="w-full h-full object-cover" />
+                                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                        <button onClick={() => handleDeletePost(p.id)} className="w-10 h-10 bg-rose-600 text-white rounded-full flex items-center justify-center shadow-lg hover:scale-110"><Trash2 className="w-4 h-4" /></button>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+
                             <div className="bg-stone-900 rounded-[32px] p-8 text-white relative overflow-hidden">
                               <Zap className="absolute top-1/2 right-4 -translate-y-1/2 w-48 h-48 text-white/5 -rotate-12" />
                               <div className="relative z-10 flex flex-col md:flex-row items-center gap-6 justify-between">
                                 <div className="text-center md:text-left">
-                                  <h4 className="text-xl font-serif font-black mb-1">Dati Account</h4>
+                                  <h4 className="text-xl font-black mb-1">Dati Account</h4>
                                   <p className="text-stone-400 text-[10px] font-black uppercase tracking-widest">{selectedUser.email}</p>
                                   <p className="text-stone-500 text-[9px] font-black mt-2 uppercase tracking-widest italic">ID: {selectedUser.id}</p>
                                 </div>
                                 <div className="flex gap-4">
-                                  <button onClick={() => { handleBlockUserToggle(selectedUser.id, selectedUser.is_blocked); setSelectedUser(null); }} className={cn("px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all", selectedUser.is_blocked ? "bg-emerald-600 text-white shadow-lg shadow-emerald-900/40" : "bg-rose-600 text-white shadow-lg shadow-rose-900/40")}>
-                                    {selectedUser.is_blocked ? 'Sblocca Utente' : 'Blocca Utente'}
-                                  </button>
+                                  <p className="text-[9px] text-white/40 uppercase font-black">Reported by AI/Users</p>
                                 </div>
                               </div>
                             </div>
                           </div>
+
+                          {/* Action Reason Modals */}
+                          <AnimatePresence>
+                            {(modals.warning || modals.suspension) && (
+                              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 z-50 bg-stone-900/40 backdrop-blur-xl flex items-center justify-center p-6">
+                                <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="bg-white w-full max-w-sm rounded-[32px] p-8 shadow-2xl space-y-6">
+                                  <div className="text-center">
+                                    <h4 className="text-xl font-black text-stone-900">Motivazione {modals.warning ? 'Ammonizione' : 'Sospensione'}</h4>
+                                    <p className="text-xs text-stone-500 mt-2 font-medium">Il messaggio verrà visualizzato dall'utente nella notifica di sistema.</p>
+                                  </div>
+                                  <div className="space-y-4">
+                                    <textarea 
+                                      value={modReason} 
+                                      onChange={e => setModReason(e.target.value)}
+                                      placeholder="Es: Linguaggio inappropriato, Foto non reali..."
+                                      className="w-full h-24 p-4 bg-stone-50 border border-stone-200 rounded-2xl resize-none text-sm font-medium outline-none focus:ring-2 focus:ring-stone-900"
+                                    />
+                                    <div className="flex gap-2">
+                                      <button onClick={() => { setModals({ warning: false, suspension: false, ban: false }); setModReason(''); }} className="flex-1 py-3 bg-stone-100 text-stone-600 rounded-xl text-[10px] font-black uppercase tracking-widest">Annulla</button>
+                                      <button onClick={() => modals.warning ? handleWarnUser(selectedUser.id) : handleSuspendUser(selectedUser.id)} className="flex-1 py-3 bg-stone-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl">Conferma</button>
+                                    </div>
+                                  </div>
+                                </motion.div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
                         </motion.div>
                       </div>
                     )}
@@ -5672,32 +5813,33 @@ const AdminPage = () => {
                                     )}
                                   </div>
                                   {/* Status + action */}
-                                  <div className="shrink-0 flex flex-col items-end gap-2">
-                                    {u.is_validated ? (
-                                      <span className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-full text-[11px] font-black border border-emerald-100">
-                                        <CheckCircle className="w-3.5 h-3.5" /> Approvato
-                                      </span>
-                                    ) : (
-                                      <span className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 text-rose-700 rounded-full text-[11px] font-black border border-rose-100">
-                                        <XCircle className="w-3.5 h-3.5" /> Respinto
-                                      </span>
-                                    )}
-                                    {/* Block toggle for rejected users */}
-                                    {u.doc_rejected && (
-                                      <button
-                                        onClick={() => handleBlockUserToggle(u.id, u.is_blocked)}
-                                        className={cn(
-                                          "flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-black border transition-all active:scale-95",
-                                          u.is_blocked
-                                            ? "bg-emerald-50 text-emerald-700 border-emerald-100 hover:bg-emerald-100"
-                                            : "bg-stone-900 text-white border-stone-900 hover:bg-stone-700"
-                                        )}
+                                  <div className="shrink-0 flex items-center gap-3">
+                                    <div className="flex flex-col items-end gap-1">
+                                      {u.is_validated ? (
+                                        <span className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-full text-[11px] font-black border border-emerald-100">
+                                          <CheckCircle className="w-3.5 h-3.5" /> Approvato
+                                        </span>
+                                      ) : (
+                                        <span className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 text-rose-700 rounded-full text-[11px] font-black border border-rose-100">
+                                          <XCircle className="w-3.5 h-3.5" /> Respinto
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    <div className="flex gap-2">
+                                      <button 
+                                        onClick={() => setPreviewDoc({ url: u.id_document_url, name: `${u.name} ${u.surname}` })}
+                                        className="w-10 h-10 bg-stone-100 hover:bg-stone-200 text-stone-600 rounded-xl flex items-center justify-center transition-all shadow-sm border border-stone-200"
                                       >
-                                        {u.is_blocked
-                                          ? <><UserCheck className="w-3 h-3" /> Sblocca</>
-                                          : <><AlertTriangle className="w-3 h-3" /> Blocca</>}
+                                        <Eye className="w-4 h-4" />
                                       </button>
-                                    )}
+                                      <button 
+                                        onClick={() => handleDeleteUser(u.id)}
+                                        className="w-10 h-10 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl flex items-center justify-center transition-all shadow-sm border border-rose-100"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </button>
+                                    </div>
                                   </div>
                                 </div>
                               );
@@ -5720,7 +5862,7 @@ const AdminPage = () => {
                         <AlertTriangle className="w-7 h-7" />
                       </div>
                       <div>
-                        <h3 className="text-2xl font-serif font-black text-stone-900">Centro Segnalazioni</h3>
+                        <h3 className="text-2xl font-black text-stone-900">Centro Segnalazioni</h3>
                         <p className="text-[10px] text-stone-400 font-bold uppercase tracking-widest mt-1">Gestione Report Abusi</p>
                       </div>
                     </div>
@@ -5746,7 +5888,7 @@ const AdminPage = () => {
                             <CreditCard className="w-7 h-7" />
                           </div>
                           <div>
-                            <h3 className="text-2xl font-serif font-black text-stone-900">Gestione Abbonamenti</h3>
+                            <h3 className="text-2xl font-black text-stone-900">Gestione Abbonamenti</h3>
                             <p className="text-[10px] text-stone-400 font-bold uppercase tracking-widest mt-1">Stripe Integration Status</p>
                           </div>
                         </div>
@@ -5794,7 +5936,7 @@ const AdminPage = () => {
                         <div className="w-20 h-20 bg-white rounded-[24px] flex items-center justify-center mx-auto mb-6 shadow-xl border border-stone-50">
                           <CreditCard className="w-10 h-10 text-stone-300" />
                         </div>
-                        <h4 className="text-xl font-serif font-black text-stone-900 mb-2">Transazioni Dashboard</h4>
+                        <h4 className="text-xl font-black text-stone-900 mb-2">Transazioni Dashboard</h4>
                         <p className="text-stone-400 text-sm max-w-md mx-auto font-medium leading-relaxed mb-8">
                           I dettagli delle singole transazioni sono visualizzabili direttamente sul portale Stripe. Stiamo sincronizzando i metadata per mostrarti i log qui prossimamente.
                         </p>
@@ -5839,6 +5981,54 @@ const AdminPage = () => {
             </motion.div>
           )}
         </div>
+
+        {/* Preview document modal */}
+        <AnimatePresence>
+          {previewDoc && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[100] bg-stone-950/95 backdrop-blur-xl flex flex-col items-center justify-center p-4 md:p-10"
+              onClick={() => setPreviewDoc(null)}
+            >
+              <div className="absolute top-6 right-6 flex items-center gap-6 z-10">
+                <div className="text-right hidden sm:block">
+                  <p className="text-white font-black text-sm uppercase tracking-tighter">{previewDoc.name}</p>
+                  <p className="text-white/40 font-bold text-[9px] uppercase tracking-[0.2em]">Documento d'Identità</p>
+                </div>
+                <button 
+                  onClick={() => setPreviewDoc(null)}
+                  className="w-12 h-12 bg-white/10 hover:bg-rose-600 text-white rounded-2xl flex items-center justify-center transition-all border border-white/10 shadow-2xl"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              
+              <motion.div 
+                initial={{ scale: 0.9, y: 20 }}
+                animate={{ scale: 1, y: 0 }}
+                className="relative w-full max-w-5xl h-[80vh] flex items-center justify-center" 
+                onClick={e => e.stopPropagation()}
+              >
+                <img 
+                  src={previewDoc.url} 
+                  alt="Full preview" 
+                  className="max-w-full max-h-full object-contain rounded-[32px] shadow-2xl shadow-black border-4 border-white/5"
+                />
+              </motion.div>
+
+              <div className="flex gap-4 mt-8">
+                 <button 
+                  onClick={(e) => { e.stopPropagation(); handleShareDoc(previewDoc.url, previewDoc.name); }}
+                  className="bg-white hover:bg-stone-100 text-stone-900 px-10 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-2xl flex items-center gap-2 transition-all active:scale-95"
+                >
+                  <Share2 className="w-4 h-4" /> Scarica o Condividi
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </main>
     </div>
   );
@@ -5955,6 +6145,8 @@ const RegisterPage = () => {
     body_type: 'Normale',
     province: '',
     conosciamoci_meglio: {},
+    accepted_terms: false,
+    accepted_privacy: false,
   });
 
   useEffect(() => {
@@ -6095,6 +6287,20 @@ const RegisterPage = () => {
       }
 
       if (profile) {
+        // SECURITY CHECK
+        if (profile.is_blocked) {
+          setSecurityStatus({ type: 'blocked' });
+          return;
+        }
+        if (profile.is_suspended) {
+          setSecurityStatus({ type: 'suspended', reason: profile.suspension_reason });
+          return;
+        }
+        if (profile.doc_rejected) {
+          setSecurityStatus({ type: 'doc_rejected' });
+          localStorage.setItem('soulmatch_security_notice', JSON.stringify({ type: 'doc_rejected' }));
+        }
+
         console.log("Profile found, saving to local storage");
         localStorage.setItem('soulmatch_user', JSON.stringify(profile));
         window.dispatchEvent(new Event('user-auth-change'));
@@ -6128,6 +6334,16 @@ const RegisterPage = () => {
       setToast({ message: "Per favore, completa tutti i campi del profilo per continuare.", type: 'info' });
       return;
     }
+
+    const age = calculateAge(formData.dob);
+    if (age < 18) {
+      setToast({ 
+        message: "L'uso di SoulMatch è vietato ai minori di 18 anni. La tua iscrizione non può procedere nel rispetto del regolamento.", 
+        type: 'error' 
+      });
+      return;
+    }
+
     setStep(3);
   };
 
@@ -6141,6 +6357,18 @@ const RegisterPage = () => {
 
   const handleNextToStep4 = () => {
     setStep(5);
+  };
+
+  const handleNextToStep5 = () => {
+    setStep(6);
+  };
+
+  const handleNextToLegal = () => {
+    if (!formData.accepted_terms || !formData.accepted_privacy) {
+      setToast({ message: "Devi accettare i termini e la privacy per continuare.", type: 'info' });
+      return;
+    }
+    setStep(7);
   };
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -6324,11 +6552,11 @@ const RegisterPage = () => {
             ><ChevronRight className="w-5 h-5 rotate-180" /></button>
             <div>
               <h1 className="text-xl font-montserrat font-black text-white">{isEditing ? 'Modifica Profilo' : 'Iscriviti'}</h1>
-              <p className="text-white/30 text-[10px] font-bold uppercase tracking-wider">Step {step} di 6</p>
+              <p className="text-white/30 text-[10px] font-bold uppercase tracking-wider">Step {step} di 7</p>
             </div>
           </div>
           <div className="flex gap-1.5">
-            {[1, 2, 3, 4, 5, 6].map(i => (
+            {[1, 2, 3, 4, 5, 6, 7].map(i => (
               <div key={i} className={cn("h-1 rounded-full transition-all duration-300", step >= i ? "bg-rose-500 w-5" : "bg-white/10 w-2")} />
             ))}
           </div>
@@ -6579,14 +6807,101 @@ const RegisterPage = () => {
                 )}
                 <div className="flex gap-3 pt-2">
                   <button onClick={() => setStep(4)} className="flex-1 py-4 rounded-[18px] text-sm font-black text-white/50 uppercase tracking-widest" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>Indietro</button>
-                  <button onClick={() => setStep(6)} className="flex-1 py-4 rounded-[18px] text-sm font-black text-white uppercase tracking-widest" style={{ background: '#e11d48', boxShadow: '0 0 20px rgba(225,29,72,0.35)' }}>Riepilogo →</button>
+                  <button onClick={handleNextToStep5} className="flex-1 py-4 rounded-[18px] text-sm font-black text-white uppercase tracking-widest" style={{ background: '#e11d48', boxShadow: '0 0 20px rgba(225,29,72,0.35)' }}>Regolamento →</button>
                 </div>
               </motion.div>
             )}
 
-            {/* ── STEP 6: Riepilogo ── */}
+            {/* ── STEP 6: Regolamento e Privacy ── */}
             {step === 6 && (
-              <motion.div key="step6" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
+              <motion.div key="step6" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
+                <div className="text-center space-y-1">
+                  <ShieldCheck className="w-10 h-10 text-rose-500 mx-auto mb-2" />
+                  <h3 className="text-xl font-montserrat font-black text-white uppercase tracking-tight">Accordi Legali</h3>
+                  <p className="text-white/30 text-[11px] font-bold uppercase tracking-widest">Le regole della nostra community</p>
+                </div>
+
+                <div className="space-y-4 max-h-[48vh] overflow-y-auto pr-2 scrollbar-hide text-left">
+                  {/* Regolamento */}
+                  <div className="space-y-3">
+                    <h4 className="text-[10px] font-black text-rose-400 uppercase tracking-widest">Regolamento della Community</h4>
+                    <div className="p-4 rounded-[20px] space-y-4 text-[11px] leading-relaxed text-white/60 font-medium" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                      <section className="space-y-1.5">
+                        <p className="text-white font-black uppercase text-[9px]">1. Requisiti e Identità</p>
+                        <p>• <span className="text-white">Età:</span> L'uso è vietato ai minori di 18 anni.</p>
+                        <p>• <span className="text-white">Verifica:</span> È richiesta la verifica del documento. I dati saranno eliminati subito dopo.</p>
+                        <p>• <span className="text-white">Autenticità:</span> Solo foto reali e personali. Vietate foto IA o di terzi.</p>
+                      </section>
+                      <section className="space-y-1.5">
+                        <p className="text-white font-black uppercase text-[9px]">2. Contenuti e Comportamento</p>
+                        <p>• <span className="text-white">No Nudo/Explicit:</span> Vietati nudo o contenuti sessuali offensivi.</p>
+                        <p>• <span className="text-white">Rispetto:</span> Vietati messaggi offensivi o molesti. Tolleranza zero bullismo.</p>
+                        <p>• <span className="text-white">No Spam:</span> Vietati link esterni, pubblicità o siti adult.</p>
+                      </section>
+                      <section className="space-y-1.5">
+                        <p className="text-white font-black uppercase text-[9px]">3. Segnalazioni e Sanzioni</p>
+                        <p>• <span className="text-white">Monitoraggio:</span> Ci riserviamo il diritto di rimuovere contenuti inappropriati.</p>
+                        <p>• <span className="text-white">Reporting:</span> Usa il tasto segnala nei profili in caso di violazioni.</p>
+                        <p>• <span className="text-white">Sanzioni:</span> Le violazioni portano al ban permanente ed eventuale blocco IP.</p>
+                      </section>
+                      <section className="space-y-1.5 p-2 bg-rose-500/10 rounded-xl border border-rose-500/20">
+                        <p className="text-rose-400 font-black uppercase text-[9px] flex items-center gap-1.5"><Sparkles className="w-3 h-3" /> Tip Sicurezza</p>
+                        <p className="italic">Incontra i tuoi match sempre in luoghi pubblici e affollati. Informa un amico o un familiare dei tuoi spostamenti. La tua sicurezza è la nostra priorità.</p>
+                      </section>
+                      <p className="text-rose-400/80 font-bold italic pt-2">L'iscrizione implica l'accettazione totale dei termini. Non procedere se non sei d'accordo.</p>
+                    </div>
+                  </div>
+
+                  {/* GDPR */}
+                  <div className="space-y-3">
+                    <h4 className="text-[10px] font-black text-rose-400 uppercase tracking-widest">Informativa Breve Privacy</h4>
+                    <div className="p-4 rounded-[20px] space-y-3 text-[11px] leading-relaxed text-white/60 font-medium" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                      <p>• <span className="text-white">Finalità:</span> Dati usati esclusivamente per il profilo e funzionamento app.</p>
+                      <p>• <span className="text-white">Identità:</span> Documenti cancellati definitivamente subito dopo la convalida.</p>
+                      <p>• <span className="text-white">Conservazione:</span> Dati attivi fino a cancellazione account (possibile via app).</p>
+                      <p>• <span className="text-white">Sicurezza:</span> Crittografia avanzata e nessun dato venduto a terzi.</p>
+                      <p>• <span className="text-white">Moderazione:</span> Sistemi e moderatori umani vigilano h24.</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Checkboxes */}
+                <div className="space-y-3 pt-2">
+                  <label className="flex gap-3 cursor-pointer group">
+                    <div className="relative flex items-center justify-center shrink-0 mt-0.5">
+                      <input type="checkbox" checked={formData.accepted_terms} onChange={(e) => setFormData(f => ({ ...f, accepted_terms: e.target.checked }))} className="sr-only" />
+                      <div className={cn("w-6 h-6 rounded-lg transition-all", formData.accepted_terms ? "bg-rose-500 shadow-lg shadow-rose-900/40" : "bg-white/5 border border-white/10 group-hover:border-rose-500/50")} />
+                      {formData.accepted_terms && <CheckCircle className="absolute w-4 h-4 text-white" />}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-[11px] font-bold text-white/80 group-hover:text-white transition-colors">Termini e Condizioni</p>
+                      <p className="text-[9px] text-white/30 font-medium leading-tight">Dichiaro di essere maggiorenne e accetto il Regolamento della Community (inclusi i sistemi di segnalazione e ban).</p>
+                    </div>
+                  </label>
+
+                  <label className="flex gap-3 cursor-pointer group">
+                    <div className="relative flex items-center justify-center shrink-0 mt-0.5">
+                      <input type="checkbox" checked={formData.accepted_privacy} onChange={(e) => setFormData(f => ({ ...f, accepted_privacy: e.target.checked }))} className="sr-only" />
+                      <div className={cn("w-6 h-6 rounded-lg transition-all", formData.accepted_privacy ? "bg-rose-500 shadow-lg shadow-rose-900/40" : "bg-white/5 border border-white/10 group-hover:border-rose-500/50")} />
+                      {formData.accepted_privacy && <CheckCircle className="absolute w-4 h-4 text-white" />}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-[11px] font-bold text-white/80 group-hover:text-white transition-colors">Privacy Policy</p>
+                      <p className="text-[9px] text-white/30 font-medium leading-tight">Acconsento al trattamento dei miei dati personali e alla verifica dell'identità tramite documento come descritto sopra.</p>
+                    </div>
+                  </label>
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <button onClick={() => setStep(5)} className="flex-1 py-4 rounded-[18px] text-sm font-black text-white/50 uppercase tracking-widest font-montserrat" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>Indietro</button>
+                  <button onClick={handleNextToLegal} className="flex-1 py-4 rounded-[18px] text-sm font-black text-white uppercase tracking-widest font-montserrat" style={{ background: '#e11d48', boxShadow: '0 0 20px rgba(225,29,72,0.35)' }}>Riepilogo →</button>
+                </div>
+              </motion.div>
+            )}
+
+            {/* ── STEP 7: Riepilogo ── */}
+            {step === 7 && (
+              <motion.div key="step7" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
                 <div className="text-center space-y-1">
                   <h3 className="text-xl font-montserrat font-black text-white">Riepilogo</h3>
                   <p className="text-white/30 text-[11px]">Controlla che tutto sia corretto.</p>
@@ -6622,7 +6937,7 @@ const RegisterPage = () => {
                   </div>
                 </div>
                 <div className="flex gap-3 pt-2">
-                  <button onClick={() => setStep(5)} className="flex-1 py-4 rounded-[18px] text-sm font-black text-white/50 uppercase tracking-widest" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>Indietro</button>
+                  <button onClick={() => setStep(6)} className="flex-1 py-4 rounded-[18px] text-sm font-black text-white/50 uppercase tracking-widest" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>Indietro</button>
                   <button onClick={handleSubmit} className="flex-1 py-4 rounded-[18px] text-sm font-black text-white uppercase tracking-widest" style={{ background: '#e11d48', boxShadow: '0 0 20px rgba(225,29,72,0.35)' }}>Termina ✓</button>
                 </div>
               </motion.div>
@@ -9805,11 +10120,11 @@ const PrivacyPage = () => (
     iconColor="text-emerald-600"
     badge="GDPR Compliant"
     sections={[
-      { heading: 'Dati raccolti', body: 'Raccogliamo nome, email, data di nascita, foto del profilo e preferenze di matching al momento della registrazione. Questi dati sono necessari per offrirti il servizio.' },
-      { heading: 'Utilizzo dei dati', body: 'I tuoi dati vengono utilizzati esclusivamente per il funzionamento del servizio SoulMatch, inclusi matching, notifiche e comunicazioni essenziali.' },
-      { heading: 'Conservazione', body: 'I dati vengono conservati per la durata dell\'account. Puoi richiedere la cancellazione completa in qualsiasi momento dalla sezione impostazioni o contattandoci.' },
-      { heading: 'Condivisione con terzi', body: 'Non vendiamo né condividiamo i tuoi dati personali con terze parti a scopi commerciali. Usiamo fornitori tecnici certificati GDPR.' },
-      { heading: 'I tuoi diritti', body: 'Hai diritto di accesso, rettifica, cancellazione, portabilità e opposizione al trattamento. Contattaci a privacy@soulmatch.it per esercitare i tuoi diritti.' },
+      { heading: 'Finalità', body: 'I tuoi dati (nome, foto, età, preferenze) vengono usati esclusivamente per il funzionamento dell\'app e la creazione del profilo.' },
+      { heading: 'Verifica Identità', body: 'I documenti caricati per la verifica dell\'età e dell\'identità vengono cancellati definitivamente dai nostri server immediatamente dopo il controllo (sia in caso di convalida che di rifiuto) per la tua privacy.' },
+      { heading: 'Conservazione', body: 'I dati del profilo restano attivi finché decidi di restare iscritto. Puoi cancellare il tuo account e tutti i dati associati in qualsiasi momento dalle impostazioni.' },
+      { heading: 'Sicurezza', body: 'Adottiamo misure crittografiche per prevenire accessi non autorizzati o furti di dati. I tuoi contatti privati non vengono mai venduti a terzi.' },
+      { heading: 'Moderazione', body: 'I contenuti pubblicati sono monitorati dai nostri sistemi e moderatori umani per garantire la sicurezza della community.' },
     ]}
   />
 );
@@ -9840,11 +10155,11 @@ const TerminiPage = () => (
     badge="Aggiornato 2025"
     sections={[
       { heading: 'Accettazione', body: 'Utilizzando SoulMatch accetti i presenti Termini e Condizioni. Se non li accetti, ti invitiamo a non utilizzare il servizio.' },
-      { heading: 'Età minima', body: 'SoulMatch è riservato a utenti maggiorenni (18+). Gli utenti minorenni non sono autorizzati a registrarsi e utilizzare la piattaforma.' },
-      { heading: 'Responsabilità dell\'utente', body: 'L\'utente è responsabile di tutte le attività svolte tramite il proprio account. È vietato usare SoulMatch per attività illecite, truffe o molestie.' },
-      { heading: 'Sospensione account', body: 'Ci riserviamo il diritto di sospendere o cancellare account che violino i presenti termini, senza preavviso e senza rimborso di abbonamenti in corso.' },
-      { heading: 'Limitazione di responsabilità', body: 'SoulMatch non è responsabile per le interazioni tra utenti al di fuori della piattaforma. Ogni incontro fisico avviene sotto la responsabilità degli utenti.' },
-      { heading: 'Modifiche ai termini', body: 'Ci riserviamo il diritto di aggiornare questi termini. Gli utenti saranno informati via email o notifica in-app.' },
+      { heading: 'Età minima (18+)', body: 'SoulMatch è rigorosamente riservato a utenti maggiorenni. L\'iscrizione di minori è vietata e comporta il blocco immediato dell\'account.' },
+      { heading: 'Responsabilità dell\'utente', body: 'L\'utente è responsabile delle proprie attività. È vietato usare il servizio per attività illecite, truffe, molestie o spam.' },
+      { heading: 'Sospensione e Ban', body: 'In caso di violazioni, il sistema applica ammonizioni, sospensioni temporanee (24 ore) o ban permanenti in base alla gravità. Il ban comporta l\'impossibilità di futura re-iscrizione.' },
+      { heading: 'Limitazione di responsabilità', body: 'SoulMatch non è responsabile per le interazioni al di fuori della piattaforma. Gli incontri fisici avvengono sotto la responsabilità degli utenti.' },
+      { heading: 'Proprietà Intellettuale', body: 'È vietato l\'uso di foto altrui, VIP o generate da IA. Sono ammesse solo foto reali e personali del titolare dell\'account.' },
     ]}
   />
 );
@@ -9857,12 +10172,10 @@ const RegolamentoPage = () => (
     iconBg="bg-amber-50"
     iconColor="text-amber-600"
     sections={[
-      { heading: 'Rispetto reciproco', body: 'Ogni utente ha diritto a essere trattato con rispetto. Linguaggio offensivo, discriminatorio o violento è severamente vietato.' },
-      { heading: 'Profili autentici', body: 'È obbligatorio inserire informazioni veritiere. È vietato impersonare altre persone o creare profili falsi. Ogni profilo viene verificato dal team.' },
-      { heading: 'Foto appropriate', body: 'Le foto caricate devono essere recenti e raffigurare chiaramente il titolare del profilo. È vietato pubblicare contenuti espliciti, violenti o di minori.' },
-      { heading: 'Messaggi', body: 'È vietato inviare messaggi spam, catene, pubblicità, link a siti esterni o richieste di denaro. I messaggi devono essere rispettosi e pertinenti.' },
-      { heading: 'Sistema di segnalazione', body: 'Incoraggiamo gli utenti a segnalare comportamenti inappropriati. Ogni segnalazione viene esaminata entro 24 ore dal nostro team di moderazione.' },
-      { heading: 'Sanzioni', body: 'Le violazioni del regolamento comportano avvertimenti, sospensioni temporanee o ban permanente in base alla gravità del comportamento.' },
+      { heading: '1. Requisiti e Identità', body: 'Età: L\'uso è vietato ai minori di 18 anni. Verifica: È richiesta la verifica del documento per garantire l\'identità ed evitare truffe. I documenti saranno eliminati subito dopo la verifica per la tua privacy. Autenticità: Vietate foto IA, di VIP o di terzi. Solo foto reali e personali.' },
+      { heading: '2. Contenuti e Comportamento', body: 'No Nudo/Explicit: Vietati contenuti sessuali espliciti, nudo o foto offensive. Rispetto: Vietati messaggi offensivi o molesti. Ogni contenuto è monitorato dai moderatori. No Spam: Vietato pubblicare numeri di telefono, link esterni (Meta, TikTok), siti adult o pubblicità.' },
+      { heading: '3. Segnalazioni e Sanzioni', body: 'Monitoraggio: Ci riserviamo il diritto di rimuovere contenuti inappropriati. Reporting: Usa il tasto segnala in basso ai profili; segnalazioni false o vendicative sono sanzionabili. Sanzioni: Le violazioni portano ad avvertimenti o ban permanenti, bloccando ogni futura re-iscrizione.' },
+      { heading: 'Ecosistema Community', body: 'Accettare il regolamento significa impegnarsi a rispettare l\'ecosistema SoulMatch. Se non sei d\'accordo con questi termini, ti preghiamo di non procedere con l\'iscrizione.' },
     ]}
   />
 );
@@ -9893,12 +10206,12 @@ const SegnalazioniPage = () => (
     iconColor="text-red-600"
     badge="Safety First"
     sections={[
-      { heading: 'Come segnalare un profilo', body: 'Dalla pagina del profilo, premi i tre punti in alto a destra e seleziona "Segnala". Scegli il motivo e invia. Il nostro team esaminerà la segnalazione entro 24h.' },
-      { heading: 'Cosa puoi segnalare', body: 'Profili falsi · Foto inappropriate · Messaggi offensivi · Spam e pubblicità · Comportamenti minacciosi · Impersonificazione · Contenuti illegali.' },
-      { heading: 'Protezione dell\'anonimato', body: 'Le segnalazioni sono anonime. L\'utente segnalato non saprà mai chi lo ha segnalato.' },
-      { heading: 'Blocco utenti', body: 'Puoi bloccare un utente in qualsiasi momento. Un utente bloccato non potrà più visualizzare il tuo profilo né contattarti.' },
-      { heading: 'Segnalazione urgente', body: 'Se sei in pericolo o hai assistito a un reato, contatta le autorità competenti al 112. Per emergenze sulla piattaforma: safety@soulmatch.it' },
-      { heading: 'Abuso del sistema di segnalazione', body: 'Le segnalazioni false o strumentali possono comportare sanzioni all\'account del segnalante.' },
+      { heading: 'Come segnalare', body: 'Usa il tasto "Segnala" in basso in ogni profilo. Scegli il motivo (Nudo, IA, Spam, Linguaggio offensivo) e invia. Il team esamina ogni segnalazione entro 24h.' },
+      { heading: 'Criteri di segnalazione', body: 'Puoi segnalare: Profili falsi, Foto inappropriate, Messaggi offensivi, Spam o link pubblicitari esterni (Meta, TikTok, etc).' },
+      { heading: 'Genuinità delle segnalazioni', body: 'Le segnalazioni false o effettuate per fini vendicativi sono sanzionabili e possono portare alla sospensione dell\'account del segnalante.' },
+      { heading: 'Protezione e Anonimato', body: 'Le segnalazioni sono anonime. L\'utente segnalato non saprà mai chi ha effettuato la segnalazione.' },
+      { heading: 'Blocco Utenti', body: 'Puoi bloccare un utente per impedirgli di vedere il tuo profilo o contattarti. Il blocco è immediato e irreversibile per quell\'utente.' },
+      { heading: 'Sicurezza Reale', body: 'In caso di pericolo o reati, contatta le autorità competenti (112). Per abusi sulla piattaforma scrivi a safety@soulmatch.it.' },
     ]}
   />
 );
@@ -9936,8 +10249,106 @@ const DmcaPage = () => (
     ]}
   />
 );
+const SecurityOverlay = ({ status, onClose }: { status: any; onClose: () => void }) => {
+  if (!status.type) return null;
+  const { type, reason, subReason } = status;
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-[10000] bg-black/95 backdrop-blur-2xl flex items-center justify-center p-6 text-center">
+      <div className="max-w-xs w-full space-y-7">
+        {type === 'blocked' ? (
+          <>
+            <div className="w-20 h-20 bg-rose-500/10 rounded-full flex items-center justify-center mx-auto border border-rose-500/20 shadow-lg shadow-rose-900/10">
+              <XCircle className="w-10 h-10 text-rose-500" />
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-2xl font-montserrat font-black text-rose-500 uppercase tracking-tight leading-tight">Accesso Negato:<br />Account Bloccato</h2>
+              <p className="text-white/60 text-sm leading-relaxed font-medium">Il tuo profilo è stato rimosso permanentemente a causa di gravi o reiterate violazioni dei <span className="text-white">Termini d'Uso</span> accettati in fase di iscrizione.</p>
+            </div>
+            <div className="p-4 bg-white/5 border border-white/10 rounded-2xl">
+              <p className="text-rose-500/80 text-[10px] font-black uppercase tracking-widest">Politica di Sicurezza</p>
+              <p className="text-white/40 text-[10px] font-medium leading-relaxed mt-1">Il sistema ha bloccato ogni tentativo di nuova registrazione associato ai tuoi dati.</p>
+            </div>
+          </>
+        ) : type === 'suspended' ? (
+          <>
+            <div className="w-20 h-20 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto border border-amber-500/20 shadow-lg shadow-amber-900/10">
+              <AlertTriangle className="w-10 h-10 text-amber-500" />
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-2xl font-montserrat font-black text-amber-500 uppercase tracking-tight leading-tight">Account sospeso temporaneamente</h2>
+              <p className="text-white/60 text-sm leading-relaxed font-medium">Il tuo account è stato sospeso per <span className="text-white">24 ore</span> a causa di violazioni del regolamento.</p>
+            </div>
+            <div className="p-4 bg-white/5 border border-white/10 rounded-2xl">
+              <p className="text-white/40 text-[11px] font-medium leading-relaxed">Ti ricordiamo che la nostra è una community basata sul rispetto. Al prossimo richiamo, il profilo verrà eliminato definitivamente.</p>
+            </div>
+          </>
+        ) : type === 'doc_rejected' ? (
+          <>
+            <div className="w-20 h-20 bg-rose-500/10 rounded-full flex items-center justify-center mx-auto border border-rose-500/20">
+              <ShieldCheck className="w-10 h-10 text-rose-500" />
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-2xl font-montserrat font-black text-white uppercase tracking-tight leading-tight">Verifica Identità:<br />Documento non idoneo</h2>
+              <p className="text-white/60 text-[13px] leading-relaxed font-medium">Non è stato possibile convalidare il tuo profilo. Assicurati che il documento sia:</p>
+            </div>
+            <div className="text-left bg-white/5 border border-white/10 rounded-2xl p-5 space-y-3">
+              <ul className="text-xs text-white/80 space-y-2 font-medium">
+                <li className="flex gap-2"><span>•</span> <span>Integro e leggibile in ogni sua parte.</span></li>
+                <li className="flex gap-2"><span>•</span> <span>Corrispondente al volto delle tue foto.</span></li>
+                <li className="flex gap-2"><span>•</span> <span>In corso di validità.</span></li>
+              </ul>
+            </div>
+            <div className="space-y-4">
+              <p className="text-white/30 text-[10px] italic">I file inviati vengono eliminati dopo il controllo per la tua privacy. Riprova ora.</p>
+              <button 
+                onClick={onClose} 
+                className="w-full py-4 bg-rose-600 text-white font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-rose-900/20 active:scale-95 transition-all"
+              >Riprova Ora</button>
+            </div>
+          </>
+        ) : type === 'warning' ? (
+          <>
+            <div className="w-20 h-20 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto border border-blue-500/20">
+              <Info className="w-10 h-10 text-blue-400" />
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-2xl font-montserrat font-black text-white uppercase tracking-tight">Avviso di moderazione</h2>
+              <p className="text-white/60 text-sm leading-relaxed font-medium">Un contenuto pubblicato sul tuo profilo è stato oscurato perché non conforme al Regolamento.</p>
+            </div>
+            <div className="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-4 text-left">
+              <p className="text-blue-400 text-[10px] uppercase font-black tracking-widest mb-1 items-center flex gap-1.5"><AlertTriangle className="w-3 h-3" /> Motivazione</p>
+              <p className="text-white text-sm font-bold">{reason || 'Violazione dei termini della community'}</p>
+            </div>
+            <div className="space-y-5">
+              <p className="text-white/40 text-[11px] leading-relaxed">Questa notifica funge da ammonizione formale. Ti invitiamo a rivedere le regole per evitare sanzioni più gravi.</p>
+              <button 
+                onClick={onClose} 
+                className="w-full py-4 bg-white/10 text-white font-black uppercase tracking-widest rounded-2xl border border-white/10 active:scale-95 transition-all"
+              >Ho capito</button>
+            </div>
+          </>
+        ) : null}
+      </div>
+    </motion.div>
+  );
+};
 
 export default function App() {
+  const [securityStatus, setSecurityStatus] = useState<any>({ type: null });
+
+  useEffect(() => {
+    // Check if security status is saved in localStorage (e.g. for doc rejection persistence)
+    const savedStatus = localStorage.getItem('soulmatch_security_notice');
+    if (savedStatus) {
+      try { setSecurityStatus(JSON.parse(savedStatus)); } catch (e) {}
+    }
+  }, []);
+
+  const handleCloseSecurity = () => {
+    localStorage.removeItem('soulmatch_security_notice');
+    setSecurityStatus({ type: null });
+  };
   useEffect(() => {
     // 1. Silent verification of the user profile on app startup
     const verifyUser = async () => {
@@ -9947,11 +10358,13 @@ export default function App() {
           const u = JSON.parse(saved);
           if (u?.id) {
             // Use maybeSingle to avoid error on 0 rows
-            const { data, error } = await supabase.from('users').select('id, is_online').eq('id', u.id).maybeSingle();
+            const { data, error } = await supabase.from('users')
+              .select('id, is_online, is_blocked, is_suspended, doc_rejected, last_warning_reason, suspension_reason')
+              .eq('id', u.id)
+              .maybeSingle();
 
             if (error) {
               console.error("Errore verifica sessione (DB):", error);
-              // Non puliamo in caso di errore di connessione/timeout
               return;
             }
 
@@ -9960,6 +10373,23 @@ export default function App() {
               localStorage.removeItem('soulmatch_user');
               window.dispatchEvent(new Event('user-auth-change'));
             } else {
+              // Check security status
+              if (data.is_blocked) {
+                setSecurityStatus({ type: 'blocked' });
+              } else if (data.is_suspended) {
+                setSecurityStatus({ type: 'suspended', reason: data.suspension_reason });
+              } else if (data.doc_rejected) {
+                setSecurityStatus({ type: 'doc_rejected' });
+              } else if (data.last_warning_reason) {
+                // If warning is new, we might want to show it once
+                // For now, let's just use it if the user is active
+                const warned = localStorage.getItem('soulmatch_warned_id');
+                if (warned !== data.last_warning_reason) {
+                  setSecurityStatus({ type: 'warning', reason: data.last_warning_reason });
+                  localStorage.setItem('soulmatch_warned_id', data.last_warning_reason);
+                }
+              }
+
               // Update status
               await supabase.from('users').update({ is_online: true }).eq('id', u.id);
             }
@@ -10100,6 +10530,7 @@ export default function App() {
       </Routes>
       <GlobalFlashBanner />
       <AppBottomNav />
+      <SecurityOverlay status={securityStatus} onClose={handleCloseSecurity} />
     </Router>
   );
 }
