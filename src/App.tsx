@@ -345,29 +345,6 @@ const AppBottomNav = () => {
                 </motion.div>
               </Link>
 
-              {/* Amici (SoulLink) */}
-              <Link to="/amici" className="relative flex-1 group">
-                <motion.div
-                  whileTap={{ scale: 0.9 }}
-                  className={cn(
-                    "flex flex-col items-center py-2.5 rounded-full aspect-square justify-center transition-all duration-300",
-                    activeTab === 'soullink' ? "text-white shadow-lg" : "text-stone-400 hover:text-white"
-                  )}
-                  style={activeTab === 'soullink' ? { background: '#f43f5e', boxShadow: '0 0 20px rgba(244,63,94,0.5)' } : {}}
-                >
-                  <div className="relative">
-                    <UserCheck className="w-5 h-5 mb-0.5" />
-                    {pendingCount > 0 && (
-                      <>
-                        <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-rose-500 rounded-full animate-ping opacity-75" />
-                        <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-rose-500 text-white text-[7px] font-black rounded-full flex items-center justify-center border-2 border-stone-900 shadow-sm z-10">{pendingCount}</span>
-                      </>
-                    )}
-                  </div>
-                  <span className="text-[6px] font-black uppercase tracking-wider">Amici</span>
-                </motion.div>
-              </Link>
-
               {/* Chat */}
               <Link to="/chat" className="relative flex-1 group">
                 <motion.div
@@ -388,6 +365,29 @@ const AppBottomNav = () => {
                     )}
                   </div>
                   <span className="text-[6px] font-black uppercase tracking-wider">Chat</span>
+                </motion.div>
+              </Link>
+
+              {/* Amici (SoulLink) */}
+              <Link to="/amici" className="relative flex-1 group">
+                <motion.div
+                  whileTap={{ scale: 0.9 }}
+                  className={cn(
+                    "flex flex-col items-center py-2.5 rounded-full aspect-square justify-center transition-all duration-300",
+                    activeTab === 'soullink' ? "text-white shadow-lg" : "text-stone-400 hover:text-white"
+                  )}
+                  style={activeTab === 'soullink' ? { background: '#f43f5e', boxShadow: '0 0 20px rgba(244,63,94,0.5)' } : {}}
+                >
+                  <div className="relative">
+                    <UserCheck className="w-5 h-5 mb-0.5" />
+                    {pendingCount > 0 && (
+                      <>
+                        <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-rose-500 rounded-full animate-ping opacity-75" />
+                        <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-rose-500 text-white text-[7px] font-black rounded-full flex items-center justify-center border-2 border-stone-900 shadow-sm z-10">{pendingCount}</span>
+                      </>
+                    )}
+                  </div>
+                  <span className="text-[6px] font-black uppercase tracking-wider">Amici</span>
                 </motion.div>
               </Link>
 
@@ -441,10 +441,18 @@ const GlobalFlashBanner = () => {
   const [isBannerExpanded, setIsBannerExpanded] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
 
   // Show ONLY on /bacheca
   const isBacheca = location.pathname.startsWith('/bacheca');
   const shouldHide = !isBacheca;
+
+  const getSavedUser = () => {
+    try {
+      const saved = localStorage.getItem('soulmatch_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch { return null; }
+  };
 
   const fetchGlobalBanner = async () => {
     try {
@@ -484,8 +492,12 @@ const GlobalFlashBanner = () => {
 
   if (shouldHide) return null;
 
+  const currentUser = getSavedUser();
+  const isFree = !currentUser?.is_paid;
+
   return (
     <div className="fixed bottom-[140px] right-0 z-[9999] pointer-events-none">
+      <PremiumModal isOpen={showPremiumModal} onClose={() => setShowPremiumModal(false)} />
       <motion.div
         id="msg-floating-banner"
         drag="x"
@@ -557,6 +569,14 @@ const GlobalFlashBanner = () => {
                 Nessun nuovo messaggio flash
               </div>
             )}
+            
+            <button 
+              onClick={(e) => { e.stopPropagation(); if (isFree) setShowPremiumModal(true); else { /* To open future Post modal */ } }}
+              className="ml-2 w-10 h-10 shrink-0 bg-white/20 hover:bg-white/30 rounded-[14px] flex items-center justify-center transition-colors border border-white/20 relative"
+            >
+               {isFree && <Lock className="w-3 h-3 absolute top-1 right-1 opacity-60" />}
+               <Plus className="w-5 h-5 text-white" />
+            </button>
           </div>
         )}
       </motion.div>
@@ -591,6 +611,76 @@ const Toast = ({ message, type, onClose }: { message: string, type: 'success' | 
       </div>
       <span className="text-sm font-bold text-white/90">{message}</span>
     </motion.div>
+  );
+};
+
+export const PremiumModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={onClose} />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.9, y: 20 }}
+        className="w-full max-w-sm rounded-[32px] overflow-hidden relative"
+        style={{
+          background: 'linear-gradient(135deg, rgba(20,20,25,0.95), rgba(10,10,15,0.95))',
+          border: '1px solid rgba(244,63,94,0.3)',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.1)'
+        }}
+      >
+        <div className="absolute top-0 right-0 w-32 h-32 bg-rose-600/20 blur-[50px] -mr-10 -mt-10" />
+        <div className="absolute bottom-0 left-0 w-32 h-32 bg-purple-600/20 blur-[50px] -ml-10 -mb-10" />
+        
+        <div className="p-6 relative z-10 space-y-6">
+          <div className="flex justify-between items-start">
+            <div className="w-12 h-12 bg-rose-600/20 rounded-2xl flex items-center justify-center border border-rose-500/30">
+              <Sparkles className="w-6 h-6 text-rose-400" />
+            </div>
+            <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 text-white/50 hover:text-white hover:bg-white/10 transition-colors">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div>
+            <h2 className="text-2xl font-serif font-black text-white mb-2">SoulMatch <span className="text-rose-500">Premium</span></h2>
+            <p className="text-sm text-stone-400 font-medium">Sblocca il vero potenziale dell'amore e scopri chi ti sta cercando in questo momento.</p>
+          </div>
+
+          <ul className="space-y-3">
+            {[
+              "Scopri chi ti ha messo Mi Piace",
+              "Messaggi Flash in Bacheca illimitati",
+              "Filtri di ricerca avanzati (età, città)",
+              "Nessun limite giornaliero ai SoulLink",
+              "Ricevute di lettura in Chat"
+            ].map((feature, i) => (
+              <li key={i} className="flex items-center gap-3">
+                <div className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center shrink-0">
+                  <CheckCircle className="w-3 h-3 text-emerald-400" />
+                </div>
+                <span className="text-xs font-bold text-white/90">{feature}</span>
+              </li>
+            ))}
+          </ul>
+
+          <div className="pt-2 flex gap-3">
+            <button className="flex-1 bg-white/5 hover:bg-white/10 transition-all border border-white/10 rounded-2xl py-3 px-2 flex flex-col items-center justify-center group active:scale-95">
+              <span className="text-[10px] uppercase font-black tracking-widest text-stone-400 group-hover:text-stone-300">Mensile</span>
+              <span className="text-lg font-black text-white mt-1">€ 3.99</span>
+            </button>
+            <button className="flex-1 bg-rose-600 hover:bg-rose-500 transition-all border border-rose-500 shadow-[0_0_20px_rgba(244,63,94,0.4)] rounded-2xl py-3 px-2 flex flex-col items-center justify-center group active:scale-95 relative overflow-hidden">
+              <div className="absolute -top-[10px] -right-[10px] bg-rose-900 border border-rose-500 text-[7px] text-white font-black uppercase px-2 py-1 rotate-12 rounded-full tracking-widest">Offerta</div>
+              <span className="text-[10px] uppercase font-black tracking-widest text-rose-200 group-hover:text-white transition-colors">Annuale</span>
+              <span className="text-lg font-black text-white mt-1">€ 19.99</span>
+            </button>
+          </div>
+
+          <p className="text-[9px] text-center text-stone-500 font-bold uppercase tracking-widest pt-2">Pagamento Sicuro • Nessun vincolo</p>
+        </div>
+      </motion.div>
+    </div>
   );
 };
 
@@ -1711,6 +1801,7 @@ const ProfileDetailPage = () => {
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
   const navigate = useNavigate();
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
 
   const fetchInteractionState = async (currentUserId: string) => {
     const { data } = await supabase
@@ -1853,6 +1944,21 @@ const ProfileDetailPage = () => {
     }
     if (currentUser.id === id) return;
 
+    if (!currentUser.is_paid) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const { count } = await supabase
+        .from('soul_links')
+        .select('*', { count: 'exact', head: true })
+        .eq('sender_id', currentUser.id)
+        .gte('created_at', today.toISOString());
+
+      if ((count || 0) >= 5) {
+        setShowPremiumModal(true);
+        return;
+      }
+    }
+
     const { data, error } = await supabase
       .from('soul_links')
       .insert([{ sender_id: currentUser.id, receiver_id: id }])
@@ -1978,6 +2084,7 @@ const ProfileDetailPage = () => {
 
   return (
     <div className="min-h-screen pt-16 pb-32 relative overflow-x-hidden" style={{ background: '#0a0a0f' }}>
+      <PremiumModal isOpen={showPremiumModal} onClose={() => setShowPremiumModal(false)} />
       {/* Floating hearts */}
       <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
         <style>{`
@@ -3296,7 +3403,7 @@ const SoulMatchPage = () => {
   const [friendProfiles, setFriendProfiles] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
-  const [mode, setMode] = useState<'global' | 'friends'>('global');
+  const [mode, setMode] = useState<'global' | 'friends'>('friends');
   const [searchQuery, setSearchQuery] = useState('');
 
   // 1:1 Match State
@@ -3460,40 +3567,14 @@ const SoulMatchPage = () => {
       </div>
       <div className="max-w-md mx-auto space-y-6 relative z-10">
 
-        {/* PREMIUM TABS */}
-        <motion.div
-          initial={{ y: -20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          className="flex justify-center gap-3 pt-2"
-        >
-          {[
-            { id: 'global', label: 'Globale', icon: Globe, count: globalProfiles.length },
-            { id: 'friends', label: 'SoulLinks', icon: Users, count: friendProfiles.length }
-          ].map(tab => {
-            const isActive = mode === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => { setMode(tab.id as any); setTargetUser(null); setShowRankings(false); setSearchQuery(''); }}
-                className={cn(
-                  "flex-1 flex flex-col items-center justify-center gap-1.5 px-1 py-3.5 rounded-[28px] transition-all relative overflow-hidden",
-                  isActive ? "text-white shadow-lg shadow-rose-500/30" : "text-white/30 hover:text-white/50"
-                )}
-                style={isActive ? { background: '#f43f5e', boxShadow: '0 0 22px rgba(244,63,94,0.55)' } : { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}
-              >
-                <tab.icon className={cn("w-5 h-5", isActive ? "text-white" : "text-stone-300")} />
-                <div className="flex flex-col items-center">
-                  <span className={cn("text-[8px] font-black uppercase tracking-wider leading-none text-center", isActive ? "text-white" : "text-stone-500")}>
-                    {tab.label}
-                  </span>
-                  <span className={cn("text-[8px] font-black mt-1", isActive ? "text-white/40 tracking-wider" : "text-stone-400 tracking-wider")}>
-                    {tab.count}
-                  </span>
-                </div>
-              </button>
-            );
-          })}
-        </motion.div>
+        {/* PREMIUM TABS - HIDDEN TO RESTRICT TO FRIENDS */}
+        <div className="flex flex-col items-center pt-2">
+            <div className="w-16 h-16 bg-rose-600 rounded-[28px] flex items-center justify-center shadow-lg shadow-rose-900/40 mb-3 border-2 border-rose-400/30">
+               <Heart className="w-8 h-8 text-white fill-current" />
+            </div>
+            <h1 className="text-2xl font-serif font-black text-rose-500 tracking-tight">SoulMatch <span className="text-white">Affinita</span></h1>
+            <p className="text-[9px] font-black text-white/40 uppercase tracking-[0.3em] mt-1">Calcola l'anima tra i tuoi amici</p>
+        </div>
 
         {/* SEARCH BAR (for SoulLinks) */}
         {mode === 'friends' && !targetUser && !showRankings && (
@@ -4085,6 +4166,7 @@ const AmiciPage = () => {
   const [friendMessages, setFriendMessages] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
   const [readChatIds, setReadChatIds] = useState<Set<string>>(() => {
     try { const s = localStorage.getItem('sm_read_chats'); return s ? new Set(JSON.parse(s)) : new Set(); } catch { return new Set(); }
@@ -4395,6 +4477,7 @@ const AmiciPage = () => {
       </div>
 
       <div className="mx-4 space-y-8">
+        <PremiumModal isOpen={showPremiumModal} onClose={() => setShowPremiumModal(false)} />
 
         {/* ── NOTIFICATIONS / REQUESTS BOX ── */}
         {pendingIn.length > 0 && (
@@ -4409,35 +4492,43 @@ const AmiciPage = () => {
 
             <div className="rounded-[28px] p-2 space-y-2" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
               <AnimatePresence mode="popLayout">
-                {pendingIn.map((req) => (
+                {pendingIn.map((req) => {
+                  const isFree = !currentUser?.is_paid;
+                  return (
                   <motion.div
                     key={req.id}
                     layout
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, y: 20, scale: 0.9 }}
-                    className="rounded-[22px] p-3 flex items-center gap-3"
+                    className="rounded-[22px] p-3 flex items-center gap-3 cursor-pointer"
                     style={{ background: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.15)' }}
+                    onClick={() => isFree ? setShowPremiumModal(true) : null}
                   >
-                    <ProfileAvatar
-                      user={req.other_user}
-                      className="w-12 h-12 rounded-full shrink-0"
-                      iconSize="w-6 h-6"
-                    />
+                    <div className={cn("relative w-12 h-12 rounded-full shrink-0 overflow-hidden", isFree && "blur-md opacity-80 backdrop-saturate-150")}>
+                      <ProfileAvatar
+                        user={req.other_user}
+                        className="w-full h-full"
+                        iconSize="w-6 h-6"
+                      />
+                    </div>
                     <div className="flex-1 min-w-0">
-                      <h4 className="text-sm font-black text-white truncate">{req.other_user?.name}</h4>
-                      <p className="text-[10px] text-white/30 font-bold uppercase tracking-tight">{req.other_user?.city || 'SoulMatch'}</p>
+                      <h4 className="text-sm font-black text-white truncate drop-shadow-md">
+                        {isFree ? 'Utente Misterioso' : req.other_user?.name}
+                      </h4>
+                      <p className="text-[10px] text-white/30 font-bold uppercase tracking-tight">
+                        {isFree ? 'Sblocca per vedere' : (req.other_user?.city || 'SoulMatch')}
+                      </p>
                     </div>
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={() => handleAccept(req.id)}
-                        className="w-10 h-10 text-white rounded-full flex items-center justify-center active:scale-90 transition-all"
-                        style={{ background: 'rgba(16,185,129,0.9)', boxShadow: '0 0 16px rgba(16,185,129,0.5)' }}
+                        onClick={(e) => { e.stopPropagation(); isFree ? setShowPremiumModal(true) : handleAccept(req.id); }}
+                        className={cn("w-10 h-10 text-white rounded-full flex items-center justify-center transition-all", isFree ? "bg-rose-600/50 shadow-none border border-rose-500/50" : "bg-emerald-500 shadow-[0_0_16px_rgba(16,185,129,0.5)] active:scale-90")}
                       >
-                        <CheckCircle className="w-5 h-5" />
+                        {isFree ? <Lock className="w-4 h-4" /> : <CheckCircle className="w-5 h-5" />}
                       </button>
                       <button
-                        onClick={() => handleReject(req.id)}
+                        onClick={(e) => { e.stopPropagation(); handleReject(req.id); }}
                         className="w-10 h-10 text-white/50 rounded-full flex items-center justify-center hover:text-rose-400 transition-all active:scale-90"
                         style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}
                       >
@@ -4445,7 +4536,7 @@ const AmiciPage = () => {
                       </button>
                     </div>
                   </motion.div>
-                ))}
+                )})}
               </AnimatePresence>
             </div>
           </div>
@@ -6247,10 +6338,19 @@ const RegisterPage = () => {
       console.error("Errore durante il controllo utente esistente:", e);
     }
 
+    if (!formData.accepted_terms || !formData.accepted_privacy) {
+      setToast({ message: "Devi accettare i termini e la privacy per procedere.", type: 'info' });
+      return;
+    }
+
     setStep(2);
   };
 
   const handleLogin = async () => {
+    if (!formData.accepted_terms || !formData.accepted_privacy) {
+      setToast({ message: "Devi accettare i termini e la privacy per procedere.", type: 'info' });
+      return;
+    }
     console.log("Starting login for:", formData.email);
     if (!formData.email || !formData.password) {
       setToast({ message: "Inserisci email e password per accedere.", type: 'info' });
@@ -6360,7 +6460,7 @@ const RegisterPage = () => {
   };
 
   const handleNextToStep5 = () => {
-    setStep(6);
+    setStep(7);
   };
 
   const handleNextToLegal = () => {
@@ -6552,11 +6652,11 @@ const RegisterPage = () => {
             ><ChevronRight className="w-5 h-5 rotate-180" /></button>
             <div>
               <h1 className="text-xl font-montserrat font-black text-white">{isEditing ? 'Modifica Profilo' : 'Iscriviti'}</h1>
-              <p className="text-white/30 text-[10px] font-bold uppercase tracking-wider">Step {step} di 7</p>
+              <p className="text-white/30 text-[10px] font-bold uppercase tracking-wider">Step {step === 7 ? 6 : step} di 6</p>
             </div>
           </div>
           <div className="flex gap-1.5">
-            {[1, 2, 3, 4, 5, 6, 7].map(i => (
+            {[1, 2, 3, 4, 5, 7].map(i => (
               <div key={i} className={cn("h-1 rounded-full transition-all duration-300", step >= i ? "bg-rose-500 w-5" : "bg-white/10 w-2")} />
             ))}
           </div>
@@ -6606,6 +6706,32 @@ const RegisterPage = () => {
                   <svg className="w-4 h-4" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" /><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" /><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" /><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" /></svg>
                   Continua con Google
                 </button>
+                <div className="space-y-3 pt-2">
+                  <label className="flex gap-3 cursor-pointer group">
+                    <div className="relative flex items-center justify-center shrink-0 mt-0.5">
+                      <input type="checkbox" checked={formData.accepted_terms} onChange={(e) => setFormData(f => ({ ...f, accepted_terms: e.target.checked }))} className="sr-only" />
+                      <div className={cn("w-5 h-5 rounded-lg transition-all", formData.accepted_terms ? "bg-rose-500 shadow-lg shadow-rose-900/40" : "bg-white/5 border border-white/10 group-hover:border-rose-500/50")} />
+                      {formData.accepted_terms && <CheckCircle className="absolute w-3 h-3 text-white" />}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-[10px] font-bold text-white/80 group-hover:text-white transition-colors">Accetto i Termini e Condizioni</p>
+                      <p className="text-[8px] text-white/30 leading-tight">Dichiaro di essere maggiorenne e accetto il regolamento.</p>
+                    </div>
+                  </label>
+
+                  <label className="flex gap-3 cursor-pointer group">
+                    <div className="relative flex items-center justify-center shrink-0 mt-0.5">
+                      <input type="checkbox" checked={formData.accepted_privacy} onChange={(e) => setFormData(f => ({ ...f, accepted_privacy: e.target.checked }))} className="sr-only" />
+                      <div className={cn("w-5 h-5 rounded-lg transition-all", formData.accepted_privacy ? "bg-rose-500 shadow-lg shadow-rose-900/40" : "bg-white/5 border border-white/10 group-hover:border-rose-500/50")} />
+                      {formData.accepted_privacy && <CheckCircle className="absolute w-3 h-3 text-white" />}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-[10px] font-bold text-white/80 group-hover:text-white transition-colors">Accetto la Privacy Policy</p>
+                      <p className="text-[8px] text-white/30 leading-tight">Acconsento al trattamento dei dati personali.</p>
+                    </div>
+                  </label>
+                </div>
+
                 <p className="text-center text-[11px] text-white/30">
                   {isLogin ? (<>Non hai un account? <button type="button" onClick={() => setIsLogin(false)} className="text-rose-400 font-bold">Iscriviti</button></>) : (<>Hai già un account? <button type="button" onClick={() => setIsLogin(true)} className="text-rose-400 font-bold">Accedi</button></>)}
                 </p>
@@ -6617,7 +6743,10 @@ const RegisterPage = () => {
               <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
                 <div className="grid grid-cols-2 gap-3">
                   <DarkInput label="Nome" name="name" value={formData.name} onChange={handleInputChange} placeholder="Mario" disabled={isEditing && !!formData.name} />
-                  <DarkInput label="Cognome" name="surname" value={formData.surname} onChange={handleInputChange} placeholder="Rossi" disabled={isEditing && !!formData.surname} />
+                  <div className="space-y-1">
+                    <DarkInput label="Cognome" name="surname" value={formData.surname} onChange={handleInputChange} placeholder="Rossi" disabled={isEditing && !!formData.surname} />
+                    <p className="text-[9px] text-rose-400/80 font-bold italic ml-1">* Non verrà mai pubblicato</p>
+                  </div>
                 </div>
                 <DarkInput label="Data di Nascita" name="dob" type="date" value={formData.dob} onChange={handleInputChange} disabled={isEditing && !!formData.dob} />
                 <DarkSelect label="Città" name="city" value={formData.city} onChange={handleInputChange}>
@@ -6965,6 +7094,7 @@ const FeedComponent = ({ userId, isOwner, global = false }: { userId: any, isOwn
   const [isPostingOpen, setIsPostingOpen] = useState(false);
   const [showOnlyMine, setShowOnlyMine] = useState(false);
   const [isPosting, setIsPosting] = useState(false);
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [expandedComments, setExpandedComments] = useState<string[]>([]);
   const [commentTexts, setCommentTexts] = useState<Record<string, string>>({});
   const [postComments, setPostComments] = useState<Record<string, any[]>>({});
@@ -7132,21 +7262,21 @@ const FeedComponent = ({ userId, isOwner, global = false }: { userId: any, isOwn
         return;
       }
 
-      // ── Limit max 10 posts per month ──
-      const startOfMonth = new Date();
-      startOfMonth.setDate(1);
-      startOfMonth.setHours(0, 0, 0, 0);
+      const curUser = localStorage.getItem('soulmatch_user') ? JSON.parse(localStorage.getItem('soulmatch_user')!) : null;
+      if (curUser && !curUser.is_paid) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const { count: dailyPosts } = await supabase
+          .from('posts')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', authUserId)
+          .gte('created_at', today.toISOString());
 
-      const { count: monthPosts } = await supabase
-        .from('posts')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', authUserId)
-        .gte('created_at', startOfMonth.toISOString());
-
-      if ((monthPosts || 0) >= 10) {
-        alert("Hai raggiunto il limite di 10 post questo mese.");
-        setIsPosting(false);
-        return;
+        if ((dailyPosts || 0) >= 1) {
+          setShowPremiumModal(true);
+          setIsPosting(false);
+          return;
+        }
       }
 
       const { error } = await supabase
@@ -7197,6 +7327,7 @@ const FeedComponent = ({ userId, isOwner, global = false }: { userId: any, isOwn
 
   return (
     <div className="space-y-6">
+      <PremiumModal isOpen={showPremiumModal} onClose={() => setShowPremiumModal(false)} />
       {/* ── HEADER ACTION BAR (Search + Mine + Plus) ── */}
       {global && (
         <div className="flex items-center gap-3 mb-6">
@@ -9993,21 +10124,23 @@ const AppFooter = () => {
         <div className="border-t border-stone-800 pt-5 flex flex-col gap-3">
           {/* App store badges placeholder */}
           <div className="flex gap-2">
-            <div className="flex items-center gap-2 bg-stone-800 border border-stone-700 rounded-[12px] px-3 py-2 flex-1">
+            <div className="flex items-center gap-2 bg-stone-800 border border-stone-700 rounded-[12px] px-3 py-2 flex-1 relative overflow-hidden opacity-70">
+              <div className="absolute top-0 right-0 bg-rose-600 text-white text-[6px] font-black uppercase px-1.5 py-0.5 rounded-bl-lg tracking-wider">Coming Soon</div>
               <div className="w-5 h-5 bg-stone-600 rounded-md flex items-center justify-center">
                 <span className="text-[8px] font-black text-white">▲</span>
               </div>
               <div>
-                <p className="text-[7px] text-stone-500 uppercase tracking-widest">Presto su</p>
+                <p className="text-[7px] text-stone-500 uppercase tracking-widest">Disponibile su</p>
                 <p className="text-[10px] font-black text-stone-300">App Store</p>
               </div>
             </div>
-            <div className="flex items-center gap-2 bg-stone-800 border border-stone-700 rounded-[12px] px-3 py-2 flex-1">
+            <div className="flex items-center gap-2 bg-stone-800 border border-stone-700 rounded-[12px] px-3 py-2 flex-1 relative overflow-hidden opacity-70">
+              <div className="absolute top-0 right-0 bg-rose-600 text-white text-[6px] font-black uppercase px-1.5 py-0.5 rounded-bl-lg tracking-wider">Coming Soon</div>
               <div className="w-5 h-5 bg-stone-600 rounded-md flex items-center justify-center">
                 <span className="text-[8px] font-black text-white">▶</span>
               </div>
               <div>
-                <p className="text-[7px] text-stone-500 uppercase tracking-widest">Presto su</p>
+                <p className="text-[7px] text-stone-500 uppercase tracking-widest">Disponibile su</p>
                 <p className="text-[10px] font-black text-stone-300">Google Play</p>
               </div>
             </div>
@@ -10511,13 +10644,13 @@ export default function App() {
         <Route path="/bacheca" element={<BachecaPage />} />
         <Route path="/feed" element={<FeedPage />} />
         <Route path="/amici" element={<AmiciPage />} />
+        <Route path="/soul-match" element={<SoulMatchPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/chat" element={<ChatPage />} />
         <Route path="/live-chat/:id" element={<LiveChatPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/edit-profile" element={<EditProfilePage />} />
         <Route path="/admin" element={<AdminPage />} />
-        <Route path="/soul-match" element={<SoulMatchPage />} />
         <Route path="/profile-detail/:id" element={<ProfileDetailPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/cookie" element={<CookiePage />} />
