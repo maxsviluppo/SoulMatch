@@ -45,11 +45,22 @@ import {
   XCircle,
   Lock,
   Zap,
-  Globe
+  Globe,
+  CloudUpload
 } from 'lucide-react';
 import { cn, calculateAge, calculateMatchScore, fileToBase64, playTapSound, ITALIAN_CITIES } from './utils';
 import { UserProfile, ChatRequest, Post, SoulLink } from './types';
 import { supabase } from './supabase';
+
+const calculateRemainingDays = (rejectedAt: string | null) => {
+  if (!rejectedAt) return 15;
+  const start = new Date(rejectedAt);
+  const now = new Date();
+  const diffTime = now.getTime() - start.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  const remaining = 15 - diffDays;
+  return remaining > 0 ? remaining : 0;
+};
 
 // ──────────────────────────────────────────────────────────────────────────────
 // GLOBAL HELPER: normalize user profile — ensures array fields are always arrays
@@ -4011,6 +4022,18 @@ const FeedPage = () => {
         const processed = data.map((u: any) => normalizeUser(u)).filter((p: any) => (p.photos && p.photos.length > 0) || p.photo_url);
         setProfiles(processed);
       }
+      
+      // Refresh current user data to get latest doc_rejected status
+      const saved = localStorage.getItem('soulmatch_user');
+      if (saved) {
+        const u = JSON.parse(saved);
+        const { data: userData } = await supabase.from('users').select('*').eq('id', u.id).maybeSingle();
+        if (userData) {
+          const norm = normalizeUser(userData);
+          setCurrentUser(norm);
+          localStorage.setItem('soulmatch_user', JSON.stringify(norm));
+        }
+      }
     };
     fetchData();
 
@@ -4079,6 +4102,33 @@ const FeedPage = () => {
           </div>
         ))}
       </div>
+
+      {/* ── DOCUMENT REJECTED BANNER ── */}
+      {currentUser?.doc_rejected && (
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mx-4 mb-6 p-4 rounded-3xl flex items-center justify-between gap-4 relative overflow-hidden z-10"
+          style={{ background: 'rgba(244,63,94,0.1)', border: '1px solid rgba(244,63,94,0.3)', backdropFilter: 'blur(20px)' }}
+        >
+          <div className="absolute top-0 left-0 w-1 h-full bg-rose-500" />
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-rose-500/20 flex items-center justify-center shrink-0">
+              <CreditCard className="w-5 h-5 text-rose-500" />
+            </div>
+            <div>
+              <p className="text-white text-[11px] font-black uppercase tracking-widest">Documento Rifiutato</p>
+              <p className="text-rose-400 text-[10px] font-bold">Hai {calculateRemainingDays(currentUser.doc_rejected_at)} giorni per ricaricarlo.</p>
+            </div>
+          </div>
+          <button 
+            onClick={() => navigate('/register', { state: { step: 3 } })}
+            className="px-4 py-2.5 bg-rose-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-lg shadow-rose-900/40 active:scale-95 transition-all"
+          >
+            Ricarica
+          </button>
+        </motion.div>
+      )}
 
       {/* HERO SECTION - slide limited to 3 compatible profiles */}
       {!loading && heroProfiles.length > 0 && heroProfile && (
@@ -5100,11 +5150,14 @@ const AdminPage = () => {
     if (!modReason) return setToast({ message: "Inserisci una motivazione", type: 'error' });
     try {
       const { error } = await supabase.from('users').update({ 
+        is_suspended: true,
+        suspension_reason: modReason,
+        suspended_at: new Date().toISOString(),
         last_warning_reason: modReason,
         last_warning_at: new Date().toISOString()
       }).eq('id', userId);
       if (!error) {
-        setToast({ message: "Ammonizione inviata.", type: 'success' });
+        setToast({ message: "Ammonizione e sospensione 24h inviate.", type: 'success' });
         setModals(prev => ({ ...prev, warning: false }));
         setModReason('');
         fetchUsers();
@@ -5125,6 +5178,23 @@ const AdminPage = () => {
         setModals(prev => ({ ...prev, suspension: false }));
         setModReason('');
         fetchUsers();
+      }
+    } catch (e) { setToast({ message: "Errore.", type: 'error' }); }
+  };
+
+  const handleUnsuspendUser = async (userId: string) => {
+    try {
+      const { error } = await supabase.from('users').update({ 
+        is_suspended: false,
+        suspension_reason: null,
+        suspended_at: null
+      }).eq('id', userId);
+      if (!error) {
+        setToast({ message: "Sospensione rimossa.", type: 'success' });
+        fetchUsers();
+        if (selectedUser?.id === userId) {
+          setSelectedUser((prev: any) => ({ ...prev, is_suspended: false }));
+        }
       }
     } catch (e) { setToast({ message: "Errore.", type: 'error' }); }
   };
@@ -5623,9 +5693,15 @@ const AdminPage = () => {
                                 <button onClick={() => setModals({ ...modals, warning: true })} className="flex-1 min-w-[140px] py-3.5 bg-blue-50 text-blue-700 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-blue-100 hover:bg-blue-100 transition-all flex items-center justify-center gap-2">
                                   <Info className="w-4 h-4" /> Ammonisci
                                 </button>
-                                <button onClick={() => setModals({ ...modals, suspension: true })} className="flex-1 min-w-[140px] py-3.5 bg-amber-50 text-amber-700 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-amber-100 hover:bg-amber-100 transition-all flex items-center justify-center gap-2">
-                                  <Lock className="w-4 h-4" /> Sospendi 24h
-                                </button>
+                                {selectedUser.is_suspended ? (
+                                  <button onClick={() => handleUnsuspendUser(selectedUser.id)} className="flex-1 min-w-[140px] py-3.5 bg-emerald-50 text-emerald-700 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-emerald-100 hover:bg-emerald-100 transition-all flex items-center justify-center gap-2">
+                                    <UserCheck className="w-4 h-4" /> Riabilita
+                                  </button>
+                                ) : (
+                                  <button onClick={() => setModals({ ...modals, suspension: true })} className="flex-1 min-w-[140px] py-3.5 bg-amber-50 text-amber-700 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-amber-100 hover:bg-amber-100 transition-all flex items-center justify-center gap-2">
+                                    <Lock className="w-4 h-4" /> Sospendi 24h
+                                  </button>
+                                )}
                                 <button onClick={() => handleBlockUserToggle(selectedUser.id, selectedUser.is_blocked)} className={cn("flex-1 min-w-[140px] py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all flex items-center justify-center gap-2", selectedUser.is_blocked ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-rose-50 text-rose-700 border-rose-100")}>
                                   {selectedUser.is_blocked ? <><UserCheck className="w-4 h-4" /> Sblocca</> : <><XCircle className="w-4 h-4" /> Ban Perm.</>}
                                 </button>
@@ -6200,10 +6276,16 @@ const DarkTextArea = ({ label, name, value, placeholder, onChange }: any) => (
 
 const RegisterPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [step, setStep] = useState(() => {
+    // Priority 1: Step passed via location state (e.g. from rejection banner)
+    if (location.state && typeof location.state.step === 'number') {
+      return location.state.step;
+    }
+    // Priority 2: Step based on profile existence
     const savedUser = localStorage.getItem('soulmatch_user');
     const isEditing = savedUser ? true : false;
-    return isEditing ? 2 : 1;
+    return isEditing ? 3 : 1;
   });
   const [isLogin, setIsLogin] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -6281,7 +6363,6 @@ const RegisterPage = () => {
   }, [formData]);
 
   const handleNextToStep1 = async () => {
-    console.log("handleNextToStep1 called, isLogin:", isLogin);
     if (isLogin) {
       handleLogin();
       return;
@@ -6292,59 +6373,42 @@ const RegisterPage = () => {
     }
 
     // Se stiamo creando un nuovo account, verifichiamo se l'email esiste già
-    // per evitare di far rifare tutto il form a chi è già registrato.
     try {
       const email = formData.email.trim();
       const password = formData.password;
 
-      // Proviamo a fare il login. Se l'utente esiste e la password è corretta, 
-      // lo portiamo direttamente dentro.
-      const { data: authCheck, error: authCheckErr } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
+      // Se l'utente esiste e la password è corretta...
+      const { data: authCheck, error: authCheckErr } = await supabase.auth.signInWithPassword({ email, password });
 
       if (!authCheckErr && authCheck.user) {
-        // L'utente esiste ed è entrato!
-        console.log("User already exists and login succeeded, skipping registration.");
         const { data: profile } = await supabase.from('users').select('*').eq('id', authCheck.user.id).single();
         if (profile) {
-          setToast({ message: "Bentornato! Sei già registrato. Ti stiamo portando alla tua bacheca.", type: 'success' });
+          setToast({ message: "Bentornato! Sei già registrato.", type: 'success' });
           localStorage.setItem('soulmatch_user', JSON.stringify(profile));
           window.dispatchEvent(new Event('user-auth-change'));
           setTimeout(() => navigate('/bacheca'), 1500);
           return;
         } else {
-          // Utente auth esiste ma senza profilo public.users completo
           setToast({ message: "Account esistente trovato. Completa il tuo profilo.", type: 'info' });
-          setStep(2);
+          setStep(3); // Salta i termini se ha già un auth record? No, meglio mandarlo ai termini se non ha profilo.
           return;
         }
       }
 
-      // Se l'errore NON è "credenziali non valide" (quindi l'utente probabilmente non esiste)
-      // procediamo con la registrazione normale.
-      // Se l'errore è "credenziali non valide" (ma l'utente esiste!), avvisiamo l'utente.
       if (authCheckErr && authCheckErr.message === 'Invalid login credentials') {
-        // Verifichiamo se l'email è almeno presente nel DB pubblico per essere sicuri
         const { data: emailExists } = await supabase.from('users').select('id').eq('email', email).maybeSingle();
         if (emailExists) {
-          setToast({ message: "Questa email è già registrata con una password diversa. Prova ad accedere.", type: 'error' });
+          setToast({ message: "Questa email è già registrata. Prova ad accedere.", type: 'error' });
           setIsLogin(true);
           return;
         }
       }
-    } catch (e) {
-      console.error("Errore durante il controllo utente esistente:", e);
-    }
-
-    if (!formData.accepted_terms || !formData.accepted_privacy) {
-      setToast({ message: "Devi accettare i termini e la privacy per procedere.", type: 'info' });
-      return;
-    }
+    } catch (e) { console.error(e); }
 
     setStep(2);
   };
+
+
 
   const handleLogin = async () => {
     if (!formData.accepted_terms || !formData.accepted_privacy) {
@@ -6409,7 +6473,7 @@ const RegisterPage = () => {
         console.log("No profile record found in 'users' table. Redirecting to complete registration.");
         setToast({ message: "Bentornato! Il tuo account esiste ma il profilo non è completo. Per favora completa i dati mancanti.", type: 'info' });
         setIsLogin(false);
-        setStep(2);
+        setStep(3); // Go to the new Step 3 (Profile Data)
       }
     } catch (e) {
       console.error("Exception during login process:", e);
@@ -6427,7 +6491,15 @@ const RegisterPage = () => {
     if (error) setToast({ message: "Errore login " + provider + ": " + error.message, type: 'error' });
   };
 
-  const handleNextToStep2 = () => {
+  const handleNextToStep2Legal = () => {
+    if (!formData.accepted_terms || !formData.accepted_privacy) {
+      setToast({ message: "Devi accettare i termini e la privacy per procedere.", type: 'info' });
+      return;
+    }
+    setStep(3);
+  };
+
+  const handleNextToStep3Profile = () => {
     const required = ['name', 'surname', 'dob', 'city', 'job', 'description'];
     const missing = required.filter(k => !formData[k as keyof UserProfile]);
     if (missing.length > 0) {
@@ -6437,37 +6509,29 @@ const RegisterPage = () => {
 
     const age = calculateAge(formData.dob);
     if (age < 18) {
-      setToast({ 
-        message: "L'uso di SoulMatch è vietato ai minori di 18 anni. La tua iscrizione non può procedere nel rispetto del regolamento.", 
-        type: 'error' 
+      setToast({
+        message: "L'uso di SoulMatch è vietato ai minori di 18 anni.",
+        type: 'error'
       });
       return;
     }
 
-    setStep(3);
-  };
-
-  const handleNextToStep3 = () => {
-    if (!formData.looking_for_age_min || !formData.looking_for_age_max) {
-      setToast({ message: "Inserisci l'età minima e massima che cerchi in un partner.", type: 'info' });
-      return;
-    }
     setStep(4);
   };
 
-  const handleNextToStep4 = () => {
+  const handleNextToStep4Matching = () => {
+    if (!formData.looking_for_age_min || !formData.looking_for_age_max) {
+      setToast({ message: "Indica la fascia d'età che cerchi.", type: 'info' });
+      return;
+    }
     setStep(5);
   };
 
-  const handleNextToStep5 = () => {
-    setStep(7);
+  const handleNextToStep5AboutYou = () => {
+    setStep(6);
   };
 
-  const handleNextToLegal = () => {
-    if (!formData.accepted_terms || !formData.accepted_privacy) {
-      setToast({ message: "Devi accettare i termini e la privacy per continuare.", type: 'info' });
-      return;
-    }
+  const handleNextToStep6Plan = () => {
     setStep(7);
   };
 
@@ -6512,7 +6576,13 @@ const RegisterPage = () => {
     if (e.target.files && e.target.files[0]) {
       try {
         const base64 = await fileToBase64(e.target.files[0]);
-        setFormData(prev => ({ ...prev, id_document_url: base64 }));
+        // When user uploads a new document, we clear the rejection status locally
+        setFormData(prev => ({ 
+          ...prev, 
+          id_document_url: base64,
+          doc_rejected: false,
+          doc_rejected_at: null
+        }));
       } catch (err) {
         setToast({ message: "Errore durante l'elaborazione del documento.", type: 'error' });
       }
@@ -6652,11 +6722,11 @@ const RegisterPage = () => {
             ><ChevronRight className="w-5 h-5 rotate-180" /></button>
             <div>
               <h1 className="text-xl font-montserrat font-black text-white">{isEditing ? 'Modifica Profilo' : 'Iscriviti'}</h1>
-              <p className="text-white/30 text-[10px] font-bold uppercase tracking-wider">Step {step === 7 ? 6 : step} di 6</p>
+              <p className="text-white/30 text-[10px] font-bold uppercase tracking-wider">Step {step} di 7</p>
             </div>
           </div>
           <div className="flex gap-1.5">
-            {[1, 2, 3, 4, 5, 7].map(i => (
+            {[1, 2, 3, 4, 5, 6, 7].map(i => (
               <div key={i} className={cn("h-1 rounded-full transition-all duration-300", step >= i ? "bg-rose-500 w-5" : "bg-white/10 w-2")} />
             ))}
           </div>
@@ -6698,7 +6768,7 @@ const RegisterPage = () => {
                 <button type="button" onClick={handleNextToStep1}
                   className="w-full py-4 rounded-[18px] text-sm font-black uppercase tracking-widest text-white transition-all active:scale-95"
                   style={{ background: '#e11d48', boxShadow: '0 0 20px rgba(225,29,72,0.35)' }}
-                >{isLogin ? 'Accedi' : 'Continua →'}</button>
+                >{isLogin ? 'Accedi' : 'Inizia Ora →'}</button>
                 <button type="button" onClick={() => handleOAuthLogin('google')}
                   className="w-full flex items-center justify-center gap-2 py-3.5 rounded-[18px] text-sm font-bold text-white/70 transition-all hover:text-white"
                   style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}
@@ -6706,6 +6776,54 @@ const RegisterPage = () => {
                   <svg className="w-4 h-4" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" /><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" /><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" /><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" /></svg>
                   Continua con Google
                 </button>
+
+                <p className="text-center text-[11px] text-white/30">
+                  {isLogin ? (<>Non hai un account? <button type="button" onClick={() => setIsLogin(false)} className="text-rose-400 font-bold">Iscriviti</button></>) : (<>Hai già un account? <button type="button" onClick={() => setIsLogin(true)} className="text-rose-400 font-bold">Accedi</button></>)}
+                </p>
+              </motion.div>
+            )}
+
+            {/* ── STEP 2: Regolamento e Privacy ── */}
+            {step === 2 && (
+              <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
+                <div className="text-center space-y-1">
+                  <ShieldCheck className="w-10 h-10 text-rose-500 mx-auto mb-2" />
+                  <h3 className="text-xl font-montserrat font-black text-white uppercase tracking-tight">Accordi Legali</h3>
+                  <p className="text-white/30 text-[11px] font-bold uppercase tracking-widest">Le regole della nostra community</p>
+                </div>
+
+                <div className="space-y-4 max-h-[48vh] overflow-y-auto pr-2 scrollbar-hide text-left">
+                  {/* Regolamento */}
+                  <div className="space-y-3">
+                    <h4 className="text-[10px] font-black text-rose-400 uppercase tracking-widest">Regolamento della Community</h4>
+                    <div className="p-4 rounded-[20px] space-y-4 text-[11px] leading-relaxed text-white/60 font-medium" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                      <section className="space-y-1.5">
+                        <p className="text-white font-black uppercase text-[9px]">1. Requisiti e Identità</p>
+                        <p>• <span className="text-white">Età:</span> L'uso è vietato ai minori di 18 anni.</p>
+                        <p>• <span className="text-white">Verifica:</span> È richiesta la verifica del documento.</p>
+                        <p>• <span className="text-white">Autenticità:</span> Solo foto reali e personali.</p>
+                      </section>
+                      <section className="space-y-1.5">
+                        <p className="text-white font-black uppercase text-[9px]">2. Contenuti e Comportamento</p>
+                        <p>• <span className="text-white">No Nudo:</span> Vietati nudo o contenuti sessuali espliciti.</p>
+                        <p>• <span className="text-white">Rispetto:</span> Vietati messaggi offensivi o molesti.</p>
+                      </section>
+                      <p className="text-rose-400/80 font-bold italic pt-2 text-[10px]">L'iscrizione implica l'accettazione totale dei termini.</p>
+                    </div>
+                  </div>
+
+                  {/* GDPR */}
+                  <div className="space-y-3">
+                    <h4 className="text-[10px] font-black text-rose-400 uppercase tracking-widest">Informativa Privacy</h4>
+                    <div className="p-4 rounded-[20px] space-y-3 text-[11px] leading-relaxed text-white/60 font-medium" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                      <p>• <span className="text-white">Dati:</span> Usati esclusivamente per il profilo e funzionamento app.</p>
+                      <p>• <span className="text-white">Identità:</span> Documenti cancellati dopo la convalida.</p>
+                      <p>• <span className="text-white">Sicurezza:</span> Crittografia avanzata e nessun dato venduto.</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Checkboxes */}
                 <div className="space-y-3 pt-2">
                   <label className="flex gap-3 cursor-pointer group">
                     <div className="relative flex items-center justify-center shrink-0 mt-0.5">
@@ -6732,15 +6850,16 @@ const RegisterPage = () => {
                   </label>
                 </div>
 
-                <p className="text-center text-[11px] text-white/30">
-                  {isLogin ? (<>Non hai un account? <button type="button" onClick={() => setIsLogin(false)} className="text-rose-400 font-bold">Iscriviti</button></>) : (<>Hai già un account? <button type="button" onClick={() => setIsLogin(true)} className="text-rose-400 font-bold">Accedi</button></>)}
-                </p>
+                <div className="flex gap-3">
+                  <button onClick={() => setStep(1)} className="flex-1 py-4 rounded-[18px] text-sm font-black text-white/50 uppercase tracking-widest" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>Indietro</button>
+                  <button onClick={handleNextToStep2Legal} className="flex-1 py-4 rounded-[18px] text-sm font-black text-white uppercase tracking-widest" style={{ background: '#e11d48', boxShadow: '0 0 20px rgba(225,29,72,0.35)' }}>Accetta e Continua →</button>
+                </div>
               </motion.div>
             )}
 
-            {/* ── STEP 2: Dati profilo ── */}
-            {step === 2 && (
-              <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
+            {/* ── STEP 3: Dati profilo ── */}
+            {step === 3 && (
+              <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
                 <div className="grid grid-cols-2 gap-3">
                   <DarkInput label="Nome" name="name" value={formData.name} onChange={handleInputChange} placeholder="Mario" disabled={isEditing && !!formData.name} />
                   <div className="space-y-1">
@@ -6802,26 +6921,47 @@ const RegisterPage = () => {
                 </div>
 
                 {/* Documento */}
-                <div className="p-4 rounded-[20px] space-y-2" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                <div className="p-4 rounded-[20px] space-y-3" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
                   <div className="flex items-center gap-2 text-white/60 text-xs font-bold"><CreditCard className="w-4 h-4" /> Documento d'Identità</div>
-                  <p className="text-[10px] text-white/30 leading-tight">Carica un documento per la sicurezza della community.</p>
-                  <label className={cn("w-full p-3 rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors",
-                    formData.id_document_url ? "border-emerald-500/40 bg-emerald-500/5" : "border-white/10 hover:border-rose-500/30")}>
-                    {formData.id_document_url ? (<><CheckCircle className="w-5 h-5 text-emerald-400" /><span className="text-[10px] font-bold text-emerald-400">Caricato</span></>) : (<><Info className="w-5 h-5 text-white/30" /><span className="text-[10px] font-bold text-white/40">Seleziona File</span></>)}
+                  
+                  {formData.doc_rejected && (
+                    <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 flex gap-3">
+                      <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                      <div className="space-y-1">
+                        <p className="text-[10px] font-black text-rose-500 uppercase tracking-widest">Azione Richiesta</p>
+                        <p className="text-[9px] text-white/60 leading-tight">Il tuo documento è stato rifiutato. Ricaricalo ora per evitare la sospensione tra {calculateRemainingDays(formData.doc_rejected_at)} giorni.</p>
+                      </div>
+                    </div>
+                  )}
+
+                  <p className="text-[10px] text-white/30 leading-tight">Carica un documento per la sicurezza della community (CI, Patente o Passaporto).</p>
+                  <label className={cn("w-full p-4 rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-2 cursor-pointer transition-all",
+                    formData.id_document_url ? "border-emerald-500/40 bg-emerald-500/5" : "border-white/10 hover:border-rose-500/30 hover:bg-white/5")}>
+                    {formData.id_document_url ? (
+                      <div className="flex flex-col items-center gap-1 animate-in zoom-in duration-300">
+                        <CheckCircle className="w-6 h-6 text-emerald-400" />
+                        <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400">Documento Selezionato</span>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-1">
+                        <CloudUpload className="w-6 h-6 text-white/20" />
+                        <span className="text-[10px] font-black uppercase tracking-widest text-white/40">Seleziona File</span>
+                      </div>
+                    )}
                     <input type="file" accept=".pdf,image/*" className="hidden" onChange={handleIdUpload} />
                   </label>
                 </div>
 
                 <div className="flex gap-3 pt-2">
-                  <button onClick={() => setStep(1)} className="flex-1 py-4 rounded-[18px] text-sm font-black text-white/50 uppercase tracking-widest" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>Indietro</button>
-                  <button onClick={handleNextToStep2} className="flex-1 py-4 rounded-[18px] text-sm font-black text-white uppercase tracking-widest" style={{ background: '#e11d48', boxShadow: '0 0 20px rgba(225,29,72,0.35)' }}>Continua →</button>
+                  <button onClick={() => setStep(2)} className="flex-1 py-4 rounded-[18px] text-sm font-black text-white/50 uppercase tracking-widest" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>Indietro</button>
+                  <button onClick={handleNextToStep3Profile} className="flex-1 py-4 rounded-[18px] text-sm font-black text-white uppercase tracking-widest" style={{ background: '#e11d48', boxShadow: '0 0 20px rgba(225,29,72,0.35)' }}>Continua →</button>
                 </div>
               </motion.div>
             )}
 
-            {/* ── STEP 3: Preferenze Matching ── */}
-            {step === 3 && (
-              <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-5">
+            {/* ── STEP 4: Preferenze Matching ── */}
+            {step === 4 && (
+              <motion.div key="step4" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-5">
                 <div className="p-3 rounded-[16px] flex gap-2 items-start" style={{ background: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.2)' }}>
                   <Info className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
                   <p className="text-[11px] text-rose-300 leading-tight">Questi dati determinano chi vedi nella bacheca.</p>
@@ -6859,15 +6999,15 @@ const RegisterPage = () => {
                 <DarkTextArea label="Cosa cerchi in un partner?" name="looking_for_other" value={formData.looking_for_other} onChange={handleInputChange} placeholder="Descrivi il partner ideale..." />
 
                 <div className="flex gap-3 pt-2">
-                  <button onClick={() => setStep(2)} className="flex-1 py-4 rounded-[18px] text-sm font-black text-white/50 uppercase tracking-widest" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>Indietro</button>
-                  <button onClick={handleNextToStep3} className="flex-1 py-4 rounded-[18px] text-sm font-black text-white uppercase tracking-widest" style={{ background: '#e11d48', boxShadow: '0 0 20px rgba(225,29,72,0.35)' }}>Continua →</button>
+                  <button onClick={() => setStep(3)} className="flex-1 py-4 rounded-[18px] text-sm font-black text-white/50 uppercase tracking-widest" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>Indietro</button>
+                  <button onClick={handleNextToStep4Matching} className="flex-1 py-4 rounded-[18px] text-sm font-black text-white uppercase tracking-widest" style={{ background: '#e11d48', boxShadow: '0 0 20px rgba(225,29,72,0.35)' }}>Continua →</button>
                 </div>
               </motion.div>
             )}
 
-            {/* ── STEP 4: Conosciamoci Meglio ── */}
-            {step === 4 && (
-              <motion.div key="step4" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
+            {/* ── STEP 5: Conosciamoci Meglio ── */}
+            {step === 5 && (
+              <motion.div key="step5" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-4">
                 <div className="text-center space-y-1 pb-2">
                   <Sparkles className="w-8 h-8 text-rose-400 mx-auto mb-2" />
                   <h3 className="text-lg font-montserrat font-black text-white">Conosciamoci Meglio</h3>
@@ -6886,15 +7026,15 @@ const RegisterPage = () => {
                   </DarkSelect>
                 ))}
                 <div className="flex gap-3 pt-2">
-                  <button onClick={() => setStep(3)} className="flex-1 py-4 rounded-[18px] text-sm font-black text-white/50 uppercase tracking-widest" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>Indietro</button>
-                  <button onClick={() => setStep(5)} className="flex-1 py-4 rounded-[18px] text-sm font-black text-white uppercase tracking-widest" style={{ background: '#e11d48', boxShadow: '0 0 20px rgba(225,29,72,0.35)' }}>Continua →</button>
+                  <button onClick={() => setStep(4)} className="flex-1 py-4 rounded-[18px] text-sm font-black text-white/50 uppercase tracking-widest" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>Indietro</button>
+                  <button onClick={handleNextToStep5AboutYou} className="flex-1 py-4 rounded-[18px] text-sm font-black text-white uppercase tracking-widest" style={{ background: '#e11d48', boxShadow: '0 0 20px rgba(225,29,72,0.35)' }}>Continua →</button>
                 </div>
               </motion.div>
             )}
 
-            {/* ── STEP 5: Piano ── */}
-            {step === 5 && (
-              <motion.div key="step5" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-5">
+            {/* ── STEP 6: Piano ── */}
+            {step === 6 && (
+              <motion.div key="step6" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-5">
                 <div className="text-center space-y-1">
                   <h3 className="text-xl font-montserrat font-black text-white">Piano</h3>
                   <p className="text-white/30 text-[11px]">Scegli come vuoi iniziare.</p>
@@ -6935,95 +7075,8 @@ const RegisterPage = () => {
                   </div>
                 )}
                 <div className="flex gap-3 pt-2">
-                  <button onClick={() => setStep(4)} className="flex-1 py-4 rounded-[18px] text-sm font-black text-white/50 uppercase tracking-widest" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>Indietro</button>
-                  <button onClick={handleNextToStep5} className="flex-1 py-4 rounded-[18px] text-sm font-black text-white uppercase tracking-widest" style={{ background: '#e11d48', boxShadow: '0 0 20px rgba(225,29,72,0.35)' }}>Regolamento →</button>
-                </div>
-              </motion.div>
-            )}
-
-            {/* ── STEP 6: Regolamento e Privacy ── */}
-            {step === 6 && (
-              <motion.div key="step6" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6">
-                <div className="text-center space-y-1">
-                  <ShieldCheck className="w-10 h-10 text-rose-500 mx-auto mb-2" />
-                  <h3 className="text-xl font-montserrat font-black text-white uppercase tracking-tight">Accordi Legali</h3>
-                  <p className="text-white/30 text-[11px] font-bold uppercase tracking-widest">Le regole della nostra community</p>
-                </div>
-
-                <div className="space-y-4 max-h-[48vh] overflow-y-auto pr-2 scrollbar-hide text-left">
-                  {/* Regolamento */}
-                  <div className="space-y-3">
-                    <h4 className="text-[10px] font-black text-rose-400 uppercase tracking-widest">Regolamento della Community</h4>
-                    <div className="p-4 rounded-[20px] space-y-4 text-[11px] leading-relaxed text-white/60 font-medium" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                      <section className="space-y-1.5">
-                        <p className="text-white font-black uppercase text-[9px]">1. Requisiti e Identità</p>
-                        <p>• <span className="text-white">Età:</span> L'uso è vietato ai minori di 18 anni.</p>
-                        <p>• <span className="text-white">Verifica:</span> È richiesta la verifica del documento. I dati saranno eliminati subito dopo.</p>
-                        <p>• <span className="text-white">Autenticità:</span> Solo foto reali e personali. Vietate foto IA o di terzi.</p>
-                      </section>
-                      <section className="space-y-1.5">
-                        <p className="text-white font-black uppercase text-[9px]">2. Contenuti e Comportamento</p>
-                        <p>• <span className="text-white">No Nudo/Explicit:</span> Vietati nudo o contenuti sessuali offensivi.</p>
-                        <p>• <span className="text-white">Rispetto:</span> Vietati messaggi offensivi o molesti. Tolleranza zero bullismo.</p>
-                        <p>• <span className="text-white">No Spam:</span> Vietati link esterni, pubblicità o siti adult.</p>
-                      </section>
-                      <section className="space-y-1.5">
-                        <p className="text-white font-black uppercase text-[9px]">3. Segnalazioni e Sanzioni</p>
-                        <p>• <span className="text-white">Monitoraggio:</span> Ci riserviamo il diritto di rimuovere contenuti inappropriati.</p>
-                        <p>• <span className="text-white">Reporting:</span> Usa il tasto segnala nei profili in caso di violazioni.</p>
-                        <p>• <span className="text-white">Sanzioni:</span> Le violazioni portano al ban permanente ed eventuale blocco IP.</p>
-                      </section>
-                      <section className="space-y-1.5 p-2 bg-rose-500/10 rounded-xl border border-rose-500/20">
-                        <p className="text-rose-400 font-black uppercase text-[9px] flex items-center gap-1.5"><Sparkles className="w-3 h-3" /> Tip Sicurezza</p>
-                        <p className="italic">Incontra i tuoi match sempre in luoghi pubblici e affollati. Informa un amico o un familiare dei tuoi spostamenti. La tua sicurezza è la nostra priorità.</p>
-                      </section>
-                      <p className="text-rose-400/80 font-bold italic pt-2">L'iscrizione implica l'accettazione totale dei termini. Non procedere se non sei d'accordo.</p>
-                    </div>
-                  </div>
-
-                  {/* GDPR */}
-                  <div className="space-y-3">
-                    <h4 className="text-[10px] font-black text-rose-400 uppercase tracking-widest">Informativa Breve Privacy</h4>
-                    <div className="p-4 rounded-[20px] space-y-3 text-[11px] leading-relaxed text-white/60 font-medium" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                      <p>• <span className="text-white">Finalità:</span> Dati usati esclusivamente per il profilo e funzionamento app.</p>
-                      <p>• <span className="text-white">Identità:</span> Documenti cancellati definitivamente subito dopo la convalida.</p>
-                      <p>• <span className="text-white">Conservazione:</span> Dati attivi fino a cancellazione account (possibile via app).</p>
-                      <p>• <span className="text-white">Sicurezza:</span> Crittografia avanzata e nessun dato venduto a terzi.</p>
-                      <p>• <span className="text-white">Moderazione:</span> Sistemi e moderatori umani vigilano h24.</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Checkboxes */}
-                <div className="space-y-3 pt-2">
-                  <label className="flex gap-3 cursor-pointer group">
-                    <div className="relative flex items-center justify-center shrink-0 mt-0.5">
-                      <input type="checkbox" checked={formData.accepted_terms} onChange={(e) => setFormData(f => ({ ...f, accepted_terms: e.target.checked }))} className="sr-only" />
-                      <div className={cn("w-6 h-6 rounded-lg transition-all", formData.accepted_terms ? "bg-rose-500 shadow-lg shadow-rose-900/40" : "bg-white/5 border border-white/10 group-hover:border-rose-500/50")} />
-                      {formData.accepted_terms && <CheckCircle className="absolute w-4 h-4 text-white" />}
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-[11px] font-bold text-white/80 group-hover:text-white transition-colors">Termini e Condizioni</p>
-                      <p className="text-[9px] text-white/30 font-medium leading-tight">Dichiaro di essere maggiorenne e accetto il Regolamento della Community (inclusi i sistemi di segnalazione e ban).</p>
-                    </div>
-                  </label>
-
-                  <label className="flex gap-3 cursor-pointer group">
-                    <div className="relative flex items-center justify-center shrink-0 mt-0.5">
-                      <input type="checkbox" checked={formData.accepted_privacy} onChange={(e) => setFormData(f => ({ ...f, accepted_privacy: e.target.checked }))} className="sr-only" />
-                      <div className={cn("w-6 h-6 rounded-lg transition-all", formData.accepted_privacy ? "bg-rose-500 shadow-lg shadow-rose-900/40" : "bg-white/5 border border-white/10 group-hover:border-rose-500/50")} />
-                      {formData.accepted_privacy && <CheckCircle className="absolute w-4 h-4 text-white" />}
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-[11px] font-bold text-white/80 group-hover:text-white transition-colors">Privacy Policy</p>
-                      <p className="text-[9px] text-white/30 font-medium leading-tight">Acconsento al trattamento dei miei dati personali e alla verifica dell'identità tramite documento come descritto sopra.</p>
-                    </div>
-                  </label>
-                </div>
-
-                <div className="flex gap-3 pt-4">
-                  <button onClick={() => setStep(5)} className="flex-1 py-4 rounded-[18px] text-sm font-black text-white/50 uppercase tracking-widest font-montserrat" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>Indietro</button>
-                  <button onClick={handleNextToLegal} className="flex-1 py-4 rounded-[18px] text-sm font-black text-white uppercase tracking-widest font-montserrat" style={{ background: '#e11d48', boxShadow: '0 0 20px rgba(225,29,72,0.35)' }}>Riepilogo →</button>
+                  <button onClick={() => setStep(5)} className="flex-1 py-4 rounded-[18px] text-sm font-black text-white/50 uppercase tracking-widest" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>Indietro</button>
+                  <button onClick={handleNextToStep6Plan} className="flex-1 py-4 rounded-[18px] text-sm font-black text-white uppercase tracking-widest" style={{ background: '#e11d48', boxShadow: '0 0 20px rgba(225,29,72,0.35)' }}>Riepilogo →</button>
                 </div>
               </motion.div>
             )}
@@ -10382,6 +10435,126 @@ const DmcaPage = () => (
     ]}
   />
 );
+
+const SecurityWarningSideBanner = () => {
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    const handleAuthChange = () => {
+      const saved = localStorage.getItem('soulmatch_user');
+      if (saved) {
+        try {
+          setCurrentUser(JSON.parse(saved));
+        } catch { setCurrentUser(null); }
+      } else {
+        setCurrentUser(null);
+      }
+    };
+    handleAuthChange();
+    window.addEventListener('user-auth-change', handleAuthChange);
+    window.addEventListener('storage', handleAuthChange);
+    return () => {
+      window.removeEventListener('user-auth-change', handleAuthChange);
+      window.removeEventListener('storage', handleAuthChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!currentUser?.doc_rejected) return;
+
+    // Automatic expansion every 60 seconds
+    const interval = setInterval(() => {
+      setIsExpanded(true);
+      setTimeout(() => setIsExpanded(false), 5000);
+    }, 60000);
+
+    // Also show on first load for 5 seconds
+    const initialTimer = setTimeout(() => {
+      setIsExpanded(true);
+      setTimeout(() => setIsExpanded(false), 5000);
+    }, 2000);
+
+    return () => {
+      clearInterval(interval);
+      clearTimeout(initialTimer);
+    };
+  }, [currentUser?.doc_rejected, currentUser?.id]);
+
+  if (!currentUser?.doc_rejected) return null;
+  // Don't show in registration or live chat
+  if (location.pathname.startsWith('/register') || location.pathname.startsWith('/live-chat')) return null;
+
+  const remaining = calculateRemainingDays(currentUser.doc_rejected_at || null);
+
+  return (
+    <motion.div
+      initial={false}
+      animate={{ x: isExpanded ? 0 : 'calc(100% - 40px)' }}
+      transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+      className="fixed right-0 top-1/2 -translate-y-1/2 z-[9999] flex items-stretch group"
+      style={{ filter: 'drop-shadow(-20px 0 40px rgba(0,0,0,0.6))' }}
+    >
+      {/* Side Tab - The "Setup" handle */}
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="w-10 bg-rose-600 rounded-l-2xl flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-rose-500 transition-colors relative z-10"
+      >
+        <div className="absolute top-2 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-white rounded-full animate-ping" />
+        <Settings2 className="w-5 h-5 text-white animate-spin-slow" />
+        <div className="[writing-mode:vertical-lr] text-[9px] font-black uppercase tracking-[0.2em] text-white rotate-180 whitespace-nowrap">
+          Azione Richiesta
+        </div>
+      </button>
+
+      {/* Main Content Area - 3x larger than standard toasts */}
+      <div className="w-80 bg-stone-900 border-y border-l border-white/10 rounded-l-3xl p-6 relative flex flex-col gap-4 overflow-hidden">
+        {/* Background Accent */}
+        <div className="absolute -top-10 -right-10 w-32 h-32 bg-rose-600/10 blur-3xl rounded-full" />
+        
+        <div className="flex items-start gap-3">
+          <div className="w-10 h-10 rounded-xl bg-rose-500/20 flex items-center justify-center shrink-0 border border-rose-500/30">
+            <ShieldCheck className="w-5 h-5 text-rose-500" />
+          </div>
+          <div>
+            <h4 className="text-sm font-montserrat font-black text-white leading-tight uppercase">Documento Rifiutato</h4>
+            <div className="flex items-center gap-1 mt-0.5">
+              <Calendar className="w-3 h-3 text-rose-400" />
+              <p className="text-[10px] font-bold text-rose-400 uppercase tracking-tighter">Mancano {remaining} giorni</p>
+            </div>
+          </div>
+        </div>
+
+        <p className="text-[11px] text-white/50 leading-relaxed font-medium">
+          Il tuo documento non è stato convalidato. Ricaricalo ora per evitare la sospensione dell'account e ottenere il badge di verifica.
+        </p>
+
+        <div className="space-y-2">
+          <button
+            onClick={() => {
+              setIsExpanded(false);
+              navigate('/register', { state: { step: 3 } });
+            }}
+            className="w-full py-3.5 bg-rose-600 hover:bg-rose-500 text-white font-black uppercase tracking-widest text-[10px] rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-rose-900/40 transition-all active:scale-95"
+          >
+            <CloudUpload className="w-4 h-4" />
+            Carica Documento
+          </button>
+          
+          <button
+            onClick={() => setIsExpanded(false)}
+            className="w-full py-2.5 bg-white/5 hover:bg-white/10 text-white/30 hover:text-white/60 font-bold uppercase tracking-widest text-[8px] rounded-xl transition-all"
+          >
+            Chiudi Anteprima
+          </button>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
 const SecurityOverlay = ({ status, onClose }: { status: any; onClose: () => void }) => {
   if (!status.type) return null;
   const { type, reason, subReason } = status;
@@ -10403,62 +10576,31 @@ const SecurityOverlay = ({ status, onClose }: { status: any; onClose: () => void
               <p className="text-white/40 text-[10px] font-medium leading-relaxed mt-1">Il sistema ha bloccato ogni tentativo di nuova registrazione associato ai tuoi dati.</p>
             </div>
           </>
-        ) : type === 'suspended' ? (
+        ) : type === 'warning' || type === 'suspended' ? (
           <>
-            <div className="w-20 h-20 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto border border-amber-500/20 shadow-lg shadow-amber-900/10">
-              <AlertTriangle className="w-10 h-10 text-amber-500" />
+            <div className={`w-20 h-20 ${type === 'warning' ? 'bg-blue-500/10 border-blue-500/20' : 'bg-amber-500/10 border-amber-500/20'} rounded-full flex items-center justify-center mx-auto border shadow-lg`}>
+              {type === 'warning' ? <Info className="w-10 h-10 text-blue-400" /> : <AlertTriangle className="w-10 h-10 text-amber-500" />}
             </div>
             <div className="space-y-2">
-              <h2 className="text-2xl font-montserrat font-black text-amber-500 uppercase tracking-tight leading-tight">Account sospeso temporaneamente</h2>
+              <h2 className={`text-2xl font-montserrat font-black ${type === 'warning' ? 'text-blue-400' : 'text-amber-500'} uppercase tracking-tight leading-tight`}>
+                {type === 'warning' ? 'Avviso e Sospensione' : 'Account sospeso temporaneamente'}
+              </h2>
               <p className="text-white/60 text-sm leading-relaxed font-medium">Il tuo account è stato sospeso per <span className="text-white">24 ore</span> a causa di violazioni del regolamento.</p>
             </div>
-            <div className="p-4 bg-white/5 border border-white/10 rounded-2xl">
-              <p className="text-white/40 text-[11px] font-medium leading-relaxed">Ti ricordiamo che la nostra è una community basata sul rispetto. Al prossimo richiamo, il profilo verrà eliminato definitivamente.</p>
-            </div>
-          </>
-        ) : type === 'doc_rejected' ? (
-          <>
-            <div className="w-20 h-20 bg-rose-500/10 rounded-full flex items-center justify-center mx-auto border border-rose-500/20">
-              <ShieldCheck className="w-10 h-10 text-rose-500" />
-            </div>
-            <div className="space-y-2">
-              <h2 className="text-2xl font-montserrat font-black text-white uppercase tracking-tight leading-tight">Verifica Identità:<br />Documento non idoneo</h2>
-              <p className="text-white/60 text-[13px] leading-relaxed font-medium">Non è stato possibile convalidare il tuo profilo. Assicurati che il documento sia:</p>
-            </div>
-            <div className="text-left bg-white/5 border border-white/10 rounded-2xl p-5 space-y-3">
-              <ul className="text-xs text-white/80 space-y-2 font-medium">
-                <li className="flex gap-2"><span>•</span> <span>Integro e leggibile in ogni sua parte.</span></li>
-                <li className="flex gap-2"><span>•</span> <span>Corrispondente al volto delle tue foto.</span></li>
-                <li className="flex gap-2"><span>•</span> <span>In corso di validità.</span></li>
-              </ul>
-            </div>
-            <div className="space-y-4">
-              <p className="text-white/30 text-[10px] italic">I file inviati vengono eliminati dopo il controllo per la tua privacy. Riprova ora.</p>
-              <button 
-                onClick={onClose} 
-                className="w-full py-4 bg-rose-600 text-white font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-rose-900/20 active:scale-95 transition-all"
-              >Riprova Ora</button>
-            </div>
-          </>
-        ) : type === 'warning' ? (
-          <>
-            <div className="w-20 h-20 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto border border-blue-500/20">
-              <Info className="w-10 h-10 text-blue-400" />
-            </div>
-            <div className="space-y-2">
-              <h2 className="text-2xl font-montserrat font-black text-white uppercase tracking-tight">Avviso di moderazione</h2>
-              <p className="text-white/60 text-sm leading-relaxed font-medium">Un contenuto pubblicato sul tuo profilo è stato oscurato perché non conforme al Regolamento.</p>
-            </div>
-            <div className="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-4 text-left">
-              <p className="text-blue-400 text-[10px] uppercase font-black tracking-widest mb-1 items-center flex gap-1.5"><AlertTriangle className="w-3 h-3" /> Motivazione</p>
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-4 text-left">
+              <p className={`${type === 'warning' ? 'text-blue-400' : 'text-amber-500'} text-[10px] uppercase font-black tracking-widest mb-1 items-center flex gap-1.5`}>
+                <AlertTriangle className="w-3 h-3" /> Motivazione
+              </p>
               <p className="text-white text-sm font-bold">{reason || 'Violazione dei termini della community'}</p>
             </div>
             <div className="space-y-5">
-              <p className="text-white/40 text-[11px] leading-relaxed">Questa notifica funge da ammonizione formale. Ti invitiamo a rivedere le regole per evitare sanzioni più gravi.</p>
-              <button 
-                onClick={onClose} 
-                className="w-full py-4 bg-white/10 text-white font-black uppercase tracking-widest rounded-2xl border border-white/10 active:scale-95 transition-all"
-              >Ho capito</button>
+              <p className="text-white/40 text-[11px] font-medium leading-relaxed">Ti ricordiamo che la nostra è una community basata sul rispetto. Al prossimo richiamo, il profilo verrà eliminato definitivamente.</p>
+              {type === 'warning' && (
+                <button 
+                  onClick={onClose} 
+                  className="w-full py-4 bg-white/10 text-white font-black uppercase tracking-widest rounded-2xl border border-white/10 active:scale-95 transition-all"
+                >Ho capito</button>
+              )}
             </div>
           </>
         ) : null}
@@ -10492,7 +10634,7 @@ export default function App() {
           if (u?.id) {
             // Use maybeSingle to avoid error on 0 rows
             const { data, error } = await supabase.from('users')
-              .select('id, is_online, is_blocked, is_suspended, doc_rejected, last_warning_reason, suspension_reason')
+              .select('id, is_online, is_blocked, is_suspended, doc_rejected, doc_rejected_at, last_warning_reason, suspension_reason')
               .eq('id', u.id)
               .maybeSingle();
 
@@ -10506,13 +10648,28 @@ export default function App() {
               localStorage.removeItem('soulmatch_user');
               window.dispatchEvent(new Event('user-auth-change'));
             } else {
+              // TEMPORARY: Auto-reactivate test user if it's currently restricted
+              if (data.email?.toLowerCase().includes('test') && (data.is_blocked || data.is_suspended || data.doc_rejected)) {
+                console.log("Auto-reactivating test user:", data.email);
+                await supabase.from('users').update({ 
+                  is_blocked: false, 
+                  is_suspended: false, 
+                  doc_rejected: false,
+                  doc_rejected_at: null 
+                }).eq('id', data.id);
+                // Refresh local data state
+                data.is_blocked = false;
+                data.is_suspended = false;
+                data.doc_rejected = false;
+              }
+
               // Check security status
               if (data.is_blocked) {
                 setSecurityStatus({ type: 'blocked' });
               } else if (data.is_suspended) {
                 setSecurityStatus({ type: 'suspended', reason: data.suspension_reason });
               } else if (data.doc_rejected) {
-                setSecurityStatus({ type: 'doc_rejected' });
+                setSecurityStatus({ type: 'doc_rejected', rejectedAt: data.doc_rejected_at });
               } else if (data.last_warning_reason) {
                 // If warning is new, we might want to show it once
                 // For now, let's just use it if the user is active
@@ -10636,6 +10793,14 @@ export default function App() {
           background: #e11d48;
           border-radius: 20px;
         }
+
+        @keyframes spin-slow {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        .animate-spin-slow {
+          animation: spin-slow 8s linear infinite;
+        }
       `}</style>
       <BackgroundDecorations />
       <Navbar />
@@ -10663,6 +10828,7 @@ export default function App() {
       </Routes>
       <GlobalFlashBanner />
       <AppBottomNav />
+      <SecurityWarningSideBanner />
       <SecurityOverlay status={securityStatus} onClose={handleCloseSecurity} />
     </Router>
   );

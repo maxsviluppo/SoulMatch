@@ -42,6 +42,7 @@ export interface UserProfile {
   last_warning_reason?: string;
   accepted_terms?: boolean;
   accepted_privacy?: boolean;
+  doc_rejected_at?: string | null;
 }
 
 export interface ChatRequest {
