@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, useNavigate, useParams, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, useNavigate, useParams, useLocation, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Heart,
@@ -10902,17 +10902,27 @@ const SharedRejectedDocumentBanner = ({ currentUser, onUploadSuccess }: { curren
 
 const SubscriptionSuccessPage = () => {
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
+  const [searchParams] = useSearchParams();
+  const sessionId = searchParams.get('session_id');
+  const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [expiry, setExpiry] = useState<string>('');
 
   useEffect(() => {
     const processSubscription = async () => {
+      // Security Check: If no session_id is present, it's an unauthorized or "back-button" attempt
+      if (!sessionId || sessionId === '{CHECKOUT_SESSION_ID}') {
+        console.error("Tentativo di accesso alla pagina di successo senza session_id valido.");
+        setStatus('error');
+        setLoading(false);
+        return;
+      }
+
       const saved = localStorage.getItem('soulmatch_user');
-      if (saved) {
+      const pendingPlan = localStorage.getItem('soulmatch_pending_plan');
+
+      if (saved && pendingPlan) {
         try {
           const u = JSON.parse(saved);
-          const pendingPlan = localStorage.getItem('soulmatch_pending_plan') as 'monthly' | 'annual' || 'monthly';
-          const isBonus = localStorage.getItem('soulmatch_is_free_bonus') === 'true';
           
           const expiryDate = new Date();
           if (pendingPlan === 'annual') {
@@ -10923,7 +10933,7 @@ const SubscriptionSuccessPage = () => {
 
           const subscriptionData = {
             is_paid: true,
-            subscription_type: pendingPlan === 'annual' ? 'annuale' : 'mensile',
+            subscription_type: pendingPlan,
             subscription_expiry: expiryDate.toISOString()
           };
           
@@ -10939,19 +10949,35 @@ const SubscriptionSuccessPage = () => {
             // 2. Update Local Session
             const updatedUser = { ...u, ...subscriptionData };
             localStorage.setItem('soulmatch_user', JSON.stringify(updatedUser));
+            
+            // 3. IMPORTANT: Clear pending plan to prevent re-activation on refresh/back
             localStorage.removeItem('soulmatch_pending_plan');
             localStorage.removeItem('soulmatch_is_free_bonus');
+            
             window.dispatchEvent(new Event('user-auth-change'));
+            setStatus('success');
+          } else {
+            setStatus('error');
           }
         } catch (e) {
           console.error("Errore processamento abbonamento:", e);
+          setStatus('error');
+        }
+      } else {
+        // If there's no pending plan, but we have a session_id, it might have been already processed
+        // or the user is just visiting the URL.
+        const u = saved ? JSON.parse(saved) : null;
+        if (u?.is_paid) {
+          setStatus('success');
+        } else {
+          setStatus('error');
         }
       }
       setLoading(false);
     };
 
     processSubscription();
-  }, []);
+  }, [sessionId]);
 
   return (
     <div className="min-h-screen pt-24 pb-12 px-6 flex flex-col items-center justify-center bg-[#0a0a0f] relative overflow-hidden">
@@ -10967,13 +10993,39 @@ const SubscriptionSuccessPage = () => {
         animate={{ opacity: 1, scale: 1, y: 0 }}
         className="w-full max-w-md bg-stone-900/40 backdrop-blur-2xl border border-white/10 rounded-[40px] p-8 text-center relative z-10 shadow-2xl"
       >
-        <div className="w-20 h-20 bg-emerald-500/20 rounded-[28px] flex items-center justify-center mx-auto mb-6 border border-emerald-500/30 relative">
-          <div className="absolute inset-0 bg-emerald-500/20 blur-xl rounded-full animate-pulse" />
-          <CheckCircle className="w-10 h-10 text-emerald-500 relative z-10" />
-        </div>
+        {status === 'loading' && (
+          <div className="py-20 flex flex-col items-center gap-4">
+            <RefreshCw className="w-10 h-10 text-purple-500 animate-spin" />
+            <p className="text-stone-400 text-xs font-black uppercase tracking-widest">Verifica pagamento in corso...</p>
+          </div>
+        )}
 
-        <h1 className="text-3xl font-serif font-black text-white mb-2 leading-tight">Benvenuto nel <br /><span className="text-purple-400">Club Premium!</span></h1>
-        <p className="text-stone-400 text-sm font-bold uppercase tracking-widest mb-8">Pagamento completato con successo</p>
+        {status === 'error' && (
+          <div className="py-12 space-y-6">
+            <div className="w-20 h-20 bg-rose-500/20 rounded-[28px] flex items-center justify-center mx-auto border border-rose-500/30">
+              <XCircle className="w-10 h-10 text-rose-500" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-serif font-black text-white mb-2">Accesso Negato</h1>
+              <p className="text-stone-400 text-sm font-bold uppercase tracking-widest mb-8 leading-relaxed">
+                Nessuna sessione di pagamento valida trovata o già elaborata.
+              </p>
+            </div>
+            <button onClick={() => navigate('/bacheca')} className="w-full py-4 bg-white/5 border border-white/10 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all">
+              Torna alla Bacheca
+            </button>
+          </div>
+        )}
+
+        {status === 'success' && (
+          <>
+            <div className="w-20 h-20 bg-emerald-500/20 rounded-[28px] flex items-center justify-center mx-auto mb-6 border border-emerald-500/30 relative">
+              <div className="absolute inset-0 bg-emerald-500/20 blur-xl rounded-full animate-pulse" />
+              <CheckCircle className="w-10 h-10 text-emerald-500 relative z-10" />
+            </div>
+
+            <h1 className="text-3xl font-serif font-black text-white mb-2 leading-tight">Benvenuto nel <br /><span className="text-purple-400">Club Premium!</span></h1>
+            <p className="text-stone-400 text-sm font-bold uppercase tracking-widest mb-8">Pagamento completato con successo</p>
 
         <div className="space-y-4 mb-10">
           {[
