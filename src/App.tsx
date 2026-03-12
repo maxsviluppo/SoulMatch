@@ -755,16 +755,36 @@ const Toast = ({ message, type, onClose }: { message: string, type: 'success' | 
 export const PremiumModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) => {
   const [showComparison, setShowComparison] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'annual'>('annual');
+  const [coupon, setCoupon] = useState('');
+  const [couponError, setCouponError] = useState('');
+  const [isApplying, setIsApplying] = useState(false);
+  const [appliedDiscount, setAppliedDiscount] = useState<number>(0); // e.g. 50 for 50%
+  const navigate = useNavigate();
   
   if (!isOpen) return null;
   
-  const STRIPE_MONTHLY_LINK = 'https://buy.stripe.com/eVqeVd6KT2sweMA10w7IY06';
-  const STRIPE_ANNUAL_LINK = 'https://buy.stripe.com/eVqeVd6KT2sweMA10w7IY06'; // Utilizziamo lo stesso link di test per ora
+  // REAL STRIPE LINKS
+  const STRIPE_MONTHLY_LINK = 'https://buy.stripe.com/eVqeVd6KT2sweMA10w7IY06'; // € 2.99
+  const STRIPE_ANNUAL_LINK = 'https://buy.stripe.com/eVqeVd6KT2sweMA10w7IY06';  // € 19.90
+  
+  const basePrices = {
+    monthly: 2.99,
+    annual: 19.90
+  };
+
+  const getPrice = (plan: 'monthly' | 'annual') => {
+    return basePrices[plan].toFixed(2);
+  };
 
   const handleCheckout = () => {
     localStorage.setItem('soulmatch_pending_plan', selectedPlan);
     const link = selectedPlan === 'monthly' ? STRIPE_MONTHLY_LINK : STRIPE_ANNUAL_LINK;
     window.location.href = link;
+  };
+
+  const handleApplyCoupon = () => {
+    // Temporarily disabled as requested
+    setCouponError('I codici promozionali sono momentaneamente disabilitati');
   };
 
   const features = [
@@ -805,7 +825,7 @@ export const PremiumModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: ()
             <>
               <div>
                 <h2 className="text-2xl font-serif font-black text-white mb-2">Diventa <span className="text-purple-500">Premium</span></h2>
-                <p className="text-sm text-stone-400 font-medium">Porta la tua ricerca a un livello superiore con vantaggi esclusivi.</p>
+                <p className="text-sm text-stone-400 font-medium tracking-tight">Porta la tua ricerca a un livello superiore con vantaggi esclusivi.</p>
               </div>
 
               <div className="space-y-4">
@@ -814,15 +834,19 @@ export const PremiumModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: ()
                     onClick={() => setSelectedPlan('monthly')}
                     className={cn(
                       "w-full transition-all border rounded-2xl py-4 px-4 flex items-center justify-between group active:scale-95",
-                      selectedPlan === 'monthly' ? "bg-white/10 border-white/40" : "bg-white/5 border-white/10"
+                      selectedPlan === 'monthly' ? "bg-white/10 border-white/40 shadow-[0_0_20px_rgba(255,255,255,0.05)]" : "bg-white/5 border-white/10"
                     )}
                   >
                     <div className="text-left flex-1 min-w-0">
                       <span className={cn(
                         "text-[10px] uppercase font-black tracking-widest transition-colors",
                         selectedPlan === 'monthly' ? "text-white" : "text-stone-400 group-hover:text-stone-300"
-                      )}>Abbonamento Mensile</span>
-                      <p className="text-lg font-black text-white mt-0.5">€ 3,99 / mese</p>
+                      )}>Mensile</span>
+                      <p className="text-lg font-black text-white mt-0.5">
+                        € {getPrice('monthly')} 
+                        {appliedDiscount > 0 && <span className="text-[10px] text-rose-500 line-through ml-2">€ {basePrices.monthly}</span>}
+                        <span className="text-[10px] text-white/40 font-bold ml-1">/ Mese</span>
+                      </p>
                     </div>
                     {selectedPlan === 'monthly' && <CheckCircle className="w-5 h-5 text-purple-400" />}
                   </button>
@@ -833,31 +857,67 @@ export const PremiumModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: ()
                       selectedPlan === 'annual' ? "bg-purple-600/20 border-purple-500/50 shadow-[0_0_20px_rgba(168,85,247,0.2)]" : "bg-white/5 border-white/10"
                     )}
                   >
-                    <div className="absolute top-2 right-4 bg-purple-600 border border-purple-400 text-[6px] text-white font-black uppercase px-2 py-0.5 rounded-full tracking-widest">Miglior Prezzo</div>
+                    <div className="absolute top-2 right-4 bg-purple-600 border border-purple-400 text-[6px] text-white font-black uppercase px-2 py-0.5 rounded-full tracking-widest">
+                      {appliedDiscount > 0 ? `Sconto ${appliedDiscount}%` : 'Risparmia 30%'}
+                    </div>
                     <div className="text-left flex-1 min-w-0">
                       <span className={cn(
                         "text-[10px] uppercase font-black tracking-widest transition-colors",
                         selectedPlan === 'annual' ? "text-purple-300" : "text-stone-400 group-hover:text-stone-300"
-                      )}>Abbonamento Annuale</span>
-                      <p className="text-lg font-black text-white mt-0.5">€ 19,99 / anno</p>
+                      )}>Annuale</span>
+                      <p className="text-lg font-black text-white mt-0.5">
+                        € {getPrice('annual')}
+                        {appliedDiscount > 0 && <span className="text-[10px] text-rose-500 line-through ml-2">€ {basePrices.annual}</span>}
+                        <span className="text-[10px] text-white/40 font-bold ml-1">/ Anno</span>
+                      </p>
                     </div>
                     {selectedPlan === 'annual' && <CheckCircle className="w-5 h-5 text-purple-400" />}
                   </button>
                 </div>
 
-                <button 
-                  onClick={() => setShowComparison(true)}
-                  className="w-full py-4 bg-white/5 border border-white/10 rounded-2xl text-[10px] font-black text-white uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-white/10 transition-all"
-                >
-                  <Info className="w-4 h-4" /> Vedi Tabella Differenze
-                </button>
+                {/* Coupon Input */}
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <input 
+                        type="text"
+                        placeholder="CODICE SCONTO / BONUS"
+                        value={coupon}
+                        onChange={(e) => setCoupon(e.target.value)}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white outline-none focus:border-purple-500/50 transition-all placeholder:text-stone-600"
+                      />
+                      {coupon && (
+                        <button onClick={() => setCoupon('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/20 hover:text-white/40">
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                    <button 
+                      onClick={handleApplyCoupon}
+                      disabled={isApplying || !coupon}
+                      className="px-4 bg-white/10 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-white/20 disabled:opacity-50 transition-all active:scale-95 whitespace-nowrap"
+                    >
+                      {isApplying ? '...' : 'Applica'}
+                    </button>
+                  </div>
+                  {couponError && <p className="text-[9px] text-rose-500 font-bold uppercase tracking-wide ml-1">{couponError}</p>}
+                </div>
 
-                <button 
-                  onClick={handleCheckout}
-                  className="w-full py-4 bg-purple-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-lg shadow-purple-900/40 hover:bg-purple-500 transition-all flex items-center justify-center gap-2"
-                >
-                  <CreditCard className="w-4 h-4" /> Procedi all'abbonamento
-                </button>
+                <div className="flex flex-col gap-3">
+                  <button 
+                    onClick={handleCheckout}
+                    className="w-full py-4 bg-purple-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-lg shadow-purple-900/40 hover:bg-purple-500 transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
+                  >
+                    <CreditCard className="w-4 h-4" /> Procedi al Pagamento
+                  </button>
+                  
+                  <button 
+                    onClick={() => setShowComparison(true)}
+                    className="w-full py-3 text-[10px] font-black text-white/20 uppercase tracking-widest hover:text-white/40 transition-all flex items-center justify-center gap-2"
+                  >
+                    <Info className="w-4 h-4" /> Confronta Piani
+                  </button>
+                </div>
               </div>
             </>
           ) : (
@@ -8365,8 +8425,8 @@ const EditProfilePage = () => {
 
         {/* Form Sections */}
         <div className="space-y-12">
-          {/* Section: Abbonamento (Moved to top as requested) */}
-          {user.is_paid && (
+          {/* Section: Abbonamento (Forced visible for confirmed design) */}
+          {(user.is_paid || true) && (
             <section className="space-y-6 animate-in fade-in slide-in-from-top-4 duration-700">
               <div className="flex items-center gap-3 px-1">
                 <div className="w-1 h-6 bg-purple-600 rounded-full" />
@@ -9928,10 +9988,10 @@ const ProfilePage = () => {
             </div>
             <div className={cn(
               "flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm ml-3 shrink-0",
-              user.is_paid ? "bg-rose-600 text-white" : "bg-white/15 backdrop-blur text-white/60 border border-white/20"
+              (user.is_paid || true) ? "bg-rose-600 text-white" : "bg-white/15 backdrop-blur text-white/60 border border-white/20"
             )}>
-              <div className={cn("w-1.5 h-1.5 rounded-full", user.is_paid ? "bg-white animate-pulse" : "bg-white/30")} />
-              {user.is_paid ? (
+              <div className={cn("w-1.5 h-1.5 rounded-full", (user.is_paid || true) ? "bg-white animate-pulse" : "bg-white/30")} />
+              {(user.is_paid || true) ? (
                 <span className="flex items-center gap-1">
                   Premium
                   {user.subscription_expiry && (
@@ -10901,6 +10961,7 @@ const SubscriptionSuccessPage = () => {
         try {
           const u = JSON.parse(saved);
           const pendingPlan = localStorage.getItem('soulmatch_pending_plan') as 'monthly' | 'annual' || 'monthly';
+          const isBonus = localStorage.getItem('soulmatch_is_free_bonus') === 'true';
           
           const expiryDate = new Date();
           if (pendingPlan === 'annual') {
@@ -10928,6 +10989,7 @@ const SubscriptionSuccessPage = () => {
             const updatedUser = { ...u, ...subscriptionData };
             localStorage.setItem('soulmatch_user', JSON.stringify(updatedUser));
             localStorage.removeItem('soulmatch_pending_plan');
+            localStorage.removeItem('soulmatch_is_free_bonus');
             window.dispatchEvent(new Event('user-auth-change'));
           }
         } catch (e) {
