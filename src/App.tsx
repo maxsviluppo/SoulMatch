@@ -764,8 +764,8 @@ export const PremiumModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: ()
   if (!isOpen) return null;
   
   // REAL STRIPE LINKS
-  const STRIPE_MONTHLY_LINK = 'https://buy.stripe.com/eVqeVd6KT2sweMA10w7IY06'; // € 2.99
-  const STRIPE_ANNUAL_LINK = 'https://buy.stripe.com/eVqeVd6KT2sweMA10w7IY06';  // € 19.90
+  const STRIPE_MONTHLY_LINK = 'https://buy.stripe.com/3cIbJ17qT2gTc20g3V5os00'; // TEST LINK
+  const STRIPE_ANNUAL_LINK = 'https://buy.stripe.com/3cIbJ17qT2gTc20g3V5os00';  // TEST LINK
   
   const basePrices = {
     monthly: 2.99,
@@ -6756,6 +6756,7 @@ const RegisterPage = ({ setSecurityStatus }: { setSecurityStatus: any }) => {
     conosciamoci_meglio: {},
     accepted_terms: false,
     accepted_privacy: false,
+    subscription_type: 'free',
   });
 
   useEffect(() => {
@@ -6964,10 +6965,6 @@ const RegisterPage = ({ setSecurityStatus }: { setSecurityStatus: any }) => {
   };
 
   const handleNextToStep5AboutYou = () => {
-    setStep(6);
-  };
-
-  const handleNextToStep6Plan = () => {
     setStep(7);
   };
 
@@ -7468,54 +7465,6 @@ const RegisterPage = ({ setSecurityStatus }: { setSecurityStatus: any }) => {
               </motion.div>
             )}
 
-            {/* ── STEP 6: Piano ── */}
-            {step === 6 && (
-              <motion.div key="step6" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-5">
-                <div className="text-center space-y-1">
-                  <h3 className="text-xl font-montserrat font-black text-white">Piano</h3>
-                  <p className="text-white/30 text-[11px]">Scegli come vuoi iniziare.</p>
-                </div>
-                <div className="space-y-3">
-                  {[
-                    { label: 'Gratis', desc: 'Solo ricezione messaggi.', price: '€0', paid: false },
-                    { label: 'Premium', desc: 'Messaggi + Matching.', price: '€19.90/anno', paid: true },
-                  ].map(plan => (
-                    <button key={plan.label} onClick={() => setFormData(p => ({ ...p, is_paid: plan.paid }))}
-                      className="w-full p-4 rounded-[20px] text-left transition-all relative"
-                      style={formData.is_paid === plan.paid
-                        ? { background: 'rgba(244,63,94,0.12)', border: '1px solid rgba(244,63,94,0.5)', boxShadow: '0 0 20px rgba(244,63,94,0.15)' }
-                        : { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
-                    >
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h4 className="text-sm font-black text-white">{plan.label}</h4>
-                            {plan.paid && <span className="bg-rose-600 text-white text-[7px] px-1.5 py-0.5 rounded-full font-black uppercase">Top</span>}
-                          </div>
-                          <p className="text-white/30 text-[10px] mt-0.5">{plan.desc}</p>
-                        </div>
-                        <div className="text-lg font-black text-white">{plan.price}</div>
-                      </div>
-                      {formData.is_paid === plan.paid && <CheckCircle className="absolute -top-2 -right-2 text-rose-400 w-5 h-5" style={{ filter: 'drop-shadow(0 0 6px rgba(244,63,94,0.6))' }} />}
-                    </button>
-                  ))}
-                </div>
-                {formData.is_paid && (
-                  <div className="p-4 rounded-[20px] space-y-2" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                    <div className="flex items-center gap-2 text-white/60 text-xs font-bold"><CreditCard className="w-4 h-4" /> Pagamento</div>
-                    <input className="w-full px-4 py-3 rounded-[16px] text-sm text-white outline-none" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }} placeholder="Numero Carta" />
-                    <div className="grid grid-cols-2 gap-2">
-                      <input className="px-4 py-3 rounded-[16px] text-sm text-white outline-none" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }} placeholder="MM/AA" />
-                      <input className="px-4 py-3 rounded-[16px] text-sm text-white outline-none" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }} placeholder="CVV" />
-                    </div>
-                  </div>
-                )}
-                <div className="flex gap-3 pt-2">
-                  <button onClick={() => setStep(5)} className="flex-1 py-4 rounded-[18px] text-sm font-black text-white/50 uppercase tracking-widest" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>Indietro</button>
-                  <button onClick={handleNextToStep6Plan} className="flex-1 py-4 rounded-[18px] text-sm font-black text-white uppercase tracking-widest" style={{ background: '#e11d48', boxShadow: '0 0 20px rgba(225,29,72,0.35)' }}>Riepilogo →</button>
-                </div>
-              </motion.div>
-            )}
 
             {/* ── STEP 7: Riepilogo ── */}
             {step === 7 && (
@@ -7529,7 +7478,7 @@ const RegisterPage = ({ setSecurityStatus }: { setSecurityStatus: any }) => {
                     { title: 'Account', rows: [['Email', formData.email]] },
                     { title: 'Dati Personali', rows: [['Nome', `${formData.name} ${formData.surname}`], ['Nascita', formData.dob], ['Città', formData.city], ['Genere', formData.gender], ['Orientamento', Array.isArray(formData.orientation) ? (formData.orientation as string[]).join(', ') : formData.orientation], ['Lavoro', formData.job]] },
                     { title: 'Cerco', rows: [['Genere', Array.isArray(formData.looking_for_gender) ? (formData.looking_for_gender as string[]).join(', ') : formData.looking_for_gender], ['Età', `${formData.looking_for_age_min}–${formData.looking_for_age_max}`]] },
-                    { title: 'Piano', rows: [['Tipo', formData.is_paid ? 'Premium' : 'Gratis'], ['Costo', formData.is_paid ? '€19.90/anno' : '€0']] },
+                    { title: 'Piano', rows: [['Tipo', 'Gratis (Base)'], ['Costo', '€0']] },
                   ].map(section => (
                     <div key={section.title} className="p-4 rounded-[20px] space-y-2" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
                       <h4 className="text-[9px] font-black text-rose-400 uppercase tracking-widest">{section.title}</h4>
@@ -7555,7 +7504,7 @@ const RegisterPage = ({ setSecurityStatus }: { setSecurityStatus: any }) => {
                   </div>
                 </div>
                 <div className="flex gap-3 pt-2">
-                  <button onClick={() => setStep(6)} className="flex-1 py-4 rounded-[18px] text-sm font-black text-white/50 uppercase tracking-widest" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>Indietro</button>
+                  <button onClick={() => setStep(5)} className="flex-1 py-4 rounded-[18px] text-sm font-black text-white/50 uppercase tracking-widest" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>Indietro</button>
                   <button onClick={handleSubmit} className="flex-1 py-4 rounded-[18px] text-sm font-black text-white uppercase tracking-widest" style={{ background: '#e11d48', boxShadow: '0 0 20px rgba(225,29,72,0.35)' }}>Termina ✓</button>
                 </div>
               </motion.div>
@@ -8444,7 +8393,7 @@ const EditProfilePage = () => {
                     <div>
                       <p className="text-[10px] font-black uppercase tracking-widest text-stone-400">Piano Attivo</p>
                       <p className="text-sm font-black text-stone-900 uppercase flex items-center gap-2">
-                        SoulMatch {user.subscription_type || 'Premium'}
+                        SoulMatch {user.subscription_type === 'monthly' ? 'Premium Mensile' : user.subscription_type === 'annual' ? 'Premium Annuale' : 'Gratis'}
                         {user.subscription_expiry && (
                           <span className="px-2 py-0.5 bg-purple-600 text-[8px] text-white rounded-full animate-in fade-in zoom-in duration-500">
                             Scad: {new Date(user.subscription_expiry).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })}
