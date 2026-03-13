@@ -173,6 +173,8 @@ if (checkSettings.count === 0) {
   db.prepare("INSERT OR IGNORE INTO site_settings (key, value) VALUES (?, ?)").run('home_slider', JSON.stringify(defaultSlider));
 }
 
+// Seeding locale disabilitato per utilizzare solo database Supabase
+/*
 const checkUsers = db.prepare("SELECT count(*) as count FROM users").get() as { count: number };
 if (checkUsers.count === 0) {
   const insert = db.prepare(`
@@ -188,6 +190,7 @@ if (checkUsers.count === 0) {
   const insertBanner = db.prepare("INSERT INTO banner_messages (user_id, message, name, photo_url, dob, city) VALUES (?, ?, ?, ?, ?, ?)");
   insertBanner.run(1, "Qualcuno per un caffè a Trastevere questo pomeriggio? ☕", "Laura", "https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=400&auto=format&fit=crop", "1995-05-15", "Roma");
 }
+*/
 async function startServer() {
   const app = express();
   app.use(express.json({ limit: '50mb' }));

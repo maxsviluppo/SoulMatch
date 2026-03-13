@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, useNavigate, useParams, useLocation, useSearchParams } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { SubscriptionSuccessPage, SecurityWarningSideBanner } from './SubscriptionComponents';
 import {
   Heart,
   Users,
@@ -511,8 +510,12 @@ const GlobalFlashBanner = () => {
 
   const fetchGlobalBanner = async () => {
     try {
-      const { data } = await supabase.from('banner_messages').select('*').order('created_at', { ascending: false });
-      if (data && data.length > 0) setBannerMessages(data);
+      const { data } = await supabase
+        .from('banner_messages')
+        .select('*')
+        .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+        .order('created_at', { ascending: false });
+      if (data) setBannerMessages(data);
     } catch (e) { }
   };
 
@@ -753,29 +756,18 @@ const Toast = ({ message, type, onClose }: { message: string, type: 'success' | 
   );
 };
 
-export const PremiumModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) => {
-  const [showComparison, setShowComparison] = useState(false);
+export const PremiumModal = ({ isOpen, onClose, defaultComparison = false }: { isOpen: boolean, onClose: () => void, defaultComparison?: boolean }) => {
+  const [showComparison, setShowComparison] = useState(defaultComparison);
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'annual'>('annual');
-  const [coupon, setCoupon] = useState('');
-  const [couponError, setCouponError] = useState('');
-  const [isApplying, setIsApplying] = useState(false);
-  const [appliedDiscount, setAppliedDiscount] = useState<number>(0); // e.g. 50 for 50%
-  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isOpen) setShowComparison(defaultComparison);
+  }, [isOpen, defaultComparison]);
   
   if (!isOpen) return null;
   
-  // REAL STRIPE LINKS
-  const STRIPE_MONTHLY_LINK = 'https://buy.stripe.com/3cIbJ17qT2gTc20g3V5os00'; // TEST LINK
-  const STRIPE_ANNUAL_LINK = 'https://buy.stripe.com/3cIbJ17qT2gTc20g3V5os00';  // TEST LINK
-  
-  const basePrices = {
-    monthly: 2.99,
-    annual: 19.90
-  };
-
-  const getPrice = (plan: 'monthly' | 'annual') => {
-    return basePrices[plan].toFixed(2);
-  };
+  const STRIPE_MONTHLY_LINK = 'https://buy.stripe.com/3cIbJ17qT2gTc20g3V5os00';
+  const STRIPE_ANNUAL_LINK = 'https://buy.stripe.com/3cIbJ17qT2gTc20g3V5os00'; // Aggiornato con nuovo link unico
 
   const handleCheckout = () => {
     localStorage.setItem('soulmatch_pending_plan', selectedPlan);
@@ -783,17 +775,13 @@ export const PremiumModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: ()
     window.location.href = link;
   };
 
-  const handleApplyCoupon = () => {
-    // Temporarily disabled as requested
-    setCouponError('I codici promozionali sono momentaneamente disabilitati');
-  };
-
   const features = [
-    { name: "SoulLink giornalieri", free: "2", premium: "Illimitati" },
+    { name: "SoulLink giornalieri", free: "5", premium: "Illimitati" },
     { name: "Messaggi Flash", free: "No", premium: "Sì" },
-    { name: "Vedi chi ti ha cercato", free: "Sfocato", premium: "Chiaro" },
+    { name: "Vedi chi ti ha cercato", free: "2/giorno", premium: "Chiaro" },
     { name: "Badge Speciale", free: "Base", premium: "Premium" },
     { name: "Priorità in Bacheca", free: "No", premium: "Alta" },
+    { name: "Post nel Feed", free: "No", premium: "1 / giorno (30gg)" },
   ];
 
   return (
@@ -826,7 +814,7 @@ export const PremiumModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: ()
             <>
               <div>
                 <h2 className="text-2xl font-serif font-black text-white mb-2">Diventa <span className="text-purple-500">Premium</span></h2>
-                <p className="text-sm text-stone-400 font-medium tracking-tight">Porta la tua ricerca a un livello superiore con vantaggi esclusivi.</p>
+                <p className="text-sm text-stone-400 font-medium">Porta la tua ricerca a un livello superiore con vantaggi esclusivi.</p>
               </div>
 
               <div className="space-y-4">
@@ -835,19 +823,15 @@ export const PremiumModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: ()
                     onClick={() => setSelectedPlan('monthly')}
                     className={cn(
                       "w-full transition-all border rounded-2xl py-4 px-4 flex items-center justify-between group active:scale-95",
-                      selectedPlan === 'monthly' ? "bg-white/10 border-white/40 shadow-[0_0_20px_rgba(255,255,255,0.05)]" : "bg-white/5 border-white/10"
+                      selectedPlan === 'monthly' ? "bg-white/10 border-white/40" : "bg-white/5 border-white/10"
                     )}
                   >
                     <div className="text-left flex-1 min-w-0">
                       <span className={cn(
                         "text-[10px] uppercase font-black tracking-widest transition-colors",
                         selectedPlan === 'monthly' ? "text-white" : "text-stone-400 group-hover:text-stone-300"
-                      )}>Mensile</span>
-                      <p className="text-lg font-black text-white mt-0.5">
-                        € {getPrice('monthly')} 
-                        {appliedDiscount > 0 && <span className="text-[10px] text-rose-500 line-through ml-2">€ {basePrices.monthly}</span>}
-                        <span className="text-[10px] text-white/40 font-bold ml-1">/ Mese</span>
-                      </p>
+                      )}>Abbonamento Mensile</span>
+                      <p className="text-lg font-black text-white mt-0.5">€ 2,99 / mese</p>
                     </div>
                     {selectedPlan === 'monthly' && <CheckCircle className="w-5 h-5 text-purple-400" />}
                   </button>
@@ -858,67 +842,31 @@ export const PremiumModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: ()
                       selectedPlan === 'annual' ? "bg-purple-600/20 border-purple-500/50 shadow-[0_0_20px_rgba(168,85,247,0.2)]" : "bg-white/5 border-white/10"
                     )}
                   >
-                    <div className="absolute top-2 right-4 bg-purple-600 border border-purple-400 text-[6px] text-white font-black uppercase px-2 py-0.5 rounded-full tracking-widest">
-                      {appliedDiscount > 0 ? `Sconto ${appliedDiscount}%` : 'Risparmia 30%'}
-                    </div>
+                    <div className="absolute top-2 right-4 bg-purple-600 border border-purple-400 text-[6px] text-white font-black uppercase px-2 py-0.5 rounded-full tracking-widest">Miglior Prezzo</div>
                     <div className="text-left flex-1 min-w-0">
                       <span className={cn(
                         "text-[10px] uppercase font-black tracking-widest transition-colors",
                         selectedPlan === 'annual' ? "text-purple-300" : "text-stone-400 group-hover:text-stone-300"
-                      )}>Annuale</span>
-                      <p className="text-lg font-black text-white mt-0.5">
-                        € {getPrice('annual')}
-                        {appliedDiscount > 0 && <span className="text-[10px] text-rose-500 line-through ml-2">€ {basePrices.annual}</span>}
-                        <span className="text-[10px] text-white/40 font-bold ml-1">/ Anno</span>
-                      </p>
+                      )}>Abbonamento Annuale</span>
+                      <p className="text-lg font-black text-white mt-0.5">€ 19,99 / anno</p>
                     </div>
                     {selectedPlan === 'annual' && <CheckCircle className="w-5 h-5 text-purple-400" />}
                   </button>
                 </div>
 
-                {/* Coupon Input */}
-                <div className="space-y-2">
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <input 
-                        type="text"
-                        placeholder="CODICE SCONTO / BONUS"
-                        value={coupon}
-                        onChange={(e) => setCoupon(e.target.value)}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white outline-none focus:border-purple-500/50 transition-all placeholder:text-stone-600"
-                      />
-                      {coupon && (
-                        <button onClick={() => setCoupon('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/20 hover:text-white/40">
-                          <X className="w-3 h-3" />
-                        </button>
-                      )}
-                    </div>
-                    <button 
-                      onClick={handleApplyCoupon}
-                      disabled={isApplying || !coupon}
-                      className="px-4 bg-white/10 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-white/20 disabled:opacity-50 transition-all active:scale-95 whitespace-nowrap"
-                    >
-                      {isApplying ? '...' : 'Applica'}
-                    </button>
-                  </div>
-                  {couponError && <p className="text-[9px] text-rose-500 font-bold uppercase tracking-wide ml-1">{couponError}</p>}
-                </div>
+                <button 
+                  onClick={() => setShowComparison(true)}
+                  className="w-full py-4 bg-white/5 border border-white/10 rounded-2xl text-[10px] font-black text-white uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-white/10 transition-all"
+                >
+                  <Info className="w-4 h-4" /> Vedi Tabella Differenze
+                </button>
 
-                <div className="flex flex-col gap-3">
-                  <button 
-                    onClick={handleCheckout}
-                    className="w-full py-4 bg-purple-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-lg shadow-purple-900/40 hover:bg-purple-500 transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
-                  >
-                    <CreditCard className="w-4 h-4" /> Procedi al Pagamento
-                  </button>
-                  
-                  <button 
-                    onClick={() => setShowComparison(true)}
-                    className="w-full py-3 text-[10px] font-black text-white/20 uppercase tracking-widest hover:text-white/40 transition-all flex items-center justify-center gap-2"
-                  >
-                    <Info className="w-4 h-4" /> Confronta Piani
-                  </button>
-                </div>
+                <button 
+                  onClick={handleCheckout}
+                  className="w-full py-4 bg-purple-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-lg shadow-purple-900/40 hover:bg-purple-500 transition-all flex items-center justify-center gap-2"
+                >
+                  <CreditCard className="w-4 h-4" /> Procedi all&apos;abbonamento
+                </button>
               </div>
             </>
           ) : (
@@ -955,14 +903,8 @@ export const PremiumModal = ({ isOpen, onClose }: { isOpen: boolean, onClose: ()
 
               <div className="flex flex-col gap-3 pt-2">
                 <button 
-                  onClick={handleCheckout}
-                  className="w-full py-4 bg-purple-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-purple-900/40 hover:bg-purple-500 transition-all flex items-center justify-center gap-2"
-                >
-                  Sottoscrivi ora
-                </button>
-                <button 
                   onClick={() => setShowComparison(false)}
-                  className="w-full py-3 text-[10px] font-black text-white/30 uppercase tracking-widest hover:text-white transition-colors"
+                  className="w-full py-4 bg-purple-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-purple-900/40 hover:bg-purple-500 transition-all active:scale-95 flex items-center justify-center gap-2"
                 >
                   Torna alle Tariffe
                 </button>
@@ -1183,11 +1125,13 @@ const ProfileCard: React.FC<{ profile: UserProfile; onInteract?: () => void }> =
       alert("Devi essere iscritto per interagire!");
       return;
     }
-    await fetch('/api/interactions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from_user_id: currentUser.id, to_user_id: profile.id, type })
-    });
+    try {
+      await supabase.from('interactions').upsert({
+        from_user_id: currentUser.id,
+        to_user_id: profile.id,
+        type: type
+      });
+    } catch (e) { }
     if (onInteract) onInteract();
   };
 
@@ -1312,13 +1256,15 @@ const HomeSlider = () => {
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
-    fetch('/api/settings/home_slider')
-      .then(res => res.json())
-      .then(data => {
-        if (Array.isArray(data) && data.length > 0) {
-          // Shuffle images for a random sequence every visit
-          const shuffled = [...data].sort(() => Math.random() - 0.5);
-          setImages(shuffled);
+    supabase.from('site_settings').select('value').eq('key', 'home_slider').single()
+      .then(({ data, error }) => {
+        if (!error && data?.value) {
+          try {
+            const parsed = JSON.parse(data.value);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              setImages([...parsed].sort(() => Math.random() - 0.5));
+            }
+          } catch (e) {}
         }
       })
       .catch(() => { });
@@ -2212,7 +2158,7 @@ const ProfileDetailPage = () => {
         .eq('sender_id', currentUser.id)
         .gte('created_at', today.toISOString());
 
-      if ((count || 0) >= 2) {
+      if ((count || 0) >= 5) {
         setShowPremiumModal(true);
         return;
       }
@@ -2866,21 +2812,7 @@ const BachecaPage = () => {
 
   const fetchProfiles = async () => {
     setLoading(true);
-    try {
-      // Try local API first
-      const res = await fetch('/api/profiles');
-      if (res.ok) {
-        const data = await res.json();
-        // Check array to prevent crash on HTML fallback
-        if (Array.isArray(data)) {
-          setProfiles(data);
-          setLoading(false);
-          return;
-        }
-      }
-    } catch (e) { }
-
-    // Fallback to Supabase se fallisce API Locale
+    // Exclusive Supabase fetch
     try {
       const { data, error } = await supabase
         .from('users')
@@ -3094,8 +3026,12 @@ const BachecaPage = () => {
 
   const [heroIndex, setHeroIndex] = useState(0);
   const heroProfiles = useMemo(() => {
-    // Shuffle the entire filtered list and take first 5
-    return [...filteredProfiles].sort(() => Math.random() - 0.5).slice(0, 5);
+    // Priorità agli utenti Premium (is_paid), poi ordinamento casuale
+    return [...filteredProfiles].sort((a, b) => {
+      if (a.is_paid && !b.is_paid) return -1;
+      if (!a.is_paid && b.is_paid) return 1;
+      return Math.random() - 0.5;
+    }).slice(0, 10); // Aumentato a 10 per mostrare più suggerimenti
   }, [filteredProfiles]);
 
   // Reset index if profiles change to prevent out of bounds
@@ -3234,17 +3170,20 @@ const BachecaPage = () => {
 
         <div className="px-4 pt-4 pb-2">
           <div className="flex items-center gap-2 mb-3">
-            <Sparkles className="w-3 h-3 text-amber-500" />
-            <span className="text-white/50 text-[10px] font-black uppercase tracking-[0.2em]">Utenti Suggeriti</span>
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+            </span>
+            <span className="text-white/50 text-[10px] font-black uppercase tracking-[0.2em]">Utenti suggeriti</span>
           </div>
           <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-1">
-            {[...filteredProfiles].sort((a, b) => (b.is_online ? 1 : 0) - (a.is_online ? 1 : 0)).map((p, i) => (
+            {heroProfiles.map((p, i) => (
               <Link key={p.id} to={`/profile-detail/${p.id}`} className="flex flex-col items-center gap-1.5 shrink-0">
                 <div className={cn(
-                  "w-16 h-16 rounded-full overflow-hidden border-2 p-0.5 shadow-lg transition-all duration-500",
+                  "w-16 h-16 rounded-full overflow-hidden border-2 p-0.5 transition-all duration-500",
                   p.is_online 
-                    ? "border-emerald-500 bg-emerald-500 shadow-emerald-500/30" 
-                    : "border-rose-600 bg-rose-600 shadow-rose-900/30"
+                    ? "border-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.4)]" 
+                    : "border-rose-500 shadow-[0_0_12px_rgba(244,63,94,0.2)]"
                 )}>
                   <img src={p.photos?.[0] || p.photo_url || `https://picsum.photos/seed/${p.name}/200`} className="w-full h-full object-cover rounded-full" />
                 </div>
@@ -4296,8 +4235,12 @@ const FeedPage = () => {
     // Compatibilità online: prendiamo da Supabase
     const fetchGlobalBanner = async () => {
       try {
-        const { data } = await supabase.from('banner_messages').select('*').order('created_at', { ascending: false });
-        if (data && data.length > 0) setBannerMessages(data);
+        const { data } = await supabase
+          .from('banner_messages')
+          .select('*')
+          .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+          .order('created_at', { ascending: false });
+        if (data) setBannerMessages(data);
       } catch (e) { }
     };
     fetchGlobalBanner();
@@ -4789,8 +4732,10 @@ const AmiciPage = () => {
 
             <div className="rounded-[28px] p-2 space-y-2" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
               <AnimatePresence mode="popLayout">
-                {pendingIn.map((req) => {
+                {pendingIn.map((req, i) => {
                   const isFree = !currentUser?.is_paid;
+                  const isUnderLimit = i < 2;
+                  const isLocked = isFree && !isUnderLimit;
                   return (
                   <motion.div
                     key={req.id}
@@ -4800,9 +4745,9 @@ const AmiciPage = () => {
                     exit={{ opacity: 0, y: 20, scale: 0.9 }}
                     className="rounded-[22px] p-3 flex items-center gap-3 cursor-pointer"
                     style={{ background: 'rgba(244,63,94,0.08)', border: '1px solid rgba(244,63,94,0.15)' }}
-                    onClick={() => isFree ? setShowPremiumModal(true) : null}
+                    onClick={() => isLocked ? setShowPremiumModal(true) : null}
                   >
-                    <div className={cn("relative w-12 h-12 rounded-full shrink-0 overflow-hidden", isFree && "blur-md opacity-80 backdrop-saturate-150")}>
+                    <div className={cn("relative w-12 h-12 rounded-full shrink-0 overflow-hidden", isLocked && "blur-md opacity-80 backdrop-saturate-150")}>
                       <ProfileAvatar
                         user={req.other_user}
                         className="w-full h-full"
@@ -4811,18 +4756,18 @@ const AmiciPage = () => {
                     </div>
                     <div className="flex-1 min-w-0">
                       <h4 className="text-sm font-black text-white truncate drop-shadow-md">
-                        {isFree ? 'Utente Misterioso' : req.other_user?.name}
+                        {isLocked ? 'Utente Misterioso' : req.other_user?.name}
                       </h4>
                       <p className="text-[10px] text-white/30 font-bold uppercase tracking-tight">
-                        {isFree ? 'Sblocca per vedere' : (req.other_user?.city || 'SoulMatch')}
+                        {isLocked ? 'Sblocca per vedere' : (req.other_user?.city || 'SoulMatch')}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={(e) => { e.stopPropagation(); isFree ? setShowPremiumModal(true) : handleAccept(req.id); }}
-                        className={cn("w-10 h-10 text-white rounded-full flex items-center justify-center transition-all", isFree ? "bg-rose-600/50 shadow-none border border-rose-500/50" : "bg-emerald-500 shadow-[0_0_16px_rgba(16,185,129,0.5)] active:scale-90")}
+                        onClick={(e) => { e.stopPropagation(); isLocked ? setShowPremiumModal(true) : handleAccept(req.id); }}
+                        className={cn("w-10 h-10 text-white rounded-full flex items-center justify-center transition-all", isLocked ? "bg-rose-600/50 shadow-none border border-rose-500/50" : "bg-emerald-500 shadow-[0_0_16px_rgba(16,185,129,0.5)] active:scale-90")}
                       >
-                        {isFree ? <Lock className="w-4 h-4" /> : <CheckCircle className="w-5 h-5" />}
+                        {isLocked ? <Lock className="w-4 h-4" /> : <CheckCircle className="w-5 h-5" />}
                       </button>
                       <button
                         onClick={(e) => { e.stopPropagation(); handleReject(req.id); }}
@@ -5249,39 +5194,15 @@ const AdminPage = () => {
   const fetchUsers = async () => {
     setLoadingData(true);
     try {
-      // 1. Prova a caricare da Supabase - prioritario per admin
+      // Caricamento esclusivo da Supabase
       const { data: sbData, error: sbError } = await supabase.from('users').select('*').order('created_at', { ascending: false });
-
-      // 2. Prova a caricare dall'API locale (fallback)
-      let localData = [];
-      try {
-        const res = await fetch('/api/profiles');
-        if (res.ok) {
-          const rawLocal = await res.json();
-          if (Array.isArray(rawLocal)) {
-            localData = rawLocal.map((u: any) => ({
-              ...u,
-              photo_url: u.photo_url || (u.photos && u.photos[0]) || null,
-              created_at: u.created_at || new Date().toISOString()
-            }));
-          }
-        }
-      } catch (err) { console.log("Local API not available"); }
-
-      // 3. Unione
-      const combined = [...(sbData || [])];
-      localData.forEach((lu: any) => {
-        if (!combined.find(cu => cu.id === lu.id)) {
-          combined.push(lu);
-        }
-      });
 
       const { data: repData } = await supabase.from('reports').select('*').order('created_at', { ascending: false });
       setReports(repData || []);
       
-      setUsers(combined);
-      if (sbError && combined.length === 0) {
-        setToast({ message: "Sincronizzazione Supabase fallita.", type: 'error' });
+      setUsers(sbData || []);
+      if (sbError) {
+        setToast({ message: "Impossibile caricare i dati da Supabase.", type: 'error' });
       }
     } catch (e) {
       setToast({ message: "Errore caricamento dati.", type: 'error' });
@@ -5322,21 +5243,22 @@ const AdminPage = () => {
 
   const fetchSliderImages = async () => {
     try {
-      const res = await fetch('/api/settings/home_slider');
-      if (res.ok) setSliderImages(await res.json());
+      const { data, error } = await supabase.from('site_settings').select('value').eq('key', 'home_slider').single();
+      if (!error && data?.value) setSliderImages(JSON.parse(data.value));
     } catch (e) { }
   };
 
   const handleUpdateSlider = async (newImages: string[]) => {
     try {
-      const res = await fetch('/api/settings/home_slider', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ value: newImages })
+      const { error } = await supabase.from('site_settings').upsert({
+        key: 'home_slider',
+        value: JSON.stringify(newImages)
       });
-      if (res.ok) {
+      if (!error) {
         setSliderImages(newImages);
-        setToast({ message: "Slider aggiornato!", type: 'success' });
+        setToast({ message: "Slider aggiornato su Supabase!", type: 'success' });
+      } else {
+        setToast({ message: "Errore Supabase: " + error.message, type: 'error' });
       }
     } catch (e) {
       setToast({ message: "Errore aggiornamento.", type: 'error' });
@@ -6570,15 +6492,50 @@ const AdminPage = () => {
                         <button onClick={() => removeImage(i)} className="absolute top-2 right-2 w-8 h-8 bg-black/60 backdrop-blur-md text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">×</button>
                       </div>
                     ))}
-                    {sliderImages.length === 0 && <p className="col-span-full py-8 text-stone-400 text-center border-2 border-dashed border-stone-200 rounded-2xl">Nessun URL caricato.</p>}
+                    {sliderImages.length === 0 && <p className="col-span-full py-8 text-stone-400 text-center border-2 border-dashed border-stone-200 rounded-2xl">Nessun immagine caricata.</p>}
                   </div>
-                  <div className="flex gap-2">
-                    <input
-                      value={newUrl} onChange={(e) => setNewUrl(e.target.value)}
-                      placeholder="URL immagine"
-                      className="flex-1 p-3 rounded-xl bg-stone-50 border border-stone-200 text-sm outline-none focus:ring-2 focus:ring-rose-500"
-                    />
-                    <button onClick={addImage} className="bg-stone-900 text-white px-6 py-3 rounded-xl font-black uppercase hover:bg-stone-800 transition-all">Aggiungi</button>
+                  
+                  <div className="space-y-4">
+                    <p className="text-[10px] text-stone-400 font-black uppercase tracking-widest ml-1">Carica Nuova Immagine</p>
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      {/* Caricamento File */}
+                      <div className="flex-1">
+                        <input
+                          type="file"
+                          id="admin-slider-upload"
+                          className="hidden"
+                          accept="image/*"
+                          onChange={async (e) => {
+                            if (e.target.files?.[0]) {
+                              const base64 = await fileToBase64(e.target.files[0]);
+                              handleUpdateSlider([...sliderImages, base64]);
+                            }
+                          }}
+                        />
+                        <button 
+                          onClick={() => document.getElementById('admin-slider-upload')?.click()}
+                          className="w-full h-[52px] bg-stone-100 text-stone-600 rounded-xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 border border-stone-200 hover:bg-stone-200 transition-all active:scale-95"
+                        >
+                          <CloudUpload className="w-5 h-5" /> Carica dal Computer
+                        </button>
+                      </div>
+
+                      {/* Oppure tramite URL */}
+                      <div className="flex-[1.5] flex gap-2">
+                        <input
+                          value={newUrl}
+                          onChange={(e) => setNewUrl(e.target.value)}
+                          placeholder="Oppure incolla URL immagine..."
+                          className="flex-1 p-3 px-5 rounded-xl bg-stone-50 border border-stone-200 text-sm font-medium outline-none focus:ring-2 focus:ring-rose-500"
+                        />
+                        <button 
+                          onClick={addImage} 
+                          className="bg-stone-900 text-white px-8 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest hover:bg-stone-800 transition-all active:scale-95 shadow-xl shadow-stone-200"
+                        >
+                          Aggiungi URL
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -6757,7 +6714,6 @@ const RegisterPage = ({ setSecurityStatus }: { setSecurityStatus: any }) => {
     conosciamoci_meglio: {},
     accepted_terms: false,
     accepted_privacy: false,
-    subscription_type: 'free',
   });
 
   useEffect(() => {
@@ -7156,11 +7112,11 @@ const RegisterPage = ({ setSecurityStatus }: { setSecurityStatus: any }) => {
             ><ChevronRight className="w-5 h-5 rotate-180" /></button>
             <div>
               <h1 className="text-xl font-montserrat font-black text-white">{isEditing ? 'Modifica Profilo' : 'Iscriviti'}</h1>
-              <p className="text-white/30 text-[10px] font-bold uppercase tracking-wider">Step {step} di 7</p>
+              <p className="text-white/30 text-[10px] font-bold uppercase tracking-wider">Step {step} di 6</p>
             </div>
           </div>
           <div className="flex gap-1.5">
-            {[1, 2, 3, 4, 5, 6, 7].map(i => (
+            {[1, 2, 3, 4, 5, 7].map(i => (
               <div key={i} className={cn("h-1 rounded-full transition-all duration-300", step >= i ? "bg-rose-500 w-5" : "bg-white/10 w-2")} />
             ))}
           </div>
@@ -7479,7 +7435,6 @@ const RegisterPage = ({ setSecurityStatus }: { setSecurityStatus: any }) => {
                     { title: 'Account', rows: [['Email', formData.email]] },
                     { title: 'Dati Personali', rows: [['Nome', `${formData.name} ${formData.surname}`], ['Nascita', formData.dob], ['Città', formData.city], ['Genere', formData.gender], ['Orientamento', Array.isArray(formData.orientation) ? (formData.orientation as string[]).join(', ') : formData.orientation], ['Lavoro', formData.job]] },
                     { title: 'Cerco', rows: [['Genere', Array.isArray(formData.looking_for_gender) ? (formData.looking_for_gender as string[]).join(', ') : formData.looking_for_gender], ['Età', `${formData.looking_for_age_min}–${formData.looking_for_age_max}`]] },
-                    { title: 'Piano', rows: [['Tipo', 'Gratis (Base)'], ['Costo', '€0']] },
                   ].map(section => (
                     <div key={section.title} className="p-4 rounded-[20px] space-y-2" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
                       <h4 className="text-[9px] font-black text-rose-400 uppercase tracking-widest">{section.title}</h4>
@@ -7526,7 +7481,18 @@ const RegisterPage = ({ setSecurityStatus }: { setSecurityStatus: any }) => {
 const FeedComponent = ({ userId, isOwner, global = false }: { userId: any, isOwner?: boolean, global?: boolean }) => {
 
   const [posts, setPosts] = useState<Post[]>([]);
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+
+  useEffect(() => {
+    const checkUser = () => {
+      const saved = localStorage.getItem('soulmatch_user');
+      if (saved) setCurrentUser(normalizeUser(JSON.parse(saved)));
+    };
+    checkUser();
+    window.addEventListener('user-auth-change', checkUser);
+    return () => window.removeEventListener('user-auth-change', checkUser);
+  }, []);
   const [showSearch, setShowSearch] = useState(false);
   const [newPostDesc, setNewPostDesc] = useState('');
   const [newPostPhotos, setNewPostPhotos] = useState<string[]>([]);
@@ -7534,6 +7500,7 @@ const FeedComponent = ({ userId, isOwner, global = false }: { userId: any, isOwn
   const [showOnlyMine, setShowOnlyMine] = useState(false);
   const [isPosting, setIsPosting] = useState(false);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
+  const [premiumModalMode, setPremiumModalMode] = useState(false);
   const [expandedComments, setExpandedComments] = useState<string[]>([]);
   const [commentTexts, setCommentTexts] = useState<Record<string, string>>({});
   const [postComments, setPostComments] = useState<Record<string, any[]>>({});
@@ -7702,19 +7669,27 @@ const FeedComponent = ({ userId, isOwner, global = false }: { userId: any, isOwn
       }
 
       const curUser = localStorage.getItem('soulmatch_user') ? JSON.parse(localStorage.getItem('soulmatch_user')!) : null;
-      if (curUser && !curUser.is_paid) {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const { count: dailyPosts } = await supabase
-          .from('posts')
-          .select('*', { count: 'exact', head: true })
-          .eq('user_id', authUserId)
-          .gte('created_at', today.toISOString());
-
-        if ((dailyPosts || 0) >= 1) {
+      if (curUser) {
+        if (!curUser.is_paid) {
+          // Utenti Base: 0 post
           setShowPremiumModal(true);
           setIsPosting(false);
           return;
+        } else {
+          // Utenti Premium: 1 post / giorno
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const { count: dailyPosts } = await supabase
+            .from('posts')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', authUserId)
+            .gte('created_at', today.toISOString());
+
+          if ((dailyPosts || 0) >= 1) {
+            alert("Hai già pubblicato un post oggi. La quota massima per gli utenti Premium è di 1 post ogni 24 ore.");
+            setIsPosting(false);
+            return;
+          }
         }
       }
 
@@ -7766,18 +7741,30 @@ const FeedComponent = ({ userId, isOwner, global = false }: { userId: any, isOwn
 
   return (
     <div className="space-y-6">
-      <PremiumModal isOpen={showPremiumModal} onClose={() => setShowPremiumModal(false)} />
+      <PremiumModal isOpen={showPremiumModal} onClose={() => setShowPremiumModal(false)} defaultComparison={premiumModalMode} />
       {/* ── HEADER ACTION BAR (Search + Mine + Plus) ── */}
       {global && (
         <div className="flex items-center gap-3 mb-6">
           <button
-            onClick={() => setIsPostingOpen(!isPostingOpen)}
+            onClick={() => {
+              if (currentUser && !currentUser.is_paid) {
+                setPremiumModalMode(true);
+                setShowPremiumModal(true);
+              } else {
+                setIsPostingOpen(!isPostingOpen);
+              }
+            }}
             className={cn(
-              "w-12 h-12 rounded-2xl flex items-center justify-center transition-all shrink-0",
+              "w-12 h-12 rounded-2xl flex items-center justify-center transition-all shrink-0 relative",
               isPostingOpen ? "bg-rose-600 text-white shadow-[0_0_16px_rgba(244,63,94,0.5)]" : "bg-white/10 text-rose-500 border border-rose-500/30 shadow-[0_0_16px_rgba(244,63,94,0.2)]"
             )}
           >
             <Plus className="w-6 h-6" />
+            {currentUser && !currentUser.is_paid && (
+              <div className="absolute -top-1 -right-1 bg-amber-500 rounded-full p-1 shadow-lg shadow-amber-900/40">
+                <Lock className="w-2.5 h-2.5 text-white" />
+              </div>
+            )}
           </button>
 
           <button
@@ -8394,7 +8381,7 @@ const EditProfilePage = () => {
                     <div>
                       <p className="text-[10px] font-black uppercase tracking-widest text-stone-400">Piano Attivo</p>
                       <p className="text-sm font-black text-stone-900 uppercase flex items-center gap-2">
-                        SoulMatch {user.subscription_type === 'monthly' ? 'Premium Mensile' : user.subscription_type === 'annual' ? 'Premium Annuale' : 'Gratis'}
+                        SoulMatch {user.subscription_type || 'Premium'}
                         {user.subscription_expiry && (
                           <span className="px-2 py-0.5 bg-purple-600 text-[8px] text-white rounded-full animate-in fade-in zoom-in duration-500">
                             Scad: {new Date(user.subscription_expiry).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })}
@@ -9525,6 +9512,7 @@ const ProfilePage = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeletingProfile, setIsDeletingProfile] = useState(false);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
+  const [premiumModalMode, setPremiumModalMode] = useState(false);
   const [isBannerExpanded, setIsBannerExpanded] = useState(false);
   const navigate = useNavigate();
 
@@ -9560,31 +9548,46 @@ const ProfilePage = () => {
   // Removed notification related effects
 
   const fetchData = async (userId: string) => {
+    if (!userId || userId === 'undefined' || userId === 'null') {
+      setLoading(false);
+      return;
+    }
     try {
-      const { data: profileData, error: profileErr } = await supabase
+      let profileData = null;
+      // Exclusive Supabase call
+      const { data, error: profileErr } = await supabase
         .from('users')
         .select(`
-                                *,
-                                interactions!to_user_id(type)
-                                `)
+          *,
+          interactions!to_user_id(type)
+        `)
         .eq('id', userId)
         .single();
-
+       
       if (profileErr) {
         console.error("Profile fetch error:", profileErr);
+        // Minimal local fallback
+        const savedRaw = localStorage.getItem('soulmatch_user');
+        if (savedRaw) {
+          const saved = JSON.parse(savedRaw);
+          if (String(saved.id) === String(userId)) profileData = saved;
+        }
+      } else {
+        profileData = data;
       }
 
       if (profileData) {
         const normalized = normalizeUser(profileData);
+        // Supabase returns interactions as an array, local API might not (check local API format if needed)
+        const interactionsArr = Array.isArray(profileData.interactions) ? profileData.interactions : [];
         setUser({
           ...normalized,
-          likes_count: (profileData.interactions as any[] || []).filter(i => i.type === 'like').length,
-          hearts_count: (profileData.interactions as any[] || []).filter(i => i.type === 'heart').length
+          likes_count: interactionsArr.filter((i: any) => i.type === 'like').length,
+          hearts_count: interactionsArr.filter((i: any) => i.type === 'heart').length
         });
       }
       else {
         console.warn("No profile found for ID:", userId);
-        // Do not redirect immediately if it's a connection/schema issue
       }
 
       const { data: requestsData, error: requestsErr } = await supabase
@@ -9678,11 +9681,23 @@ const ProfilePage = () => {
     const saved = localStorage.getItem('soulmatch_user');
     if (saved) {
       try {
-        const parsed = normalizeUser(JSON.parse(saved));
-        if (parsed?.id) fetchData(parsed.id);
-        else navigate('/register');
-      } catch (e) { navigate('/register'); }
-    } else navigate('/register');
+        const parsed = JSON.parse(saved);
+        if (parsed?.id) {
+          // Set user from localStorage immediately to prevent "not found" blink
+          setUser(normalizeUser(parsed));
+          fetchData(parsed.id);
+        } else {
+          setLoading(false);
+          navigate('/');
+        }
+      } catch (e) { 
+        setLoading(false);
+        navigate('/'); 
+      }
+    } else {
+      setLoading(false);
+      navigate('/');
+    }
   }, [navigate]);
 
   // Removed handleAccept/RejectSoulLink
@@ -9863,21 +9878,21 @@ const ProfilePage = () => {
   );
 
   if (!user) return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-stone-50 p-6 text-center">
-      <div className="w-20 h-20 bg-stone-100 rounded-full flex items-center justify-center mb-6">
-        <Info className="w-10 h-10 text-stone-300" />
+    <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center" style={{ background: '#0a0a0f' }}>
+      <div className="w-20 h-20 bg-white/5 rounded-[32px] flex items-center justify-center mb-6 border border-white/10">
+        <Info className="w-10 h-10 text-rose-500" />
       </div>
-      <h2 className="text-xl font-serif font-black text-stone-900 mb-2">Profilo non trovato</h2>
-      <p className="text-stone-500 text-sm mb-8 max-w-xs">Non è stato possibile caricare i dati del tuo profilo. Potrebbe esserci un problema di connessione o il database non è aggiornato.</p>
+      <h2 className="text-2xl font-montserrat font-black text-white mb-2">Profilo non trovato</h2>
+      <p className="text-white/40 text-sm mb-8 max-w-xs font-medium">Non abbiamo trovato i dati del tuo profilo. Prova a ricaricare la pagina o a tornare alla bacheca.</p>
       <div className="flex flex-col gap-3 w-full max-w-xs">
-        <button onClick={() => navigate('/register')} className="btn-primary py-4">Completa Registrazione</button>
-        <button onClick={() => window.location.reload()} className="btn-secondary py-4">Riprova</button>
+        <button onClick={() => window.location.reload()} className="w-full py-4 bg-rose-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-lg shadow-rose-900/40 hover:bg-rose-500 transition-all">Riprova il caricamento</button>
+        <button onClick={() => navigate('/bacheca')} className="w-full py-4 bg-white/5 border border-white/10 text-white/50 rounded-2xl text-[11px] font-black uppercase tracking-widest hover:text-white transition-all">Torna alla Bacheca</button>
         <button onClick={() => {
           localStorage.removeItem('soulmatch_user');
           window.dispatchEvent(new Event('user-auth-change'));
-          navigate('/');
-        }} className="mt-4 flex items-center justify-center gap-2 text-stone-400 font-bold hover:text-rose-600 transition-colors">
-          <LogOut className="w-4 h-4" /> Esci e ricomincia
+          navigate('/register');
+        }} className="mt-6 flex items-center justify-center gap-2 text-white/20 font-black text-[10px] uppercase tracking-widest hover:text-rose-500 transition-colors">
+          <LogOut className="w-4 h-4" /> Reset Sessione
         </button>
       </div>
     </div>
@@ -9940,10 +9955,10 @@ const ProfilePage = () => {
             </div>
             <div className={cn(
               "flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm ml-3 shrink-0",
-              (user.is_paid || true) ? "bg-rose-600 text-white" : "bg-white/15 backdrop-blur text-white/60 border border-white/20"
+              user.is_paid ? "bg-emerald-600 text-white" : "bg-white/15 backdrop-blur text-white/60 border border-white/20"
             )}>
-              <div className={cn("w-1.5 h-1.5 rounded-full", (user.is_paid || true) ? "bg-white animate-pulse" : "bg-white/30")} />
-              {(user.is_paid || true) ? (
+              <div className={cn("w-1.5 h-1.5 rounded-full", user.is_paid ? "bg-white animate-pulse" : "bg-white/30")} />
+              {user.is_paid ? (
                 <span className="flex items-center gap-1">
                   Premium
                   {user.subscription_expiry && (
@@ -9952,7 +9967,7 @@ const ProfilePage = () => {
                     </span>
                   )}
                 </span>
-              ) : 'Base'}
+              ) : 'Utente Base'}
             </div>
           </div>
         </div>
@@ -9976,63 +9991,91 @@ const ProfilePage = () => {
       </div>
 
       {/* ── PREMIUM UPGRADE BANNER (Solo per utenti Base) ── */}
-      {!user.is_paid && (
-        <motion.div
-          layout
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mx-4 mt-6 p-1 rounded-[32px] relative overflow-hidden group"
-          style={{ background: 'linear-gradient(135deg, rgba(147,51,234,0.3), rgba(79,70,229,0.3))', border: '1px solid rgba(147,51,234,0.3)' }}
-        >
-          <div className="bg-[#0a0a0f]/80 backdrop-blur-3xl rounded-[31px] p-5 space-y-4">
-             <div className="flex items-center justify-between cursor-pointer" onClick={() => setIsBannerExpanded(!isBannerExpanded)}>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-purple-600/20 rounded-xl flex items-center justify-center border border-purple-500/30">
-                    <Heart className="w-5 h-5 text-purple-400 fill-current animate-pulse" />
-                  </div>
-                  <div>
-                    <h3 className="text-[14px] font-black text-white uppercase tracking-wider">Passa a <span className="text-purple-500">Premium</span></h3>
-                    {!isBannerExpanded && <p className="text-[10px] text-white/40 font-bold uppercase tracking-tight">Sblocca funzioni esclusive</p>}
-                  </div>
+      {/* ── STATUS BANNER (Premium/Base) ── */}
+      <motion.div
+        layout
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mx-4 mt-6 p-1 rounded-[32px] relative overflow-hidden group"
+        style={{ 
+          background: user.is_paid 
+            ? 'linear-gradient(135deg, rgba(16,185,129,0.3), rgba(5,150,105,0.3))' 
+            : 'linear-gradient(135deg, rgba(147,51,234,0.3), rgba(79,70,229,0.3))', 
+          border: user.is_paid ? '1px solid rgba(16,185,129,0.3)' : '1px solid rgba(147,51,234,0.3)' 
+        }}
+      >
+        <div className="bg-[#0a0a0f]/80 backdrop-blur-3xl rounded-[31px] p-5 space-y-4">
+           <div className="flex items-center justify-between cursor-pointer" onClick={() => setIsBannerExpanded(!isBannerExpanded)}>
+              <div className="flex items-center gap-3">
+                <div className={cn(
+                  "w-10 h-10 rounded-xl flex items-center justify-center border",
+                  user.is_paid ? "bg-emerald-600/20 border-emerald-500/30" : "bg-purple-600/20 border-purple-500/30"
+                )}>
+                  <Heart className={cn("w-5 h-5 fill-current animate-pulse", user.is_paid ? "text-emerald-400" : "text-purple-400")} />
                 </div>
-                <div 
-                   className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/40 group-hover:text-white transition-all"
-                >
-                   {isBannerExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                <div>
+                  <h3 className="text-[14px] font-black text-white uppercase tracking-wider">
+                    {user.is_paid ? <>Stato <span className="text-emerald-500">Premium Attivo</span></> : <>Passa a <span className="text-purple-500">Premium</span></>}
+                  </h3>
+                  {!isBannerExpanded && (
+                    <p className="text-[10px] text-white/40 font-bold uppercase tracking-tight">
+                      {user.is_paid 
+                        ? (user.subscription_expiry ? `Scadenza: ${new Date(user.subscription_expiry).toLocaleDateString('it-IT')}` : 'Abbonamento Attivo')
+                        : 'Sblocca funzioni esclusive'}
+                    </p>
+                  )}
                 </div>
-             </div>
+              </div>
+              <div 
+                 className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/40 group-hover:text-white transition-all"
+              >
+                 {isBannerExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+              </div>
+           </div>
 
-             <AnimatePresence>
-               {isBannerExpanded && (
-                 <motion.div
-                   initial={{ height: 0, opacity: 0 }}
-                   animate={{ height: 'auto', opacity: 1 }}
-                   exit={{ height: 0, opacity: 0 }}
-                   className="overflow-hidden space-y-4"
-                 >
-                   <p className="text-[11px] text-white/60 font-medium leading-relaxed">
-                     Sblocca SoulLink illimitati, vedi chi ti ha messo like, pubblica messaggi flash e molto altro ancora.
-                   </p>
-                   <div className="grid grid-cols-2 gap-3 pb-1">
+           <AnimatePresence>
+             {isBannerExpanded && (
+               <motion.div
+                 initial={{ height: 0, opacity: 0 }}
+                 animate={{ height: 'auto', opacity: 1 }}
+                 exit={{ height: 0, opacity: 0 }}
+                 className="overflow-hidden space-y-4"
+               >
+                 <p className="text-[11px] text-white/60 font-medium leading-relaxed">
+                   {user.is_paid 
+                     ? "Grazie per essere un membro Premium! Hai accesso a tutte le funzioni avanzate, badge speciale e priorità nella bacheca."
+                     : "Sblocca SoulLink illimitati, vedi chi ti ha messo like, pubblica messaggi flash e molto altro ancora."}
+                 </p>
+                 <div className="grid grid-cols-2 gap-3 pb-1">
+                   {user.is_paid ? (
                      <button
-                       disabled
-                       className="py-4 bg-purple-600 text-white rounded-[18px] text-[10px] font-black uppercase tracking-widest shadow-lg shadow-purple-900/40 opacity-50 flex items-center justify-center gap-2"
+                       onClick={() => { setPremiumModalMode(false); setShowPremiumModal(true); }}
+                       className="col-span-2 py-4 bg-emerald-600 text-white rounded-[18px] text-[10px] font-black uppercase tracking-widest shadow-lg shadow-emerald-900/40 flex items-center justify-center gap-2"
                      >
-                       <CreditCard className="w-4 h-4" /> Abbonati
+                       <Info className="w-4 h-4" /> Gestisci Abbonamento
                      </button>
-                     <button
-                       onClick={(e) => { e.stopPropagation(); setShowPremiumModal(true); }}
-                       className="py-4 bg-white/5 border border-white/10 text-white rounded-[18px] text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2"
-                     >
-                       <Info className="w-4 h-4" /> Confronto Piani
-                     </button>
-                   </div>
-                 </motion.div>
-               )}
-             </AnimatePresence>
-          </div>
-        </motion.div>
-      )}
+                   ) : (
+                     <>
+                       <button
+                         onClick={() => { setPremiumModalMode(false); setShowPremiumModal(true); }}
+                         className="py-4 bg-purple-600 text-white rounded-[18px] text-[10px] font-black uppercase tracking-widest shadow-lg shadow-purple-900/40 flex items-center justify-center gap-2"
+                       >
+                         <CreditCard className="w-4 h-4" /> Abbonati
+                       </button>
+                       <button
+                         onClick={(e) => { e.stopPropagation(); setPremiumModalMode(true); setShowPremiumModal(true); }}
+                         className="py-4 bg-white/5 border border-white/10 text-white rounded-[18px] text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2"
+                       >
+                         <Info className="w-4 h-4" /> Confronto Piani
+                       </button>
+                     </>
+                   )}
+                 </div>
+               </motion.div>
+             )}
+           </AnimatePresence>
+        </div>
+      </motion.div>
 
       {/* ── DOCUMENT REJECTED BANNER (Profilo) ── */}
       <SharedRejectedDocumentBanner currentUser={user as any} />
@@ -10502,7 +10545,7 @@ const ProfilePage = () => {
           />
         )}
       </AnimatePresence>
-      <PremiumModal isOpen={showPremiumModal} onClose={() => setShowPremiumModal(false)} />
+      <PremiumModal isOpen={showPremiumModal} onClose={() => setShowPremiumModal(false)} defaultComparison={premiumModalMode} />
     </div >
   );
 };
@@ -10901,6 +10944,287 @@ const SharedRejectedDocumentBanner = ({ currentUser, onUploadSuccess }: { curren
   );
 };
 
+const SubscriptionSuccessPage = () => {
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [expiry, setExpiry] = useState<string>('');
+
+  useEffect(() => {
+    const processSubscription = async () => {
+      const saved = localStorage.getItem('soulmatch_user');
+      if (saved) {
+        try {
+          const u = JSON.parse(saved);
+          const pendingPlan = localStorage.getItem('soulmatch_pending_plan') as 'monthly' | 'annual' || 'monthly';
+          
+          const expiryDate = new Date();
+          if (pendingPlan === 'annual') {
+            expiryDate.setFullYear(expiryDate.getFullYear() + 1);
+          } else {
+            expiryDate.setMonth(expiryDate.getMonth() + 1);
+          }
+
+          const subscriptionData = {
+            is_paid: true,
+            subscription_type: pendingPlan === 'annual' ? 'annuale' : 'mensile',
+            subscription_expiry: expiryDate.toISOString()
+          };
+          
+          setExpiry(expiryDate.toLocaleDateString('it-IT', { day: '2-digit', month: 'long', year: 'numeric' }));
+
+          // 1. Update Database
+          const { error } = await supabase
+            .from('users')
+            .update(subscriptionData)
+            .eq('id', u.id);
+          
+          if (!error) {
+            // 2. Update Local Session
+            const updatedUser = { ...u, ...subscriptionData };
+            localStorage.setItem('soulmatch_user', JSON.stringify(updatedUser));
+            localStorage.removeItem('soulmatch_pending_plan');
+            window.dispatchEvent(new Event('user-auth-change'));
+          }
+        } catch (e) {
+          console.error("Errore processamento abbonamento:", e);
+        }
+      }
+      setLoading(false);
+    };
+
+    processSubscription();
+  }, []);
+
+  return (
+    <div className="min-h-screen pt-24 pb-12 px-6 flex flex-col items-center justify-center bg-[#0a0a0f] relative overflow-hidden">
+      {/* Animated background stars/pixels */}
+      <div className="absolute inset-0 z-0 opacity-20 pointer-events-none">
+        <div className="absolute top-1/4 left-1/4 w-1 h-1 bg-white rounded-full animate-ping" />
+        <div className="absolute top-3/4 left-2/3 w-1 h-1 bg-white rounded-full animate-ping [animation-delay:1s]" />
+        <div className="absolute top-1/2 left-1/2 w-80 h-80 bg-purple-600/20 blur-[120px] rounded-full -translate-x-1/2 -translate-y-1/2" />
+      </div>
+
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.9, y: 30 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        className="w-full max-w-md bg-stone-900/40 backdrop-blur-2xl border border-white/10 rounded-[40px] p-8 text-center relative z-10 shadow-2xl"
+      >
+        <div className="w-20 h-20 bg-emerald-500/20 rounded-[28px] flex items-center justify-center mx-auto mb-6 border border-emerald-500/30 relative">
+          <div className="absolute inset-0 bg-emerald-500/20 blur-xl rounded-full animate-pulse" />
+          <CheckCircle className="w-10 h-10 text-emerald-500 relative z-10" />
+        </div>
+
+        <h1 className="text-3xl font-serif font-black text-white mb-2 leading-tight">Benvenuto nel <br /><span className="text-purple-400">Club Premium!</span></h1>
+        <p className="text-stone-400 text-sm font-bold uppercase tracking-widest mb-8">Pagamento completato con successo</p>
+
+        <div className="space-y-4 mb-10">
+          {[
+            { icon: Sparkles, label: "SoulLink Illimitati", desc: "Niente più limiti giornalieri" },
+            { icon: Zap, label: "Messaggi Flash", desc: "Contatta chiunque istantaneamente" },
+            { icon: Eye, label: "Identità Svelata", desc: "Vedi chiaramente chi ti cerca" },
+            { icon: ShieldCheck, label: "Badge Premium", desc: "Massima affidabilità sul profilo" }
+          ].map((feat, i) => (
+            <motion.div 
+              key={i}
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.3 + (i * 0.1) }}
+              className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5"
+            >
+              <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center border border-purple-500/20">
+                <feat.icon className="w-5 h-5 text-purple-400" />
+              </div>
+              <div className="text-left">
+                <p className="text-xs font-black text-white uppercase tracking-wider">{feat.label}</p>
+                <p className="text-[10px] text-stone-500 font-bold">{feat.desc}</p>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+
+        <div className="p-4 rounded-2xl bg-emerald-500/5 border border-emerald-500/10 mb-8">
+           <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-1">Stato Abbonamento</p>
+           <p className="text-sm font-bold text-white">Attivo fino al {expiry || '...'}</p>
+        </div>
+
+        <button 
+          onClick={() => navigate('/profile')}
+          className="w-full py-4 bg-white text-black rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-stone-200 transition-all active:scale-95 shadow-xl shadow-white/5"
+        >
+          Vai al tuo profilo
+        </button>
+      </motion.div>
+
+      <div className="mt-8 text-center text-[10px] text-stone-600 font-bold uppercase tracking-widest">
+        SoulMatch Premium • Ordine #SM-{Math.floor(Math.random() * 100000)}
+      </div>
+    </div>
+  );
+};
+
+
+const SecurityWarningSideBanner = () => {
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    const handleAuthChange = () => {
+      const saved = localStorage.getItem('soulmatch_user');
+      if (saved) {
+        try {
+          setCurrentUser(JSON.parse(saved));
+        } catch { setCurrentUser(null); }
+      } else {
+        setCurrentUser(null);
+      }
+    };
+    handleAuthChange();
+    window.addEventListener('user-auth-change', handleAuthChange);
+    window.addEventListener('storage', handleAuthChange);
+    return () => {
+      window.removeEventListener('user-auth-change', handleAuthChange);
+      window.removeEventListener('storage', handleAuthChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!currentUser?.doc_rejected) return;
+
+    // Automatic expansion every 60 seconds
+    const interval = setInterval(() => {
+      setIsExpanded(true);
+      setTimeout(() => setIsExpanded(false), 5000);
+    }, 60000);
+
+    // Also show on first load for 5 seconds
+    const initialTimer = setTimeout(() => {
+      setIsExpanded(true);
+      setTimeout(() => setIsExpanded(false), 5000);
+    }, 2000);
+
+    return () => {
+      clearInterval(interval);
+      clearTimeout(initialTimer);
+    };
+  }, [currentUser?.doc_rejected, currentUser?.id]);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleDirectUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0] && currentUser) {
+      try {
+        const base64 = await fileToBase64(e.target.files[0]);
+        const { error } = await supabase.from('users').update({
+          id_document_url: base64,
+          doc_rejected: false,
+          doc_rejected_at: null,
+          is_suspended: false // Clear suspension if it was due to doc rejection
+        }).eq('id', currentUser.id);
+
+        if (!error) {
+          const saved = localStorage.getItem('soulmatch_user');
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            localStorage.setItem('soulmatch_user', JSON.stringify({
+              ...parsed,
+              id_document_url: base64,
+              doc_rejected: false,
+              doc_rejected_at: null,
+              is_suspended: false
+            }));
+          }
+          window.dispatchEvent(new Event('user-auth-change'));
+          setIsExpanded(false);
+        } else {
+          console.error("Errore upload documento:", error);
+        }
+      } catch (err) {
+        console.error("Errore conversione file:", err);
+      }
+    }
+  };
+
+  if (!currentUser?.doc_rejected) return null;
+  // Don't show in registration or live chat
+  if (location.pathname.startsWith('/register') || location.pathname.startsWith('/live-chat')) return null;
+
+  const remaining = calculateRemainingDays(currentUser.doc_rejected_at || null);
+
+  return (
+    <motion.div
+      initial={false}
+      animate={{ x: isExpanded ? 0 : 'calc(100% - 40px)' }}
+      transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+      className="fixed right-0 top-1/2 -translate-y-1/2 z-[9999] flex items-stretch group"
+      style={{ filter: 'drop-shadow(-20px 0 40px rgba(0,0,0,0.6))' }}
+    >
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        onChange={handleDirectUpload} 
+        accept="image/*,.pdf" 
+        className="hidden" 
+      />
+
+      {/* Side Tab - The "Setup" handle */}
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="w-10 bg-rose-600 rounded-l-2xl flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-rose-500 transition-colors relative z-10"
+      >
+        <div className="absolute top-2 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-white rounded-full animate-ping" />
+        <Settings2 className="w-5 h-5 text-white animate-spin-slow" />
+        <div className="[writing-mode:vertical-lr] text-[9px] font-black uppercase tracking-[0.2em] text-white rotate-180 whitespace-nowrap">
+          Azione Richiesta
+        </div>
+      </button>
+
+      {/* Main Content Area - 3x larger than standard toasts */}
+      <div className="w-80 bg-stone-900 border-y border-l border-white/10 rounded-none p-6 relative flex flex-col gap-4 overflow-hidden">
+        {/* Background Accent */}
+        <div className="absolute -top-10 -right-10 w-32 h-32 bg-rose-600/10 blur-3xl rounded-full" />
+        
+        <div className="flex items-start gap-3">
+          <div className="w-10 h-10 rounded-xl bg-rose-500/20 flex items-center justify-center shrink-0 border border-rose-500/30">
+            <ShieldCheck className="w-5 h-5 text-rose-500" />
+          </div>
+          <div>
+            <h4 className="text-sm font-montserrat font-black text-white leading-tight uppercase">Documento Rifiutato</h4>
+            <div className="flex items-center gap-1 mt-0.5">
+              <Calendar className="w-3 h-3 text-rose-400" />
+              <p className="text-[10px] font-bold text-rose-400 uppercase tracking-tighter">Mancano {remaining} giorni</p>
+            </div>
+          </div>
+        </div>
+
+        <p className="text-[11px] text-white/50 leading-relaxed font-medium">
+          Il tuo documento non è stato convalidato. Ricaricalo ora per evitare la sospensione dell'account e ottenere il badge di verifica.
+        </p>
+
+        <div className="space-y-2">
+          <button
+            onClick={() => {
+              fileInputRef.current?.click();
+            }}
+            className="w-full py-3.5 bg-rose-600 hover:bg-rose-500 text-white font-black uppercase tracking-widest text-[10px] rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-rose-900/40 transition-all active:scale-95"
+          >
+            <CloudUpload className="w-4 h-4" />
+            Carica Documento
+          </button>
+          
+          <button
+            onClick={() => setIsExpanded(false)}
+            className="w-full py-2.5 bg-white/5 hover:bg-white/10 text-white/30 hover:text-white/60 font-bold uppercase tracking-widest text-[8px] rounded-xl transition-all"
+          >
+            Chiudi Anteprima
+          </button>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
 const SecurityOverlay = ({ status, onClose }: { status: any; onClose: () => void }) => {
   if (!status || !status.type || status.type === 'doc_rejected') return null;
   const { type, reason } = status;
@@ -11083,7 +11407,13 @@ export default function App() {
       if (saved) {
         try {
           const u = JSON.parse(saved);
-          if (u?.id) {
+            const isLocalId = /^\d+$/.test(String(u.id));
+            if (isLocalId) {
+              // Per utenti locali saltiamo la verifica Supabase e aggiorniamo is_online
+              setCurrentUser(normalizeUser(u));
+              return;
+            }
+
             // Use maybeSingle to avoid error on 0 rows
             const { data, error } = await supabase.from('users')
               .select('id, email, is_online, is_blocked, is_suspended, doc_rejected, doc_rejected_at, last_warning_reason, suspension_reason, has_post_removal_notice, is_paid, subscription_type, subscription_expiry')
@@ -11125,8 +11455,7 @@ export default function App() {
               const updatedUser = normalizeUser({ ...u, ...data });
               setCurrentUser(updatedUser);
               localStorage.setItem('soulmatch_user', JSON.stringify(updatedUser));
-              await supabase.from('users').update({ is_online: true }).eq('id', u.id);
-            }
+            await supabase.from('users').update({ is_online: true }).eq('id', u.id);
           }
         } catch (e) {
           console.error("Errore verifica sessione (Local):", e);
@@ -11305,4 +11634,3 @@ export default function App() {
     </Router>
   );
 }
-

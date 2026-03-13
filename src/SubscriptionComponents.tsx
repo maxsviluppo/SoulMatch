@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { RefreshCw, CheckCircle, XCircle, Sparkles, Zap, Eye, ShieldCheck, Settings2, Calendar, CloudUpload } from 'lucide-react';
 import { supabase } from './supabase';
 import { cn, fileToBase64 } from './utils';
@@ -134,6 +134,7 @@ export const SubscriptionSuccessPage = () => {
                 { icon: Sparkles, label: "SoulLink Illimitati", desc: "Niente più limiti giornalieri" },
                 { icon: Zap, label: "Messaggi Flash", desc: "Contatta chiunque istantaneamente" },
                 { icon: Eye, label: "Identità Svelata", desc: "Vedi chiaramente chi ti cerca" },
+                { icon: CloudUpload, label: "Creazione Post nel Feed", desc: "Condividi i tuoi momenti con la community" },
                 { icon: ShieldCheck, label: "Badge Premium", desc: "Massima affidabilità sul profilo" }
               ].map((feat, i) => (
                 <motion.div 
@@ -159,11 +160,11 @@ export const SubscriptionSuccessPage = () => {
                <p className="text-sm font-bold text-white">Attivo fino al {expiry || '...'}</p>
             </div>
 
-            <button 
-              onClick={() => navigate('/bacheca')}
+             <button 
+              onClick={() => navigate('/profile')}
               className="w-full py-4 bg-white text-black rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-stone-200 transition-all active:scale-95 shadow-xl shadow-white/5"
             >
-              Vai alla Bacheca e inizia ora
+              Vai al Profilo e verifica status
             </button>
           </>
         )}
