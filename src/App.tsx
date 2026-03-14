@@ -49,7 +49,9 @@ import {
   Lock,
   Zap,
   Globe,
-  CloudUpload
+  CloudUpload,
+  Utensils,
+  Coffee
 } from 'lucide-react';
 import { cn, calculateAge, calculateMatchScore, fileToBase64, playTapSound, ITALIAN_CITIES } from './utils';
 import { UserProfile, ChatRequest, Post, SoulLink } from './types';
@@ -2025,6 +2027,17 @@ const ProfileDetailPage = () => {
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
   const navigate = useNavigate();
   const [showPremiumModal, setShowPremiumModal] = useState(false);
+  const [selectedIntent, setSelectedIntent] = useState<any | null>(null);
+  const [intentInput, setIntentInput] = useState('');
+  const [isSendingIntent, setIsSendingIntent] = useState(false);
+
+  const INTENT_BADGES = [
+    { id: 'dinner', icon: Utensils, label: 'Invito a Cena', color: '#fbbf24', bg: 'rgba(251,191,36,0.1)', border: 'rgba(251,191,36,0.3)', message: 'Ehi! Mi farebbe piacere invitarti a cena, che ne dici?' },
+    { id: 'movie', icon: PlayCircle, label: 'Serata Cinema', color: '#60a5fa', bg: 'rgba(96,165,250,0.1)', border: 'rgba(96,165,250,0.3)', message: 'Che ne dici di guardare un film insieme stasera?' },
+    { id: 'coffee', icon: Coffee, label: 'Caffè al volo', color: '#d97706', bg: 'rgba(217,119,6,0.1)', border: 'rgba(217,119,6,0.3)', message: 'Ti va un caffè veloce per fare due chiacchiere?' },
+    { id: 'soul', icon: Sparkles, label: 'Anima Gemella', color: '#a855f7', bg: 'rgba(168,85,247,0.1)', border: 'rgba(168,85,247,0.3)', message: 'Sento che abbiamo un\'affinità speciale...' },
+    { id: 'travel', icon: Globe, label: 'Viaggio', color: '#10b981', bg: 'rgba(16,185,129,0.1)', border: 'rgba(16,185,129,0.3)', message: 'Ti andrebbe di esplorare un nuovo posto insieme?' },
+  ];
 
   const fetchInteractionState = async (currentUserId: string) => {
     const { data } = await supabase
@@ -2287,6 +2300,29 @@ const ProfileDetailPage = () => {
     navigate(`/live-chat/${profile.id}`);
   };
 
+  const handleSendIntent = async () => {
+    if (!currentUser || !profile || !selectedIntent) return;
+    setIsSendingIntent(true);
+    
+    // Create a system-like message in the chat
+    const text = intentInput.trim() || selectedIntent.message;
+    const { error } = await supabase.from('messages').insert([{
+      sender_id: currentUser.id,
+      receiver_id: profile.id,
+      text: `[BADGE:${selectedIntent.id}] ${text}`,
+      created_at: new Date().toISOString()
+    }]);
+
+    if (!error) {
+       setToast({ message: `Invito "${selectedIntent.label}" inviato!`, type: 'success' });
+       setSelectedIntent(null);
+       setIntentInput('');
+    } else {
+       setToast({ message: 'Errore nell\'invio. Riprova.', type: 'error' });
+    }
+    setIsSendingIntent(false);
+  };
+
 
 
 
@@ -2333,8 +2369,8 @@ const ProfileDetailPage = () => {
         {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       </AnimatePresence>
 
-      {/* ── HERO PHOTO with bottom fade ── */}
-      <div className="relative w-full h-[calc(65vh+100px)] min-h-[480px] overflow-hidden" style={{ background: '#0a0a0f' }}>
+      {/* ── HERO PHOTO ── */}
+      <div className="relative w-full h-[75vh] min-h-[500px] overflow-hidden" style={{ background: '#0a0a0f' }}>
         <div className="w-full h-full relative" onClick={(e) => {
           const rect = e.currentTarget.getBoundingClientRect();
           const x = e.clientX - rect.left;
@@ -2423,8 +2459,16 @@ const ProfileDetailPage = () => {
             </button>
           </div>
 
-          {/* Name / age / city overlaid on gradient */}
-          <div className="absolute bottom-0 left-0 right-0 px-5 pb-5 z-10">
+        </div>
+      </div>
+
+      <div className="relative z-10 -mt-20 px-5 pb-10">
+        {/* Spacing to lower the name block as requested - Adjusted higher by 80px (280 -> 200) */}
+        <div className="h-[200px]" />
+
+        {/* Name / age / city block & Match Widget - Compact margin mb-2 */}
+        <div className="flex items-start justify-between gap-3 mb-2">
+          <div className="flex-1">
             <h1 className="text-3xl font-montserrat font-black text-white leading-tight drop-shadow-lg">
               {profile.name}{profile.dob && calculateAge(profile.dob) > 0 ? <span className="font-light text-2xl text-white/60">, {calculateAge(profile.dob)}</span> : null}
             </h1>
@@ -2441,111 +2485,232 @@ const ProfileDetailPage = () => {
                 <Sparkles className="w-3 h-3" /> Membro Premium
               </div>
             )}
-
-            {/* ── FRIEND REQUEST button ── */}
-            <button
-              onClick={
-                soulLinkStatus === 'none' ? handleSendSoulLink :
-                  soulLinkStatus === 'pending_received' ? handleAcceptSoulLink :
-                    soulLinkStatus === 'accepted' ? handleRemoveSoulLink :
-                      () => { }
-              }
-              className="mt-4 w-full py-3.5 rounded-[20px] font-black text-sm uppercase tracking-widest text-white transition-all active:scale-95 flex items-center justify-center gap-2"
-              style={
-                soulLinkStatus === 'accepted'
-                  ? { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', backdropFilter: 'blur(20px)', boxShadow: '0 4px 20px rgba(0,0,0,0.2)' }
-                  : soulLinkStatus === 'pending_sent'
-                    ? { background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)', backdropFilter: 'blur(20px)' }
-                    : soulLinkStatus === 'pending_received'
-                      ? { background: 'rgba(52,211,153,0.15)', border: '1px solid rgba(52,211,153,0.3)', backdropFilter: 'blur(20px)' }
-                      : { background: 'rgba(244,63,94,0.15)', border: '1px solid rgba(244,63,94,0.4)', backdropFilter: 'blur(20px)', boxShadow: '0 0 20px rgba(244,63,94,0.2)' }
-              }
-            >
-              {soulLinkStatus === 'accepted' ? <><UserCheck className="w-4 h-4" /> Siete Amici</> :
-                soulLinkStatus === 'pending_sent' ? <><Users className="w-4 h-4" /> Richiesta Inviata</> :
-                  soulLinkStatus === 'pending_received' ? <><CheckCircle className="w-4 h-4" /> Accetta Amicizia</> :
-                    <><UserPlus className="w-4 h-4" /> Richiesta di Amicizia</>}
-            </button>
-
-            {/* Chatta (sempre attiva se si ha l'amicizia) */}
-            <button
-              onClick={handleInstantChat}
-              className="mt-2 w-full py-3.5 rounded-[18px] font-black text-xs uppercase tracking-widest text-white transition-all active:scale-95 flex items-center justify-center gap-2"
-              style={{
-                background: soulLinkStatus === 'accepted' ? 'rgba(52,211,153,0.25)' : 'rgba(255,255,255,0.08)',
-                border: soulLinkStatus === 'accepted' ? '1px solid rgba(52,211,153,0.5)' : '1px solid rgba(255,255,255,0.15)',
-                boxShadow: soulLinkStatus === 'accepted' ? '0 0 20px rgba(52,211,153,0.2)' : 'none'
-              }}
-            >
-              <MessageCircle className={cn("w-4 h-4", soulLinkStatus === 'accepted' ? "text-emerald-400" : "text-white/40")} />
-              Chatta
-            </button>
           </div>
 
-          {/* ── MATCH CORNER WIDGET - ONLY IF FRIENDS ── */}
+          {/* Match Widget Next to Name - Even larger (0.88) and with neon stars effect */}
           {currentUser && soulLinkStatus === 'accepted' && matchScore > 0 && (
-            <div className="absolute bottom-0 right-0 z-0 pointer-events-none overflow-visible">
-              <style>{`
-                @keyframes orbitHeartB {
-                0%   { transform: rotate(0deg) translateX(137px) rotate(0deg) scale(1); opacity:0.85; }
-                50%  { transform: rotate(180deg) translateX(137px) rotate(-180deg) scale(1.2); opacity:1; }
-                100% { transform: rotate(360deg) translateX(137px) rotate(-360deg) scale(1); opacity:0.85; }
-              }
-              @keyframes heartbeatB {
-                0%   { transform: scale(1); }
-                14%  { transform: scale(1.15); }
-                28%  { transform: scale(1); }
-                42%  { transform: scale(1.1); }
-                70%  { transform: scale(1); }
-                100% { transform: scale(1); }
-              }
-              .orbit-heart-b { animation: orbitHeartB var(--dur,4.3s) linear var(--delay,0s) infinite; position:absolute; top:50%; left:50%; margin:-12px; }
-              .heart-beat-b   { animation: heartbeatB 1.4s ease-in-out infinite; transform-origin: center; }
-            `}</style>
+             <div className="shrink-0 -mt-17 scale-[0.88] origin-top-right">
+                <div className="relative w-32 h-32 flex items-center justify-center">
+                  <style>{`
+                    @keyframes pulseCircle {
+                      0% { transform: scale(1); opacity: 0.15; }
+                      50% { transform: scale(1.1); opacity: 0.25; }
+                      100% { transform: scale(1); opacity: 0.15; }
+                    }
+                    @keyframes floatSmallH {
+                      0% { transform: translate(0,0) scale(1); opacity: 0; }
+                      50% { opacity: 0.8; }
+                      100% { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; }
+                    }
+                    @keyframes neonRotate {
+                      0% { transform: rotate(0deg) scale(1.1); filter: hue-rotate(0deg) blur(15px); }
+                      50% { transform: rotate(180deg) scale(1.25); filter: hue-rotate(45deg) blur(25px); }
+                      100% { transform: rotate(360deg) scale(1.1); filter: hue-rotate(0deg) blur(15px); }
+                    }
+                    @keyframes twinkleStar {
+                      0%, 100% { opacity: 0.2; transform: scale(0.5) translate(0,0); }
+                      50% { opacity: 1; transform: scale(1.2) translate(var(--dx), var(--dy)); }
+                    }
+                    .neon-glow { animation: neonRotate 6s linear infinite; }
+                    .pulse { animation: pulseCircle 3s ease-in-out infinite; }
+                    .floating-h { animation: floatSmallH var(--dur) ease-out infinite; }
+                    .twinkle-star { animation: twinkleStar var(--dur) ease-in-out infinite; }
+                  `}</style>
 
-              {/* Concave corner SVG — 462px (Reduced by 30%) */}
-              <svg width="462" height="462" viewBox="0 0 462 462" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M462 0 Q462 462 0 462 L462 462 Z" fill="url(#matchGradB)" />
-                <path d="M462 0 Q462 462 0 462 L462 462 Z" fill="url(#matchFadeB)" />
-                <defs>
-                  <radialGradient id="matchGradB" cx="100%" cy="100%" r="80%">
-                    <stop offset="0%" stopColor="#f43f5e" stopOpacity="0.9" />
-                    <stop offset="55%" stopColor="#be123c" stopOpacity="0.7" />
-                    <stop offset="100%" stopColor="#0a0a0f" stopOpacity="0" />
-                  </radialGradient>
-                  <linearGradient id="matchFadeB" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#0a0a0f" stopOpacity="0" />
-                    <stop offset="75%" stopColor="#0a0a0f" stopOpacity="0" />
-                    <stop offset="100%" stopColor="#0a0a0f" stopOpacity="1" />
-                  </linearGradient>
-                </defs>
-              </svg>
+                  {/* Neon Glow Layer behind everything */}
+                  <div className="absolute inset-0 bg-gradient-to-tr from-rose-500 via-purple-500 to-rose-400 rounded-full opacity-30 blur-2xl neon-glow" />
 
-              {/* Heart + score - ONLY IF FRIENDS */}
-              <div className="absolute inset-0 flex items-end justify-end pb-14 pr-14">
-                <div className="relative flex items-center justify-center" style={{ width: 189, height: 189, transform: 'rotate(20deg) translateX(25px) translateY(-35px)' }}>
-                  {/* Dynamic hearts count: slowed duration by another 10% */}
-                  {Array.from({ length: Math.max(1, Math.min(10, Math.round(matchScore / 10))) }).map((_, i) => (
-                    <div key={i} className="orbit-heart-b" style={{ '--dur': `${3.2 + i * 0.45}s`, '--delay': `${i * 0.45}s` } as React.CSSProperties}>
-                      <svg width="21" height="21" viewBox="0 0 24 24" fill="#fda4af">
-                        <path d="M12 21.593c-5.63-5.539-11-10.297-11-14.402 0-3.791 3.068-5.191 5.281-5.191 1.312 0 4.151.501 5.719 4.457 1.59-3.968 4.464-4.447 5.726-4.447 2.54 0 5.274 1.621 5.274 5.181 0 4.069-5.136 8.625-11 14.402z" />
-                      </svg>
+                  {/* Starry Mini Hearts background */}
+                  {[...Array(12)].map((_, i) => (
+                    <div
+                      key={`star-${i}`}
+                      className="absolute twinkle-star pointer-events-none"
+                      style={{
+                        '--dx': `${(Math.random() - 0.5) * 60}px`,
+                        '--dy': `${(Math.random() - 0.5) * 60}px`,
+                        '--dur': `${2 + Math.random() * 3}s`,
+                        top: `${20 + Math.random() * 60}%`,
+                        left: `${20 + Math.random() * 60}%`,
+                        color: i % 2 === 0 ? '#f43f5e' : '#ec4899',
+                        opacity: 0.4
+                      } as React.CSSProperties}
+                    >
+                      <Heart className="w-1.5 h-1.5 fill-current" />
                     </div>
                   ))}
-                  <div className="relative z-10 flex flex-col items-center justify-center">
-                    <svg width="168" height="168" viewBox="0 0 24 24" className="heart-beat-b" style={{ filter: 'drop-shadow(0 0 29px rgba(244,63,94,0.95))' }}>
-                      <path d="M12 21.593c-5.63-5.539-11-10.297-11-14.402 0-3.791 3.068-5.191 5.281-5.191 1.312 0 4.151.501 5.719 4.457 1.59-3.968 4.464-4.447 5.726-4.447 2.54 0 5.274 1.621 5.274 5.181 0 4.069-5.136 8.625-11 14.402z" fill="#f43f5e" />
-                    </svg>
-                    <span className="absolute font-black leading-none" style={{ color: '#fff1f2', fontSize: '38px', top: '50%', transform: 'translateY(-50%)', textShadow: '0 4px 16px rgba(0,0,0,0.8)' }}>
-                      {matchScore}
-                    </span>
+
+                  {/* Outer Decorative Rings */}
+                  <div className="absolute inset-0 rounded-full border border-rose-500/10 pulse" />
+                  <div className="absolute inset-2 rounded-full border border-rose-500/20 pulse" style={{ animationDelay: '0.5s' }} />
+                  
+                  {/* Rising mini-hearts */}
+                  {[...Array(4)].map((_, i) => (
+                    <div
+                      key={i}
+                      className="absolute floating-h"
+                      style={{
+                        '--tx': `${(i % 2 === 0 ? 1 : -1) * (15 + i * 5)}px`,
+                        '--ty': `${-40 - i * 10}px`,
+                        '--dur': `${2 + i * 0.5}s`,
+                        left: '50%',
+                        top: '50%',
+                        color: i % 2 === 0 ? '#f43f5e' : '#ec4899',
+                        filter: 'drop-shadow(0 0 5px currentColor)'
+                      } as React.CSSProperties}
+                    >
+                      <Heart className="w-2 h-2 fill-current" />
+                    </div>
+                  ))}
+
+                  {/* Main Widget Body */}
+                  <div className="relative group/widget">
+                    <div className="absolute inset-0 bg-rose-500 rounded-full blur-xl opacity-20 group-hover/widget:opacity-40 transition-opacity" />
+                    <div className="relative w-24 h-24 bg-[#0a0a0f] rounded-full border-2 border-rose-500/40 flex flex-col items-center justify-center p-2 shadow-2xl overflow-hidden">
+                      <div className="absolute inset-0 bg-gradient-to-br from-rose-500/20 via-transparent to-purple-500/20 animate-spin-slow opacity-50" />
+                      <Heart className="w-8 h-8 text-rose-500 fill-current mb-0.5 drop-shadow-[0_0_10px_rgba(244,63,94,0.5)]" />
+                      <div className="flex flex-col items-center leading-none">
+                        <span className="text-xl font-black text-white tracking-tighter">{matchScore}%</span>
+                        <span className="text-[6px] font-black text-rose-400 uppercase tracking-[0.2em] mt-0.5">Match</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </div>
+             </div>
           )}
         </div>
+
+        {/* Small spacer before buttons - reduced from h-10 to h-4 */}
+        <div className="h-4" />
+
+        {/* Action Buttons */}
+        <div className="space-y-3">
+          <button
+            onClick={
+              soulLinkStatus === 'none' ? handleSendSoulLink :
+                soulLinkStatus === 'pending_received' ? handleAcceptSoulLink :
+                  soulLinkStatus === 'accepted' ? handleRemoveSoulLink :
+                    () => { }
+            }
+            className="w-full py-4 rounded-[22px] font-black text-sm uppercase tracking-widest text-white transition-all active:scale-95 flex items-center justify-center gap-2"
+            style={
+              soulLinkStatus === 'accepted'
+                ? { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)', backdropFilter: 'blur(20px)', boxShadow: '0 4px 20px rgba(0,0,0,0.2)' }
+                : soulLinkStatus === 'pending_sent'
+                  ? { background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)', backdropFilter: 'blur(20px)' }
+                  : soulLinkStatus === 'pending_received'
+                    ? { background: 'rgba(52,211,153,0.15)', border: '1px solid rgba(52,211,153,0.3)', backdropFilter: 'blur(20px)' }
+                    : { background: 'linear-gradient(135deg, rgba(244,63,94,0.4), rgba(147,51,234,0.4))', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(20px)', boxShadow: '0 8px 32px rgba(244,63,94,0.2)' }
+            }
+          >
+            {soulLinkStatus === 'accepted' ? <><UserCheck className="w-4 h-4" /> Siete Amici</> :
+              soulLinkStatus === 'pending_sent' ? <><Users className="w-4 h-4" /> Richiesta Inviata</> :
+                soulLinkStatus === 'pending_received' ? <><CheckCircle className="w-4 h-4" /> Accetta Amicizia</> :
+                  <><UserPlus className="w-4 h-4" /> Richiesta di Amicizia</>}
+          </button>
+
+          <button
+            onClick={handleInstantChat}
+            className="w-full py-4 rounded-[22px] font-black text-xs uppercase tracking-widest text-white transition-all active:scale-95 flex items-center justify-center gap-2"
+            style={{
+              background: soulLinkStatus === 'accepted' ? 'rgba(52,211,153,0.25)' : 'rgba(255,255,255,0.08)',
+              border: soulLinkStatus === 'accepted' ? '1px solid rgba(52,211,153,0.5)' : '1px solid rgba(255,255,255,0.1)',
+              backdropFilter: 'blur(10px)'
+            }}
+          >
+            <MessageCircle className={cn("w-4 h-4", soulLinkStatus === 'accepted' ? "text-emerald-400" : "text-white/40")} />
+            Chatta Ora
+          </button>
+        </div>
+
+        {/* Premium Intent Badges - Reduced top margin */}
+        <div className="mt-4 relative">
+          <div className="flex items-center justify-between gap-2 px-1 mb-3">
+              <span className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em]">Interazioni Speciali</span>
+              {!currentUser?.is_paid && (
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20">
+                  <Lock className="w-2.5 h-2.5 text-amber-500" />
+                  <span className="text-[8px] font-black text-amber-500 uppercase">Premium</span>
+                </div>
+              )}
+          </div>
+
+          <div className="flex justify-between items-center gap-2 p-2 rounded-[24px] bg-white/[0.04] border border-white/10 backdrop-blur-md">
+            {INTENT_BADGES.map((badge) => {
+              const Icon = badge.icon;
+              const isAvailable = currentUser?.is_paid;
+              const isSelected = selectedIntent?.id === badge.id;
+
+              return (
+                <motion.button
+                  key={badge.id}
+                  whileTap={isAvailable ? { scale: 0.9 } : {}}
+                  onClick={() => !isAvailable ? setShowPremiumModal(true) : setSelectedIntent(isSelected ? null : badge)}
+                  className={cn(
+                    "relative flex-1 aspect-square rounded-[18px] flex items-center justify-center transition-all duration-300 overflow-hidden",
+                    isSelected ? "bg-white/10 ring-1 ring-white/20" : "hover:bg-white/[0.05]"
+                  )}
+                >
+                  <Icon
+                    className={cn("w-6 h-6 transition-all duration-500", isAvailable ? "" : "grayscale opacity-25")}
+                    style={{ color: isAvailable ? badge.color : 'white', filter: isAvailable && isSelected ? `drop-shadow(0 0 12px ${badge.color})` : 'none' }}
+                  />
+                  {!isAvailable && <div className="absolute inset-0 bg-stone-900/40 backdrop-blur-[1px] flex items-center justify-center"><Lock className="w-3 h-3 text-white/10" /></div>}
+                </motion.button>
+              );
+            })}
+          </div>
+
+          <AnimatePresence>
+            {selectedIntent && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 10 }}
+                className="absolute bottom-full left-0 right-0 mb-6 z-[60]"
+              >
+                <div className="bg-stone-900/95 backdrop-blur-3xl border border-white/10 rounded-[32px] p-6 shadow-2xl overflow-hidden relative">
+                  <div className="absolute top-0 right-0 p-4">
+                     <button onClick={() => setSelectedIntent(null)} className="p-2 text-white/30 hover:text-white transition-colors">
+                        <X className="w-5 h-5" />
+                     </button>
+                  </div>
+
+                  <div className="flex items-center gap-4 mb-5">
+                    <div className="w-12 h-12 rounded-[20px] flex items-center justify-center" style={{ background: selectedIntent.bg, border: `1px solid ${selectedIntent.border}` }}>
+                       <selectedIntent.icon className="w-6 h-6" style={{ color: selectedIntent.color }} />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-black text-white uppercase tracking-wider">{selectedIntent.label}</h4>
+                      <p className="text-[10px] text-white/40 font-bold">Personalizza il tuo invito</p>
+                    </div>
+                  </div>
+
+                  <textarea
+                    autoFocus
+                    value={intentInput}
+                    onChange={(e) => setIntentInput(e.target.value)}
+                    placeholder={selectedIntent.message}
+                    className="w-full bg-white/[0.05] border border-white/10 rounded-[22px] px-5 py-4 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500/30 min-h-[100px] placeholder:text-white/20 resize-none"
+                  />
+                  
+                  <button
+                    disabled={isSendingIntent}
+                    onClick={handleSendIntent}
+                    className="mt-4 w-full py-4 bg-amber-500 text-black font-black text-[11px] uppercase tracking-[0.2em] rounded-[20px] active:scale-95 transition-all flex items-center justify-center gap-2 shadow-xl shadow-amber-500/20"
+                  >
+                    {isSendingIntent ? (
+                       <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                    ) : (
+                       <>Invia Ora <Send className="w-4 h-4" /></>
+                    )}
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
+
 
       {/* ── CONTENT ── */}
       <div className="mx-4 mt-4 space-y-4">
@@ -2608,7 +2773,7 @@ const ProfileDetailPage = () => {
                 <div
                   key={i}
                   onClick={() => setZoomedImage(url)}
-                  className="w-[210px] h-[210px] shrink-0 snap-center rounded-[20px] overflow-hidden relative cursor-zoom-in active:scale-95 transition-transform"
+                  className="w-[210px] h-[210px] shrink-0 snap-center rounded-[20px] overflow-hidden relative"
                   style={{ border: '1.5px solid rgba(244,63,94,0.3)' }}
                 >
                   <img src={url} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
@@ -2734,7 +2899,6 @@ const ProfileDetailPage = () => {
           </motion.div>
         )}
       </AnimatePresence>
-
     </div>
   );
 };
@@ -2745,9 +2909,9 @@ const BachecaPage = () => {
   const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterCity, setFilterCity] = useState<string>('Tutte');
+  const [filterGender, setFilterGender] = useState<string>('Tutti');
   const [filterBodyType, setFilterBodyType] = useState<string>('Tutte');
   const [filterAge, setFilterAge] = useState<[number, number]>([18, 99]);
-  const [filterGender, setFilterGender] = useState<string>('Tutti');
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [showSoulMatch, setShowSoulMatch] = useState(false);
@@ -2755,7 +2919,6 @@ const BachecaPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showSearch, setShowSearch] = useState(false);
   const [unlockedIds, setUnlockedIds] = useState<string[]>([]);
-
   const [friends, setFriends] = useState<string[]>([]);
 
   const fetchFriends = async (userId: string) => {

@@ -21,21 +21,27 @@ export function calculateAge(dob: string): number {
 export function calculateMatchScore(u1: any, u2: any): number {
   if (!u1 || !u2) return 0;
 
-  let score = 0; // Start at 0 for new/empty users
+  let score = 0;
 
-  // 1. Common Interests (Hobbies)
-  const h1 = (u1.hobbies || "").toLowerCase().split(",").map((s: string) => s.trim()).filter(Boolean);
-  const h2 = (u2.hobbies || "").toLowerCase().split(",").map((s: string) => s.trim()).filter(Boolean);
-  const common = h1.filter((h: string) => h2.includes(h));
+  // 1. Common Interests (Hobbies) - handle both string and array
+  const getHobbies = (val: any) => {
+    if (!val) return [];
+    if (Array.isArray(val)) return val.map(s => String(s).toLowerCase().trim());
+    return String(val).toLowerCase().split(/[,;]/).map(s => s.trim()).filter(Boolean);
+  };
+
+  const h1 = getHobbies(u1.hobbies);
+  const h2 = getHobbies(u2.hobbies);
+  const common = h1.filter(h => h2.includes(h));
 
   if (common.length > 0) {
-    score += common.length * 15;
-    if (common.length >= 3) score += 10;
+    score += common.length * 12;
+    if (common.length >= 3) score += 15;
   }
 
   // 2. City Proximity
-  if (u1.city && u2.city && u1.city.toLowerCase() === u2.city.toLowerCase()) {
-    score += 20;
+  if (u1.city && u2.city && u1.city.toLowerCase().trim() === u2.city.toLowerCase().trim()) {
+    score += 25;
   }
 
   // 3. Age Proximity
@@ -43,20 +49,38 @@ export function calculateMatchScore(u1: any, u2: any): number {
   const a2 = calculateAge(u2.dob);
   if (a1 > 0 && a2 > 0) {
     const ageDiff = Math.abs(a1 - a2);
-    if (ageDiff <= 3) score += 15;
-    else if (ageDiff <= 7) score += 8;
+    if (ageDiff <= 3) score += 20;
+    else if (ageDiff <= 6) score += 12;
+    else if (ageDiff <= 10) score += 5;
   }
 
-  // 4. Orientation & Gender Harmony
-  if (u1.orientation && u2.orientation && u1.orientation === u2.orientation) {
-    score += 10;
+  // 4. Orientation Harmony (handle array vs array)
+  const ori1 = Array.isArray(u1.orientation) ? u1.orientation : [u1.orientation].filter(Boolean);
+  const ori2 = Array.isArray(u2.orientation) ? u2.orientation : [u2.orientation].filter(Boolean);
+  const commonOri = ori1.filter((o: any) => ori2.includes(o));
+  if (commonOri.length > 0) {
+    score += 15;
   }
 
-  // Add a base affinity if there is at least one match
-  if (score > 0) score += 20;
+  // 5. Bio and Description match word check
+  const bioWordsU = (u1.description || "").toLowerCase().split(/\s+/).filter((w: string) => w.length > 4);
+  const bioWordsT = (u2.description || "").toLowerCase().split(/\s+/).filter((w: string) => w.length > 4);
+  const commonWords = bioWordsU.filter(w => bioWordsT.includes(w));
+  if (commonWords.length > 0) score += commonWords.length * 2;
+
+  // Base bonus for any match
+  if (score > 10) score += 15;
+  else if (score > 0) score += 10;
+  
+  // Minimal score for compatible profiles (never 0 if they reach this stage)
+  if (score === 0) {
+    // Salt if everything fails but they are compatible
+    const hash = (String(u1.id).length + String(u2.id).length) % 15;
+    score = 45 + hash;
+  }
 
   // Cap score
-  return Math.min(Math.max(score, 0), 99);
+  return Math.min(Math.max(score, 10), 99);
 }
 
 export async function compressImage(file: File, maxWidth = 1200, quality = 0.7): Promise<string> {
