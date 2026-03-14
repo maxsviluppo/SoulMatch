@@ -45,6 +45,7 @@ import {
   Link2,
   UserCheck,
   XCircle,
+  Archive,
   Lock,
   Zap,
   Globe,
@@ -78,6 +79,16 @@ const parseArrField = (val: any): string[] => {
   return s ? [s] : [];
 };
 
+const isUserOnline = (u: any): boolean => {
+  if (!u) return false;
+  if (u.is_online === false || u.is_online === 0) return false;
+  if (!u.last_seen) return !!u.is_online;
+  const lastSeen = new Date(u.last_seen).getTime();
+  const now = new Date().getTime();
+  // Se l'utente è stato visto negli ultimi 5 minuti (300.000 ms), lo consideriamo online
+  return (now - lastSeen) < (5 * 60 * 1000);
+};
+
 const normalizeUser = (u: any): any => {
   let conosciamoci = {};
   if (u?.conosciamoci_meglio) {
@@ -99,6 +110,7 @@ const normalizeUser = (u: any): any => {
     orientation: parseArrField(u?.orientation),
     looking_for_gender: parseArrField(u?.looking_for_gender),
     photos: parseArrField(u?.photos).filter(p => typeof p === 'string' && p.trim().length > 0),
+    last_seen: u?.last_seen,
     conosciamoci_meglio: conosciamoci
   };
 };
@@ -1068,12 +1080,21 @@ const Navbar = () => {
       </div>
 
       <Link to="/" className="flex items-center gap-3 group relative z-10">
-        <div className="w-10 h-10 bg-rose-600 rounded-full flex items-center justify-center group-hover:rotate-12 transition-transform shrink-0 shadow-lg shadow-rose-900/40">
-          <Heart className="text-white w-5 h-5 fill-current" />
-        </div>
+        {user?.is_paid ? (
+          <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.4)] shrink-0 group-hover:scale-110 transition-transform bg-stone-900">
+            <ProfileAvatar user={user} className="w-full h-full" iconSize="w-5 h-5" />
+          </div>
+        ) : (
+          <div className="w-10 h-10 bg-rose-600 rounded-full flex items-center justify-center group-hover:rotate-12 transition-transform shrink-0 shadow-lg shadow-rose-900/40">
+            <Heart className="text-white w-5 h-5 fill-current" />
+          </div>
+        )}
         <div className="flex flex-col">
           <span className="text-xl font-serif font-black tracking-tight text-white leading-none">SoulMatch</span>
-          <span className="text-[9px] font-montserrat font-bold text-rose-500 uppercase tracking-[0.2em] mt-1 line-clamp-1">
+          <span className={cn(
+            "text-[9px] font-montserrat font-bold uppercase tracking-[0.2em] mt-1 line-clamp-1",
+            user?.is_paid ? "text-purple-400" : "text-rose-500"
+          )}>
             {user ? user.name : "Compagnia Ideale"}
           </span>
         </div>
@@ -1177,7 +1198,7 @@ const ProfileCard: React.FC<{ profile: UserProfile; onInteract?: () => void }> =
             </div>
           )}
 
-          {profile.is_online && (
+          {isUserOnline(profile) && (
             <div className="absolute top-3 right-3 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full shadow-sm" />
           )}
 
@@ -1884,7 +1905,7 @@ const LiveChatPage = () => {
           <div style={{ border: '2px solid #f43f5e', borderRadius: '50%', padding: 1, position: 'absolute', marginLeft: 0, width: 44, height: 44, boxShadow: '0 0 12px rgba(244,63,94,0.5)' }} />
           <div className="flex flex-col min-w-0 ml-2">
             <div className="font-black text-white text-[15px] leading-tight truncate">{profile.name}</div>
-            {profile.is_online ? (
+            {isUserOnline(profile) ? (
               <div className="text-[10px] text-emerald-400 font-bold uppercase tracking-tight flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> online
               </div>
@@ -2358,7 +2379,7 @@ const ProfileDetailPage = () => {
 
           {/* ── ONLINE / OFFLINE badge top-left ── */}
           <div className="absolute top-5 left-5 z-20">
-            {profile.is_online ? (
+            {isUserOnline(profile) ? (
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full backdrop-blur-md" style={{ background: 'rgba(16,185,129,0.25)', border: '1px solid rgba(52,211,153,0.5)' }}>
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
@@ -3181,7 +3202,7 @@ const BachecaPage = () => {
               <Link key={p.id} to={`/profile-detail/${p.id}`} className="flex flex-col items-center gap-1.5 shrink-0">
                 <div className={cn(
                   "w-16 h-16 rounded-full overflow-hidden border-2 p-0.5 transition-all duration-500",
-                  p.is_online 
+                  isUserOnline(p) 
                     ? "border-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.4)]" 
                     : "border-rose-500 shadow-[0_0_12px_rgba(244,63,94,0.2)]"
                 )}>
@@ -3363,7 +3384,7 @@ const BachecaPage = () => {
                     <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.3) 50%, transparent 100%)' }} />
 
                     {/* Online indicator */}
-                    {profile.is_online && (
+                    {isUserOnline(profile) && (
                       <div className="absolute top-2.5 left-2.5 z-20">
                         <span className="relative flex h-2.5 w-2.5">
                           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
@@ -3845,7 +3866,7 @@ const SoulMatchPage = () => {
                     </div>
                   )}
 
-                  {p.is_online && (
+                  {isUserOnline(p) && (
                     <div className="absolute top-4 right-4 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-white shadow-sm" />
                   )}
 
@@ -3855,7 +3876,7 @@ const SoulMatchPage = () => {
                       <MapPin className="w-3 h-3 text-rose-500" /> {p.city}
                     </p>
                     <div className="mt-2 text-[10px] font-black text-rose-400 uppercase tracking-[0.2em] italic">
-                      {p.is_online ? 'Live Now' : 'Sync Profile'}
+                      {isUserOnline(p) ? 'Live Now' : 'Sync Profile'}
                     </div>
                   </div>
                 </motion.div>
@@ -4383,6 +4404,8 @@ const AmiciPage = () => {
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [friends, setFriends] = useState<SoulLink[]>([]);
   const [pendingIn, setPendingIn] = useState<SoulLink[]>([]);
+  const [pendingOut, setPendingOut] = useState<SoulLink[]>([]);
+  const [rejectedOut, setRejectedOut] = useState<SoulLink[]>([]);
   const [friendsPosts, setFriendsPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
@@ -4391,6 +4414,7 @@ const AmiciPage = () => {
   const [quickMsgText, setQuickMsgText] = useState('');
   const [isSendingQuickMsg, setIsSendingQuickMsg] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<SoulLink | null>(null);
+  const [confirmDeleteSent, setConfirmDeleteSent] = useState<SoulLink | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [friendMessages, setFriendMessages] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -4496,10 +4520,16 @@ const AmiciPage = () => {
 
     const acceptedFriends: SoulLink[] = [];
     const incoming: SoulLink[] = [];
+    const outgoing: SoulLink[] = [];
+    const rejected: SoulLink[] = [];
 
     (sentData || []).forEach((sl: any) => {
       if (sl.status === 'accepted') {
         acceptedFriends.push({ ...sl, other_user: sl.receiver });
+      } else if (sl.status === 'pending') {
+        outgoing.push({ ...sl, other_user: sl.receiver });
+      } else if (sl.status === 'rejected') {
+        rejected.push({ ...sl, other_user: sl.receiver });
       }
     });
 
@@ -4513,6 +4543,8 @@ const AmiciPage = () => {
 
     setFriends(acceptedFriends);
     setPendingIn(incoming);
+    setPendingOut(outgoing);
+    setRejectedOut(rejected);
 
     // Fetch posts of friends
     if (acceptedFriends.length > 0) {
@@ -4611,13 +4643,42 @@ const AmiciPage = () => {
   const handleReject = async (slId: string) => {
     const { error } = await supabase
       .from('soul_links')
-      .delete()
+      .update({ status: 'rejected' })
       .eq('id', slId);
 
     if (!error) {
       setToast({ message: 'Richiesta rifiutata.', type: 'info' });
       if (currentUser?.id) fetchSoulLinks(currentUser.id);
     }
+  };
+
+  const handleDismissRejected = async (slId: string) => {
+    const { error } = await supabase
+      .from('soul_links')
+      .delete()
+      .eq('id', slId);
+
+    if (!error) {
+      if (currentUser?.id) fetchSoulLinks(currentUser.id);
+    }
+  };
+
+  const handleCancelRequest = async () => {
+    if (!confirmDeleteSent || !currentUser) return;
+    setIsDeleting(true);
+    const { error } = await supabase
+      .from('soul_links')
+      .delete()
+      .eq('id', confirmDeleteSent.id);
+
+    if (!error) {
+      setToast({ message: 'Richiesta annullata.', type: 'info' });
+      fetchSoulLinks(currentUser.id);
+      setConfirmDeleteSent(null);
+    } else {
+      setToast({ message: 'Errore durante l\'operazione.', type: 'error' });
+    }
+    setIsDeleting(false);
   };
 
 
@@ -4719,7 +4780,7 @@ const AmiciPage = () => {
       <div className="mx-4 space-y-8">
         <PremiumModal isOpen={showPremiumModal} onClose={() => setShowPremiumModal(false)} />
 
-        {/* ── NOTIFICATIONS / REQUESTS BOX ── */}
+        {/* ── RICHIESTE RICEVUTE ── */}
         {pendingIn.length > 0 && (
           <div className="space-y-3">
             <div className="flex items-center gap-2 px-1">
@@ -4727,7 +4788,7 @@ const AmiciPage = () => {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
               </span>
-              <h2 className="text-[10px] font-black text-white/30 uppercase tracking-widest">Richieste in attesa · {pendingIn.length}</h2>
+              <h2 className="text-[10px] font-black text-white/30 uppercase tracking-widest">Richieste ricevute · {pendingIn.length}</h2>
             </div>
 
             <div className="rounded-[28px] p-2 space-y-2" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
@@ -4780,6 +4841,76 @@ const AmiciPage = () => {
                   </motion.div>
                 )})}
               </AnimatePresence>
+            </div>
+          </div>
+        )}
+
+        {/* ── RICHIESTE IN ATTESA / INVIATE ── */}
+        {(pendingOut.length > 0 || rejectedOut.length > 0) && (
+          <div className="space-y-3">
+             <div className="flex items-center gap-2 px-1">
+              <span className="w-2 h-2 rounded-full bg-rose-500/40" />
+              <h2 className="text-[10px] font-black text-white/30 uppercase tracking-widest">Richieste in attesa · {pendingOut.length + rejectedOut.length}</h2>
+            </div>
+            
+            <div className="rounded-[28px] p-2 space-y-2" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}>
+               <AnimatePresence mode="popLayout">
+                 {/* Rejected first so they can be dismissed */}
+                 {rejectedOut.map((req) => (
+                   <motion.div
+                     key={req.id}
+                     layout
+                     initial={{ opacity: 0, scale: 0.95 }}
+                     animate={{ opacity: 1, scale: 1 }}
+                     exit={{ opacity: 0, scale: 0.9 }}
+                     className="rounded-[22px] p-3 flex items-center gap-3 bg-stone-900/40 border border-white/5"
+                   >
+                     <div className="relative w-12 h-12 rounded-full shrink-0 overflow-hidden grayscale">
+                        <ProfileAvatar user={req.other_user} className="w-full h-full" iconSize="w-6 h-6" />
+                     </div>
+                     <div className="flex-1 min-w-0">
+                        <h4 className="text-sm font-black text-white/60 truncate">{req.other_user?.name}</h4>
+                        <div className="inline-flex px-2 py-0.5 mt-1 rounded-md bg-rose-500/10 border border-rose-500/20">
+                          <span className="text-[8px] font-black text-rose-500 uppercase tracking-widest">Rifiutata</span>
+                        </div>
+                     </div>
+                     <button
+                        onClick={() => handleDismissRejected(req.id)}
+                        className="w-10 h-10 bg-emerald-500 text-white rounded-full flex items-center justify-center shadow-[0_0_12px_rgba(16,185,129,0.4)] active:scale-90 transition-all"
+                        title="Ok, ho capito"
+                      >
+                        <CheckCircle className="w-5 h-5" />
+                      </button>
+                   </motion.div>
+                 ))}
+
+                 {pendingOut.map((req) => (
+                    <motion.div
+                      key={req.id}
+                      layout
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.9 }}
+                      className="rounded-[22px] p-3 flex items-center gap-3 bg-white/5 border border-white/5"
+                    >
+                      <div className="relative w-12 h-12 rounded-full shrink-0 overflow-hidden">
+                        <ProfileAvatar user={req.other_user} className="w-full h-full" iconSize="w-6 h-6" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="text-sm font-black text-white truncate">{req.other_user?.name}</h4>
+                        <p className="text-[10px] text-white/30 font-bold uppercase tracking-tight mt-0.5">In attesa di risposta...</p>
+                      </div>
+                      <button
+                        onClick={() => setConfirmDeleteSent(req)}
+                        className="w-10 h-10 text-white/30 hover:text-rose-400 rounded-full flex items-center justify-center transition-all active:scale-90"
+                        style={{ background: 'rgba(255,255,255,0.06)' }}
+                        title="Annulla Richiesta"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </motion.div>
+                 ))}
+               </AnimatePresence>
             </div>
           </div>
         )}
@@ -4896,11 +5027,11 @@ const AmiciPage = () => {
                           />
                           <div className={cn(
                             "absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 border-2 rounded-full",
-                            f.other_user?.is_online
+                            isUserOnline(f.other_user)
                               ? "bg-emerald-400"
                               : "bg-white/10"
                           )}
-                            style={f.other_user?.is_online ? { borderColor: '#1a1a22', boxShadow: '0 0 8px rgba(52,211,153,0.8)' } : { borderColor: '#1a1a22' }}
+                            style={isUserOnline(f.other_user) ? { borderColor: '#1a1a22', boxShadow: '0 0 8px rgba(52,211,153,0.8)' } : { borderColor: '#1a1a22' }}
                           />
                         </div>
 
@@ -5110,6 +5241,50 @@ const AmiciPage = () => {
           </div>
         )}
       </AnimatePresence>
+
+      <AnimatePresence>
+        {confirmDeleteSent && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center bg-stone-900/60 backdrop-blur-sm px-6">
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="bg-white w-full max-w-sm rounded-[32px] overflow-hidden shadow-2xl border border-stone-100"
+            >
+              <div className="p-8 text-center">
+                <div className="w-20 h-20 bg-rose-50 rounded-[24px] flex items-center justify-center mx-auto mb-6 text-rose-600">
+                  <Trash2 className="w-10 h-10" />
+                </div>
+                <h3 className="text-xl font-black text-stone-900 mb-2">Annulla Richiesta?</h3>
+                <p className="text-sm text-stone-500 font-medium leading-relaxed">
+                  Stai per annullare la richiesta inviata a <span className="text-stone-900 font-bold">{confirmDeleteSent.other_user?.name}</span>. L'utente non riceverà più la tua notifica.
+                </p>
+
+                <div className="flex flex-col gap-3 mt-8">
+                  <button
+                    disabled={isDeleting}
+                    onClick={handleCancelRequest}
+                    className="w-full py-4 bg-rose-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-lg shadow-rose-200 active:scale-95 transition-all flex items-center justify-center gap-2"
+                  >
+                    {isDeleting ? (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      "Annulla Richiesta"
+                    )}
+                  </button>
+                  <button
+                    disabled={isDeleting}
+                    onClick={() => setConfirmDeleteSent(null)}
+                    className="w-full py-4 bg-stone-100 text-stone-500 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] active:scale-95 transition-all"
+                  >
+                    Chiudi
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div >
   );
 };
@@ -5128,9 +5303,11 @@ const AdminPage = () => {
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
   const [archiveSearch, setArchiveSearch] = useState('');
   const [docSubTab, setDocSubTab] = useState<'pending' | 'archive'>('pending');
+  const [reportSubTab, setReportSubTab] = useState<'pending' | 'archive'>('pending');
   const [previewDoc, setPreviewDoc] = useState<{ url: string; name: string } | null>(null);
   const [modals, setModals] = useState<{ warning: boolean; suspension: boolean; ban: boolean }>({ warning: false, suspension: false, ban: false });
   const [confirmPhotoModal, setConfirmPhotoModal] = useState<{ type: 'gallery' | 'post', userId: string, photoUrl?: string, postId?: string } | null>(null);
+  const [confirmReportModal, setConfirmReportModal] = useState<string | null>(null);
   const [modReason, setModReason] = useState('');
   const [userPosts, setUserPosts] = useState<any[]>([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
@@ -5223,8 +5400,32 @@ const AdminPage = () => {
       if (!error) {
         setReports(prev => prev.map(r => r.id === reportId ? { ...r, is_read: isRead } : r));
         setToast({ message: isRead ? "Segnalazione archiviata." : "Segnalazione riaperta.", type: 'info' });
+      } else {
+        setToast({ message: "Errore durante l'aggiornamento: " + error.message, type: 'error' });
       }
-    } catch (e) { }
+    } catch (e: any) {
+      setToast({ message: "Impossibile completare l'azione: " + e.message, type: 'error' });
+    }
+  };
+
+  const handleDeleteReport = async (reportId: string) => {
+    setConfirmReportModal(reportId);
+  };
+
+  const confirmDeleteReportAction = async () => {
+    if (!confirmReportModal) return;
+    try {
+      const { error } = await supabase.from('reports').delete().eq('id', confirmReportModal);
+      if (!error) {
+        setReports(prev => prev.filter(r => r.id !== confirmReportModal));
+        setToast({ message: "Segnalazione eliminata.", type: 'success' });
+      } else {
+        setToast({ message: "Errore eliminazione: " + error.message, type: 'error' });
+      }
+    } catch (e: any) {
+      setToast({ message: "Errore eliminazione report: " + e.message, type: 'error' });
+    }
+    setConfirmReportModal(null);
   };
 
   const handleDeleteUser = async (userId: string) => {
@@ -5815,7 +6016,7 @@ const AdminPage = () => {
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-2 mb-1">
                                 <h5 className="font-black text-stone-900 truncate text-base">{u.name} {u.surname}</h5>
-                                {u.is_online && <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 shadow-sm shadow-emerald-200" />}
+                                {isUserOnline(u) && <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 shadow-sm shadow-emerald-200" />}
                               </div>
                               <p className="text-[10px] text-stone-400 font-bold uppercase tracking-wider truncate mb-2">{u.email}</p>
                               <div className="flex flex-wrap gap-1.5">
@@ -5846,6 +6047,27 @@ const AdminPage = () => {
                               <p className="text-[9px] text-stone-400 font-black uppercase tracking-widest">Iscritto il</p>
                               <p className="text-[11px] font-black text-stone-700">{u.created_at ? new Date(u.created_at).toLocaleDateString('it-IT') : '—'}</p>
                             </div>
+                            {u.is_paid && (
+                              <div className="col-span-2 mt-2 pt-2 border-t border-stone-100/50 space-y-2">
+                                <p className="text-[9px] text-amber-600 font-black uppercase tracking-widest flex items-center gap-1.5">
+                                  <Sparkles className="w-3 h-3" /> Dettagli Abbonamento
+                                </p>
+                                <div className="grid grid-cols-2 gap-2">
+                                  <div>
+                                    <p className="text-[8px] text-stone-400 font-bold uppercase">Scadenza</p>
+                                    <p className="text-[10px] font-black text-stone-600">
+                                      {u.subscription_expiry ? new Date(u.subscription_expiry).toLocaleDateString('it-IT') : '—'}
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <p className="text-[8px] text-stone-400 font-bold uppercase">Tipo</p>
+                                    <p className="text-[10px] font-black text-stone-600 capitalize">
+                                      {u.subscription_type || 'Premium'}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
                           </div>
 
                           <div className="flex items-center gap-2">
@@ -5981,7 +6203,26 @@ const AdminPage = () => {
                                 <div className="text-center md:text-left">
                                   <h4 className="text-xl font-black mb-1">Dati Account</h4>
                                   <p className="text-stone-400 text-[10px] font-black uppercase tracking-widest">{selectedUser.email}</p>
-                                  <p className="text-stone-500 text-[9px] font-black mt-2 uppercase tracking-widest italic">ID: {selectedUser.id}</p>
+                                  {selectedUser.is_paid && (
+                                    <div className="mt-4 flex flex-col gap-2 bg-white/5 p-4 rounded-2xl border border-white/10">
+                                      <p className="text-[10px] font-black text-purple-400 uppercase tracking-widest flex items-center gap-2">
+                                        <Sparkles className="w-3.5 h-3.5" /> Stato Sottoscrizione
+                                      </p>
+                                      <div className="flex gap-4">
+                                         <div>
+                                            <p className="text-[8px] text-stone-500 font-bold uppercase">Fine Abbonamento</p>
+                                            <p className="text-xs font-black text-white">
+                                              {selectedUser.subscription_expiry ? new Date(selectedUser.subscription_expiry).toLocaleDateString('it-IT', { day: '2-digit', month: 'long', year: 'numeric' }) : '—'}
+                                            </p>
+                                         </div>
+                                         <div>
+                                            <p className="text-[8px] text-stone-500 font-bold uppercase">Piano Attivo</p>
+                                            <p className="text-xs font-black text-white capitalize">{selectedUser.subscription_type || 'Premium'}</p>
+                                         </div>
+                                      </div>
+                                    </div>
+                                  )}
+                                  <p className="text-stone-500 text-[9px] font-black mt-4 uppercase tracking-widest italic">ID: {selectedUser.id}</p>
                                 </div>
                                 <div className="flex gap-4">
                                   <p className="text-[9px] text-white/40 uppercase font-black">Reported by AI/Users</p>
@@ -6281,127 +6522,241 @@ const AdminPage = () => {
                       </div>
                     </div>
 
-                      {reports && reports.length > 0 ? (
-                        <div className="w-full space-y-6 text-left">
-                          {reports.map((r: any) => {
-                            const reportedUser = users.find(u => u.id === r.reported_id);
-                            const reporterUser = users.find(u => u.id === r.reporter_id);
-                            return (
-                              <div 
-                                key={r.id} 
-                                className={cn(
-                                  "bg-white rounded-[40px] p-6 md:p-8 border shadow-sm transition-all relative overflow-hidden",
-                                  r.is_read ? "border-stone-100 opacity-70" : "border-rose-100 bg-rose-50/5"
-                                )}
-                              >
-                                {!r.is_read && (
+                    <div className="flex items-center gap-1 bg-stone-100 p-1 rounded-2xl w-fit mb-8">
+                      <button
+                        onClick={() => setReportSubTab('pending')}
+                        className={cn(
+                          "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
+                          reportSubTab === 'pending' ? "bg-white text-rose-600 shadow-sm" : "text-stone-400 hover:text-stone-600"
+                        )}
+                      >
+                        Attive ({reports.filter(r => r.is_read !== true).length})
+                      </button>
+                      <button
+                        onClick={() => setReportSubTab('archive')}
+                        className={cn(
+                          "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
+                          reportSubTab === 'archive' ? "bg-white text-stone-600 shadow-sm" : "text-stone-400 hover:text-stone-600"
+                        )}
+                      >
+                        Archiviate ({reports.filter(r => r.is_read === true).length})
+                      </button>
+                    </div>
+
+                    <AnimatePresence>
+                      {confirmReportModal && (
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-stone-900/60 backdrop-blur-xl flex items-center justify-center p-6">
+                          <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="bg-white w-full max-w-sm rounded-[40px] p-8 md:p-10 shadow-2xl text-center border-t-[8px] border-rose-500">
+                             <div className="w-20 h-20 bg-rose-50 rounded-3xl flex items-center justify-center mx-auto text-rose-600 mb-6 shadow-sm border border-rose-100">
+                               <Trash2 className="w-10 h-10" />
+                             </div>
+                             <h4 className="text-2xl font-black text-stone-900 leading-tight mb-3">Eliminare Report?</h4>
+                             <p className="text-sm text-stone-500 font-medium leading-relaxed">Questa azione rimuoverà permanentemente la segnalazione. L'account dell'utente non verrà toccato.</p>
+                             <div className="flex flex-col gap-3 mt-10">
+                               <button onClick={confirmDeleteReportAction} className="w-full py-4 bg-rose-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-rose-900/20 active:scale-95 transition-all">Elimina Ora</button>
+                               <button onClick={() => setConfirmReportModal(null)} className="w-full py-4 bg-stone-100 text-stone-400 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] hover:bg-stone-200 transition-all">Annulla</button>
+                             </div>
+                          </motion.div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    {reportSubTab === 'pending' ? (
+                      <div className="space-y-6">
+                        {reports.filter(r => r.is_read !== true).length > 0 ? (
+                          <div className="w-full space-y-6 text-left">
+                            {reports.filter(r => r.is_read !== true).map((r: any) => {
+                              const reportedUser = users.find(u => u.id === r.reported_id);
+                              const reporterUser = users.find(u => u.id === r.reporter_id);
+                              return (
+                                <div 
+                                  key={r.id} 
+                                  className="bg-white rounded-[40px] p-6 md:p-8 border border-rose-100 bg-rose-50/5 shadow-sm transition-all relative overflow-hidden"
+                                >
                                   <div className="absolute top-0 right-0 px-5 py-2 bg-rose-600 text-[10px] font-black text-white uppercase tracking-widest rounded-bl-3xl">
                                     Nuovo Report
                                   </div>
-                                )}
-                                
-                                <div className="flex flex-col gap-6">
-                                  {/* Header: Date and Report Count */}
-                                  <div className="flex items-center justify-between border-b border-stone-50 pb-4">
-                                    <div className="flex items-center gap-2">
-                                      <Calendar className="w-3.5 h-3.5 text-stone-300" />
-                                      <span className="text-[11px] font-black text-stone-400 uppercase tracking-widest">
-                                        {new Date(r.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })}
-                                      </span>
-                                    </div>
-                                    {reportedUser && (
-                                      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 text-rose-600 rounded-xl border border-rose-100">
-                                        <AlertTriangle className="w-3.5 h-3.5" />
-                                        <span className="text-[11px] font-black uppercase tracking-tight">Report Totali: {reportedUser.reports_count || 0}</span>
+                                  
+                                  <div className="flex flex-col gap-6">
+                                    <div className="flex items-center justify-between border-b border-stone-50 pb-4">
+                                      <div className="flex items-center gap-2">
+                                        <Calendar className="w-3.5 h-3.5 text-stone-300" />
+                                        <span className="text-[11px] font-black text-stone-400 uppercase tracking-widest">
+                                          {new Date(r.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })}
+                                        </span>
                                       </div>
-                                    )}
-                                  </div>
-
-                                  {/* Actors Grid - More spacious */}
-                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div className="bg-stone-50/50 p-4 rounded-3xl border border-stone-100">
-                                      <p className="text-[9px] font-black text-stone-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-rose-500" /> Utente Segnalato
-                                      </p>
-                                      {reportedUser ? (
-                                        <div className="flex items-center gap-3">
-                                          <img src={reportedUser.photo_url || `https://ui-avatars.com/api/?name=${reportedUser.name}+${reportedUser.surname}`} className="w-12 h-12 rounded-2xl object-cover border-2 border-white shadow-sm" />
-                                          <div className="min-w-0">
-                                            <p className="text-sm font-black text-stone-900 truncate">{reportedUser.name} {reportedUser.surname}</p>
-                                            <p className="text-[10px] text-stone-400 font-bold truncate">{reportedUser.email}</p>
-                                          </div>
+                                      {reportedUser && (
+                                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 text-rose-600 rounded-xl border border-rose-100">
+                                          <AlertTriangle className="w-3.5 h-3.5" />
+                                          <span className="text-[11px] font-black uppercase tracking-tight">Report Totali: {reportedUser.reports_count || 0}</span>
                                         </div>
-                                      ) : (
-                                        <span className="text-[10px] text-stone-300 italic font-medium break-all">{r.reported_id}</span>
                                       )}
                                     </div>
 
-                                    <div className="bg-stone-50/50 p-4 rounded-3xl border border-stone-100">
-                                      <p className="text-[9px] font-black text-stone-400 uppercase tracking-widest mb-3 flex items-center gap-2">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Inviata da
-                                      </p>
-                                      {reporterUser ? (
-                                        <div className="flex items-center gap-3">
-                                          <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center shrink-0 border border-stone-100 shadow-sm">
-                                            <User className="w-6 h-6 text-stone-400" />
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                      <div className="bg-stone-50/50 p-4 rounded-3xl border border-stone-100">
+                                        <p className="text-[9px] font-black text-stone-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                          <div className="w-1.5 h-1.5 rounded-full bg-rose-500" /> Utente Segnalato
+                                        </p>
+                                        {reportedUser ? (
+                                          <div className="flex items-center gap-3">
+                                            <img src={reportedUser.photo_url || `https://ui-avatars.com/api/?name=${reportedUser.name}+${reportedUser.surname}`} className="w-12 h-12 rounded-2xl object-cover border-2 border-white shadow-sm" />
+                                            <div className="min-w-0">
+                                              <p className="text-sm font-black text-stone-900 truncate">{reportedUser.name} {reportedUser.surname}</p>
+                                              <p className="text-[10px] text-stone-400 font-bold truncate">{reportedUser.email}</p>
+                                            </div>
                                           </div>
-                                          <div className="min-w-0">
-                                            <p className="text-sm font-bold text-stone-600 truncate">{reporterUser.name} {reporterUser.surname}</p>
-                                            <p className="text-[10px] text-stone-400 font-bold truncate">Utente Attivo</p>
+                                        ) : <span className="text-[10px] text-stone-300 italic font-medium break-all">{r.reported_id}</span>}
+                                      </div>
+
+                                      <div className="bg-stone-50/50 p-4 rounded-3xl border border-stone-100">
+                                        <p className="text-[9px] font-black text-stone-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Inviata da
+                                        </p>
+                                        {reporterUser ? (
+                                          <div className="flex items-center gap-3">
+                                            <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center shrink-0 border border-stone-100 shadow-sm">
+                                              <User className="w-6 h-6 text-stone-400" />
+                                            </div>
+                                            <div className="min-w-0">
+                                              <p className="text-sm font-bold text-stone-600 truncate">{reporterUser.name} {reporterUser.surname}</p>
+                                              <p className="text-[10px] text-stone-400 font-bold truncate">Utente Attivo</p>
+                                            </div>
                                           </div>
-                                        </div>
-                                      ) : (
-                                        <span className="text-[10px] text-stone-300 italic font-medium break-all">{r.reporter_id}</span>
-                                      )}
+                                        ) : <span className="text-[10px] text-stone-300 italic font-medium break-all">{r.reporter_id}</span>}
+                                      </div>
                                     </div>
-                                  </div>
 
-                                  {/* Reason - Full Width Box */}
-                                  <div className="bg-stone-900 rounded-3xl p-6 text-white relative overflow-hidden group">
-                                    <div className="absolute top-0 left-0 w-1 h-full bg-rose-500" />
-                                    <p className="text-[9px] font-black text-stone-500 uppercase tracking-[0.2em] mb-3">Motivazione della Segnalazione</p>
-                                    <p className="text-[13px] text-stone-200 leading-relaxed italic font-medium relative z-10">"{r.reason}"</p>
-                                  </div>
+                                    <div className="bg-stone-900 rounded-3xl p-6 text-white relative overflow-hidden group">
+                                      <div className="absolute top-0 left-0 w-1 h-full bg-rose-500" />
+                                      <p className="text-[9px] font-black text-stone-500 uppercase tracking-[0.2em] mb-3">Motivazione</p>
+                                      <p className="text-[13px] text-stone-200 leading-relaxed italic font-medium relative z-10">"{r.reason}"</p>
+                                    </div>
 
-                                  {/* Action Footer */}
-                                  <div className="flex flex-col sm:flex-row gap-3">
-                                    <button 
-                                      onClick={() => handleMarkReportRead(r.id, !r.is_read)}
-                                      className={cn(
-                                        "flex-1 py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-3 border-2",
-                                        r.is_read 
-                                          ? "bg-white text-stone-400 border-stone-100 hover:bg-stone-50" 
-                                          : "bg-rose-600 text-white border-rose-600 shadow-xl shadow-rose-900/20 active:scale-95"
-                                      )}
-                                    >
-                                      {r.is_read ? (
-                                        <><RefreshCw className="w-4 h-4" /> Riapri Caso</>
-                                      ) : (
-                                        <><CheckCircle className="w-4 h-4" /> Caso Risolto / Archivia</>
-                                      )}
-                                    </button>
-                                    <button 
-                                      onClick={() => { setSelectedUser(reportedUser); setActiveTab('utenti'); }}
-                                      className="py-4 px-8 bg-stone-900 text-white rounded-2xl flex items-center justify-center gap-3 hover:bg-stone-800 transition-all font-black text-[11px] uppercase tracking-widest active:scale-95"
-                                    >
-                                      <Eye className="w-4 h-4" /> Vedi Profilo
-                                    </button>
+                                    <div className="flex flex-col sm:flex-row gap-3">
+                                      <button 
+                                        onClick={() => handleMarkReportRead(r.id, true)}
+                                        className="flex-1 py-4 bg-rose-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest border-2 border-rose-600 shadow-xl shadow-rose-900/20 active:scale-95 transition-all flex items-center justify-center gap-3"
+                                      >
+                                        <CheckCircle className="w-4 h-4" /> Caso Risolto
+                                      </button>
+                                      
+                                      <div className="flex gap-2">
+                                        <button 
+                                          onClick={() => { setSelectedUser(reportedUser); setActiveTab('utenti'); }}
+                                          className="flex-1 py-4 px-8 bg-stone-900 text-white rounded-2xl flex items-center justify-center gap-3 hover:bg-stone-800 transition-all font-black text-[11px] uppercase tracking-widest active:scale-95"
+                                        >
+                                          <Eye className="w-4 h-4" /> Vedi Profilo
+                                        </button>
+                                        <button 
+                                          onClick={() => handleDeleteReport(r.id)}
+                                          className="w-14 h-14 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center border-2 border-rose-100 hover:bg-rose-100 transition-all active:scale-95 shrink-0"
+                                          title="Elimina Segnalazione"
+                                        >
+                                          <Trash2 className="w-5 h-5" />
+                                        </button>
+                                      </div>
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <div className="py-24">
-                          <ShieldCheck className="w-24 h-24 mb-6 text-stone-200 mx-auto" strokeWidth={1} />
-                          <h4 className="text-xl font-black text-stone-900 mb-2">Tutto Sotto Controllo</h4>
-                          <p className="text-sm text-stone-400 max-w-sm font-medium leading-relaxed px-4">In questo momento non ci sono segnalazioni attive. I report inviati dagli utenti appariranno qui in tempo reale.</p>
-                        </div>
-                      )}
-                    </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div className="py-24 text-center">
+                            <ShieldCheck className="w-24 h-24 mb-6 text-stone-200 mx-auto" strokeWidth={1} />
+                            <h4 className="text-xl font-black text-stone-900 mb-2">Tutto Sotto Controllo</h4>
+                            <p className="text-sm text-stone-400 font-medium leading-relaxed px-4">In questo momento non ci sono segnalazioni attive.</p>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-6">
+                        {reports.filter(r => r.is_read === true).length > 0 ? (
+                          <div className="w-full space-y-6 text-left">
+                            {reports.filter(r => r.is_read === true).map((r: any) => {
+                              const reportedUser = users.find(u => u.id === r.reported_id);
+                              const reporterUser = users.find(u => u.id === r.reporter_id);
+                              return (
+                                <div 
+                                  key={r.id} 
+                                  className="bg-white rounded-[40px] p-6 md:p-8 border border-stone-100 opacity-70 shadow-sm transition-all relative overflow-hidden"
+                                >
+                                  <div className="flex flex-col gap-6">
+                                    <div className="flex items-center justify-between border-b border-stone-50 pb-4">
+                                      <div className="flex items-center gap-2">
+                                        <Calendar className="w-3.5 h-3.5 text-stone-300" />
+                                        <span className="text-[11px] font-black text-stone-400 uppercase tracking-widest">
+                                          {new Date(r.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                      <div className="bg-stone-50/50 p-4 rounded-3xl border border-stone-100">
+                                        <p className="text-[9px] font-black text-stone-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                          <div className="w-1.5 h-1.5 rounded-full bg-rose-500" /> Utente Segnalato
+                                        </p>
+                                        {reportedUser ? (
+                                          <div className="flex items-center gap-3">
+                                            <img src={reportedUser.photo_url || `https://ui-avatars.com/api/?name=${reportedUser.name}+${reportedUser.surname}`} className="w-12 h-12 rounded-2xl object-cover border-2 border-white shadow-sm" />
+                                            <div className="min-w-0">
+                                              <p className="text-sm font-black text-stone-900 truncate">{reportedUser.name} {reportedUser.surname}</p>
+                                            </div>
+                                          </div>
+                                        ) : <span className="text-[10px] text-stone-300 italic font-medium break-all">{r.reported_id}</span>}
+                                      </div>
+                                      <div className="bg-stone-50/50 p-4 rounded-3xl border border-stone-100">
+                                        <p className="text-[9px] font-black text-stone-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Inviata da
+                                        </p>
+                                        {reporterUser ? (
+                                          <div className="flex items-center gap-3">
+                                            <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center shrink-0 border border-stone-100 shadow-sm">
+                                              <User className="w-6 h-6 text-stone-400" />
+                                            </div>
+                                            <div className="min-w-0">
+                                              <p className="text-sm font-bold text-stone-600 truncate">{reporterUser.name} {reporterUser.surname}</p>
+                                            </div>
+                                          </div>
+                                        ) : <span className="text-[10px] text-stone-300 italic font-medium break-all">{r.reporter_id}</span>}
+                                      </div>
+                                    </div>
+                                    <div className="bg-stone-100 rounded-3xl p-6 text-stone-600">
+                                      <p className="text-[9px] font-black text-stone-400 uppercase tracking-[0.2em] mb-3">Motivazione</p>
+                                      <p className="text-[13px] leading-relaxed italic font-medium">"{r.reason}"</p>
+                                    </div>
+                                    <div className="flex gap-3">
+                                      <button 
+                                        onClick={() => handleMarkReportRead(r.id, false)}
+                                        className="flex-1 py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-3 border-2 border-stone-100 bg-white text-stone-400 hover:bg-stone-50"
+                                      >
+                                        <RefreshCw className="w-4 h-4" /> Riapri Caso
+                                      </button>
+
+                                      <button 
+                                        onClick={() => handleDeleteReport(r.id)}
+                                        className="w-14 h-14 bg-stone-100 text-stone-400 rounded-2xl flex items-center justify-center border-2 border-stone-200 hover:bg-rose-50 hover:text-rose-600 transition-all shrink-0"
+                                        title="Elimina Definitivamente"
+                                      >
+                                        <Trash2 className="w-5 h-5" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div className="py-24 text-center">
+                            <Archive className="w-16 h-16 mb-4 text-stone-200 mx-auto" strokeWidth={1} />
+                            <p className="text-sm text-stone-400 font-medium">L'archivio è vuoto.</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
+              )}
 
               {activeTab === 'pagamenti' && (
                 <div className="space-y-8">
@@ -11416,7 +11771,7 @@ export default function App() {
 
             // Use maybeSingle to avoid error on 0 rows
             const { data, error } = await supabase.from('users')
-              .select('id, email, is_online, is_blocked, is_suspended, doc_rejected, doc_rejected_at, last_warning_reason, suspension_reason, has_post_removal_notice, is_paid, subscription_type, subscription_expiry')
+              .select('id, email, is_online, last_seen, is_blocked, is_suspended, doc_rejected, doc_rejected_at, last_warning_reason, suspension_reason, has_post_removal_notice, is_paid, subscription_type, subscription_expiry')
               .eq('id', u.id)
               .maybeSingle();
 
@@ -11455,7 +11810,7 @@ export default function App() {
               const updatedUser = normalizeUser({ ...u, ...data });
               setCurrentUser(updatedUser);
               localStorage.setItem('soulmatch_user', JSON.stringify(updatedUser));
-            await supabase.from('users').update({ is_online: true }).eq('id', u.id);
+            await supabase.from('users').update({ is_online: true, last_seen: new Date().toISOString() }).eq('id', u.id);
           }
         } catch (e) {
           console.error("Errore verifica sessione (Local):", e);
@@ -11473,7 +11828,7 @@ export default function App() {
         try {
           const u = JSON.parse(saved);
           if (u?.id && document.visibilityState === 'visible') {
-            await supabase.from('users').update({ is_online: true }).eq('id', u.id);
+            await supabase.from('users').update({ is_online: true, last_seen: new Date().toISOString() }).eq('id', u.id);
           }
         } catch (e) { }
       }
@@ -11487,7 +11842,8 @@ export default function App() {
           if (u?.id) {
             const isVisible = document.visibilityState === 'visible';
             await supabase.from('users').update({
-              is_online: isVisible
+              is_online: isVisible,
+              last_seen: new Date().toISOString()
             }).eq('id', u.id);
           }
         } catch (e) { }

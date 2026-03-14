@@ -27,6 +27,7 @@ export interface UserProfile {
   likes_count?: number;
   hearts_count?: number;
   is_online?: boolean;
+  last_seen?: string;
   email?: string;
   password?: string;
   nickname?: string;
@@ -91,5 +92,6 @@ export interface SoulLink {
     photo_url?: string;
     city?: string;
     is_online?: boolean;
+    last_seen?: string;
   };
 }
