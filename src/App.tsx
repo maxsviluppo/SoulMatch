@@ -1082,15 +1082,14 @@ const Navbar = () => {
       </div>
 
       <Link to="/" className="flex items-center gap-3 group relative z-10">
-        {user?.is_paid ? (
-          <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.4)] shrink-0 group-hover:scale-110 transition-transform bg-stone-900">
-            <ProfileAvatar user={user} className="w-full h-full" iconSize="w-5 h-5" />
-          </div>
-        ) : (
-          <div className="w-10 h-10 bg-rose-600 rounded-full flex items-center justify-center group-hover:rotate-12 transition-transform shrink-0 shadow-lg shadow-rose-900/40">
-            <Heart className="text-white w-5 h-5 fill-current" />
-          </div>
-        )}
+        <div className={cn(
+          "w-10 h-10 rounded-full flex items-center justify-center group-hover:rotate-12 transition-transform shrink-0 shadow-lg",
+          user?.is_paid 
+            ? "bg-purple-600 shadow-purple-900/40 border border-purple-400/30" 
+            : "bg-rose-600 shadow-rose-900/40"
+        )}>
+          <Heart className="text-white w-5 h-5 fill-current" />
+        </div>
         <div className="flex flex-col">
           <span className="text-xl font-serif font-black tracking-tight text-white leading-none">SoulMatch</span>
           <span className={cn(
@@ -1104,7 +1103,12 @@ const Navbar = () => {
       <div className="flex gap-4 items-center relative z-10">
         {user ? (
           <div className="flex items-center gap-3">
-            <Link to="/profile" className="w-10 h-10 rounded-full flex items-center justify-center border border-white/10 bg-white/5 transition-all hover:bg-white/10 active:scale-95 overflow-hidden ring-2 ring-white/5">
+            <Link to="/profile" className={cn(
+              "w-10 h-10 rounded-full flex items-center justify-center transition-all hover:bg-white/10 active:scale-95 overflow-hidden ring-2",
+              user?.is_paid 
+                ? "border-2 border-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.5)] ring-purple-500/20" 
+                : "border border-white/10 bg-white/5 ring-white/5"
+            )}>
               <ProfileAvatar user={user} className="w-full h-full" iconSize="w-5 h-5" />
             </Link>
 
@@ -1133,6 +1137,7 @@ const Navbar = () => {
 const ProfileCard: React.FC<{ profile: UserProfile; onInteract?: () => void }> = ({ profile, onInteract }) => {
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [showScore, setShowScore] = useState(false);
+  const [photoIndex, setPhotoIndex] = useState(0);
 
   useEffect(() => {
     try {
@@ -1177,9 +1182,39 @@ const ProfileCard: React.FC<{ profile: UserProfile; onInteract?: () => void }> =
         animate={{ opacity: 1, y: 0 }}
         className="group relative overflow-hidden rounded-3xl bg-white border border-stone-200 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col h-full"
       >
-        <div className="aspect-[3/4.8] overflow-hidden relative shrink-0">
-          <ProfileAvatar user={profile} className="w-full h-full" iconSize="w-20 h-20" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
+        <div className="aspect-[3/4.8] overflow-hidden relative shrink-0 select-none group/img">
+          {/* Photos slider handles */}
+          <div className="absolute inset-0 z-10 flex">
+             <div className="w-1/2 h-full cursor-w-resize" onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (profile.photos && profile.photos.length > 0) setPhotoIndex(prev => (prev - 1 + profile.photos.length) % profile.photos.length); }} />
+             <div className="w-1/2 h-full cursor-e-resize" onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (profile.photos && profile.photos.length > 0) setPhotoIndex(prev => (prev + 1) % profile.photos.length); }} />
+          </div>
+
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={photoIndex}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.3 }}
+              className="w-full h-full"
+            >
+              <ProfileAvatar 
+                user={{...profile, photos: profile.photos ? [profile.photos[photoIndex]] : (profile.photo_url ? [profile.photo_url] : [])}} 
+                className="w-full h-full" 
+                iconSize="w-20 h-20" 
+              />
+            </motion.div>
+          </AnimatePresence>
+
+          {profile.photos && profile.photos.length > 1 && (
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 flex gap-1 px-1.5 py-1 rounded-full bg-black/20 backdrop-blur-md border border-white/10">
+              {profile.photos.map((_: any, idx: number) => (
+                <div key={idx} className={cn("h-1 rounded-full transition-all duration-300", idx === photoIndex ? "w-4 bg-white" : "w-1 bg-white/40")} />
+              ))}
+            </div>
+          )}
+
+          <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/20 to-transparent pointer-events-none" />
 
           {/* Test Match Button on Photo */}
           {!showScore && (
@@ -1957,7 +1992,20 @@ const LiveChatPage = () => {
                       ? { background: '#f43f5e', boxShadow: '0 0 12px rgba(244,63,94,0.3)' }
                       : { background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.9)' }
                     }>
-                    <div className="leading-relaxed whitespace-pre-wrap break-words">{m.text}</div>
+                    <div className="leading-relaxed whitespace-pre-wrap break-words">
+                      {m.text.startsWith('[INTENT:') && !currentUser.is_paid && !isOwn ? (
+                        <div className="flex flex-col gap-2 py-1">
+                          <div className="flex items-center gap-2 text-rose-400 font-black text-[10px] uppercase tracking-widest">
+                             <Lock className="w-3 h-3" /> Interazione Speciale
+                          </div>
+                          <div className="text-white/20 italic text-xs blur-[2px] select-none">
+                            Contenuto nascosto... sblocca Premium per vedere!
+                          </div>
+                        </div>
+                      ) : (
+                        m.text.startsWith('[INTENT:') ? m.text.replace(/\[INTENT:.*?\] /, '') : m.text
+                      )}
+                    </div>
                     <div className={cn("text-[9px] font-black flex justify-end gap-1 mt-1.5 uppercase tracking-widest", isOwn ? "text-rose-200" : "text-stone-400")}>
                       {new Date(m.created_at).getHours()}:{String(new Date(m.created_at).getMinutes()).padStart(2, '0')}
                       {isOwn && <span className="text-rose-100 scale-125 ml-1">✓✓</span>}
@@ -2037,7 +2085,7 @@ const ProfileDetailPage = () => {
     { id: 'dinner', icon: Utensils, label: 'Invito a Cena', color: '#fbbf24', bg: 'rgba(251,191,36,0.1)', border: 'rgba(251,191,36,0.3)', message: 'Ehi! Mi farebbe piacere invitarti a cena, che ne dici?' },
     { id: 'movie', icon: PlayCircle, label: 'Serata Cinema', color: '#60a5fa', bg: 'rgba(96,165,250,0.1)', border: 'rgba(96,165,250,0.3)', message: 'Che ne dici di guardare un film insieme stasera?' },
     { id: 'coffee', icon: Coffee, label: 'Caffè al volo', color: '#d97706', bg: 'rgba(217,119,6,0.1)', border: 'rgba(217,119,6,0.3)', message: 'Ti va un caffè veloce per fare due chiacchiere?' },
-    { id: 'soul', icon: Sparkles, label: 'Anima Gemella', color: '#a855f7', bg: 'rgba(168,85,247,0.1)', border: 'rgba(168,85,247,0.3)', message: 'Sento che abbiamo un\'affinità speciale...' },
+    { id: 'soul', icon: Sparkles, label: 'Anima Gemella', color: '#a855f7', bg: 'rgba(168,85,247,0.1)', border: 'rgba(168,85,247,0.3)', message: '', isFreeText: true },
     { id: 'travel', icon: Globe, label: 'Viaggio', color: '#10b981', bg: 'rgba(16,185,129,0.1)', border: 'rgba(16,185,129,0.3)', message: 'Ti andrebbe di esplorare un nuovo posto insieme?' },
   ];
 
@@ -2352,11 +2400,13 @@ const ProfileDetailPage = () => {
     setIsSendingIntent(true);
     
     // Create a system-like message in the chat
-    const text = intentInput.trim() || selectedIntent.message;
-    const { error } = await supabase.from('messages').insert([{
+    const text = selectedIntent.isFreeText ? (intentInput.trim() || "Ti ho inviato un'interazione speciale!") : selectedIntent.message;
+    
+    // Using room_messages for consistent chat flow
+    const { error } = await supabase.from('room_messages').insert([{
       sender_id: currentUser.id,
       receiver_id: profile.id,
-      text: `[BADGE:${selectedIntent.id}] ${text}`,
+      text: `[INTENT:${selectedIntent.id}] ${text}`,
       created_at: new Date().toISOString()
     }]);
 
@@ -2733,11 +2783,15 @@ const ProfileDetailPage = () => {
                   </div>
 
                   <textarea
-                    autoFocus
-                    value={intentInput}
+                    autoFocus={selectedIntent.isFreeText}
+                    readOnly={!selectedIntent.isFreeText}
+                    value={selectedIntent.isFreeText ? intentInput : selectedIntent.message}
                     onChange={(e) => setIntentInput(e.target.value)}
-                    placeholder={selectedIntent.message}
-                    className="w-full bg-white/[0.05] border border-white/10 rounded-[22px] px-5 py-4 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500/30 min-h-[100px] placeholder:text-white/20 resize-none"
+                    placeholder={selectedIntent.isFreeText ? "Scrivi il tuo messaggio qui..." : ""}
+                    className={cn(
+                      "w-full bg-white/[0.05] border border-white/10 rounded-[22px] px-5 py-4 text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500/30 min-h-[100px] placeholder:text-white/20 resize-none",
+                      !selectedIntent.isFreeText && "opacity-80 border-dashed"
+                    )}
                   />
                   
                   <button
@@ -9441,7 +9495,9 @@ const ChatPage = () => {
           if (!chatMap.has(otherId)) {
             chatMap.set(otherId, {
               other_user: { ...otherUser, photo_url: otherUser.photos?.[0] || otherUser.photo_url },
-              last_msg: m.text,
+              last_msg: m.text.startsWith('[INTENT:') && !user.is_paid && m.sender_id !== userId 
+                         ? '✨ Nuova Interazione Speciale! (Sblocca Premium)' 
+                         : (m.text.startsWith('[INTENT:') ? m.text.replace(/\[INTENT:.*?\] /, '') : m.text),
               created_at: m.created_at,
               isSender: m.sender_id === userId,
               messages: [{ ...m, isSender: m.sender_id === userId }]
