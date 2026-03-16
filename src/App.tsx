@@ -2582,8 +2582,6 @@ const ProfileDetailPage = () => {
               <Heart className={cn("w-4 h-4", userInteractions.includes('heart') ? "text-rose-400 fill-current" : "text-white/60")} />
               <span className={cn("text-xs font-black", userInteractions.includes('heart') ? "text-rose-300" : "text-white/70")}>{profile.hearts_count || 0}</span>
             </button>
-          </div>
-
         </div>
       </div>
 
