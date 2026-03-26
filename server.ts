@@ -7,11 +7,18 @@ import { fileURLToPath } from "url";
 import cors from "cors";
 import { initializeApp } from 'firebase/app';
 import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore';
+import { createClient } from '@supabase/supabase-js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Load Firebase Config for Cloud Sync
+// Supabase Config for Online Persistence
+const supabaseUrl = 'https://kcqeiogrndnifhimrawd.supabase.co';
+const supabaseKey = 'sb_publishable_3Ou-bGsfDOk9FWHjXyiwwQ_ywZQUEES';
+const supabase = createClient(supabaseUrl, supabaseKey);
+console.log("[Supabase] initialized for backend sync");
+
+// Load Firebase Config for Cloud Sync (Extra backup)
 let firestore: any = null;
 try {
   const firebaseConfig = JSON.parse(fs.readFileSync(path.join(process.cwd(), "firebase-applet-config.json"), "utf-8"));
@@ -19,7 +26,7 @@ try {
   firestore = getFirestore(app);
   console.log("[Firebase] initialized for backend sync");
 } catch (e) {
-  console.warn("[Firebase] Could not initialize sync, falling back to local files only:", e instanceof Error ? e.message : String(e));
+  console.warn("[Firebase] Skipping: firebase-applet-config.json not found");
 }
 
 const DATA_DIR = path.join(process.cwd(), ".data");
@@ -316,14 +323,6 @@ async function startServer() {
   }
   loadTraffic();
 
-  function saveTraffic() {
-    try {
-      fs.writeFileSync(TRAFFIC_FILE, JSON.stringify(realTraffic, null, 2));
-      if (firestore) {
-        setDoc(doc(firestore, 'configs', 'traffic'), realTraffic).catch(console.error);
-      }
-    } catch (e) {}
-  }
 
   function trackVisit() {
     const today = new Date().toISOString().split('T')[0];
@@ -377,29 +376,134 @@ async function startServer() {
   let lastSync = 0;
 
   async function syncCloudConfigs() {
-    if (!firestore) return;
-    const now = Date.now();
-    if (now - lastSync < 60000 && cachedAdSense) return;
-
+    console.log("[CloudSync] Inizializzazione sincronizzazione cloud...");
+    
+    // 1. Try Supabase first (Primary Cloud)
     try {
-      const adsDoc = await getDoc(doc(firestore, 'configs', 'adsense'));
-      if (adsDoc.exists()) {
-        const remoteAdsense = adsDoc.data() as any;
-        cachedAdSense = remoteAdsense;
-        // Merge history if available from remote
-        if (remoteAdsense.history) realTraffic.adsense = remoteAdsense;
+      const { data: remoteSettings, error } = await supabase.from('site_settings').select('*');
+      if (!error && remoteSettings) {
+        remoteSettings.forEach(entry => {
+          if (entry.key === 'seo_configs') cachedSeo = entry.value;
+          if (entry.key === 'adsense_config') cachedAdSense = entry.value;
+          if (entry.key === 'analytics_config') cachedAnalytics = entry.value;
+          if (entry.key === 'traffic_stats') {
+             const stats = entry.value;
+             if (stats && stats.total > realTraffic.total) {
+                realTraffic.total = stats.total;
+                realTraffic.today = stats.today;
+                realTraffic.lastReset = stats.lastReset;
+             }
+          }
+        });
+        console.log("[Supabase] Configs synced from cloud");
       }
-      
-      const anaDoc = await getDoc(doc(firestore, 'configs', 'analytics'));
-      if (anaDoc.exists()) cachedAnalytics = anaDoc.data();
+    } catch (err) {
+      console.warn("[Supabase] Sync failed:", err);
+    }
 
-      const seoDoc = await getDoc(doc(firestore, 'configs', 'seo'));
-      if (seoDoc.exists()) cachedSeo = seoDoc.data();
-      
-      lastSync = now;
-      console.log("[Cloud] SoulMatch configs synced from Firestore");
+    // 2. Fallback to Firestore (Secondary Cloud)
+    if (firestore) {
+      try {
+        const adsDoc = await getDoc(doc(firestore, 'configs', 'adsense'));
+        if (adsDoc.exists()) cachedAdSense = adsDoc.data();
+        
+        const anaDoc = await getDoc(doc(firestore, 'configs', 'analytics'));
+        if (anaDoc.exists()) cachedAnalytics = anaDoc.data();
+
+        const seoDoc = await getDoc(doc(firestore, 'configs', 'seo'));
+        if (seoDoc.exists()) cachedSeo = seoDoc.data();
+        
+        console.log("[Firestore] Fallback sync completed");
+      } catch (e) {
+        console.warn("[Firestore] Sync failed:", e);
+      }
+    }
+
+    // 3. Final local fallback: SQLite (The "database giusto" for the server)
+    try {
+      if (!cachedSeo) {
+        const row = db.prepare("SELECT value FROM site_settings WHERE key = 'seo_configs'").get() as any;
+        if (row) cachedSeo = JSON.parse(row.value);
+      }
+      if (!cachedAdSense) {
+        const row = db.prepare("SELECT value FROM site_settings WHERE key = 'adsense_config'").get() as any;
+        if (row) cachedAdSense = JSON.parse(row.value);
+      }
     } catch (e) {
-      console.warn("[Cloud] Sync failed:", e);
+      console.warn("[SQLite] Local settings fetch failed");
+    }
+
+    lastSync = Date.now();
+  }
+
+  async function saveSeo(data: any) {
+    try {
+      console.log("[Backend] Saving SEO configs to all stores...");
+      // A. Local File
+      fs.writeFileSync(SEO_FILE, JSON.stringify(data, null, 2));
+      cachedSeo = data;
+      
+      // B. Local SQLite
+      db.prepare("INSERT OR REPLACE INTO site_settings (key, value) VALUES (?, ?)").run('seo_configs', JSON.stringify(data));
+
+      // C. Supabase (The "database giusto" for online)
+      try {
+        await supabase.from('site_settings').upsert({ key: 'seo_configs', value: data });
+      } catch (sErr) {
+        console.warn("[Supabase] Cloud save skipped:", sErr);
+      }
+
+      // D. Firestore (Backup)
+      if (firestore) {
+        try { await setDoc(doc(firestore, 'configs', 'seo'), data); } catch (e) {}
+      }
+      return true;
+    } catch (err) {
+      console.error("[Backend] SEO Save failure:", err);
+      throw err;
+    }
+  }
+
+  async function saveAdSense(data: any) {
+    try {
+      fs.writeFileSync(ADSENSE_FILE, JSON.stringify(data, null, 2));
+      cachedAdSense = data;
+      db.prepare("INSERT OR REPLACE INTO site_settings (key, value) VALUES (?, ?)").run('adsense_config', JSON.stringify(data));
+      try { await supabase.from('site_settings').upsert({ key: 'adsense_config', value: data }); } catch (e) {}
+      if (firestore) {
+        try { await setDoc(doc(firestore, 'configs', 'adsense'), data); } catch (e) {}
+      }
+      return true;
+    } catch (err) {
+      console.error("[Backend] AdSense Save failure:", err);
+      throw err;
+    }
+  }
+
+  async function saveAnalytics(data: any) {
+    try {
+      fs.writeFileSync(ANALYTICS_FILE, JSON.stringify(data, null, 2));
+      cachedAnalytics = data;
+      db.prepare("INSERT OR REPLACE INTO site_settings (key, value) VALUES (?, ?)").run('analytics_config', JSON.stringify(data));
+      try { await supabase.from('site_settings').upsert({ key: 'analytics_config', value: data }); } catch (e) {}
+      return true;
+    } catch (err) {
+      console.error("[Backend] Analytics Save failure:", err);
+      throw err;
+    }
+  }
+
+  async function saveTraffic() {
+    try {
+      const data = { ...realTraffic, lastSync: Date.now() };
+      fs.writeFileSync(TRAFFIC_FILE, JSON.stringify(data, null, 2));
+      db.prepare("INSERT OR REPLACE INTO site_settings (key, value) VALUES (?, ?)").run('traffic_stats', JSON.stringify(data));
+      try { await supabase.from('site_settings').upsert({ key: 'traffic_stats', value: data }); } catch (e) {}
+      if (firestore) {
+        try { await setDoc(doc(firestore, 'traffic', 'stats'), data); } catch (e) {}
+      }
+    } catch (err) {
+      console.error("[Backend] Error saving traffic stats:", err);
     }
   }
 
@@ -875,22 +979,9 @@ async function startServer() {
 
   app.post("/api/admin/seo", async (req, res) => {
     try {
-      const data = req.body;
-      console.log("[ADMIN] Saving SEO configs...");
-      fs.writeFileSync(SEO_FILE, JSON.stringify(data, null, 2));
-      cachedSeo = data;
-      
-      if (firestore) {
-        try {
-          await setDoc(doc(firestore, 'configs', 'seo'), data);
-          console.log("[Firebase] SEO synced");
-        } catch (fErr) {
-          console.warn("[Firebase] SEO sync skipped (permissions?):", fErr instanceof Error ? fErr.message : fErr);
-        }
-      }
+      await saveSeo(req.body);
       res.json({ success: true });
     } catch (err: any) {
-      console.error("[ADMIN] SEO Save Error:", err);
       res.status(500).json({ success: false, error: err.message });
     }
   });
@@ -902,22 +993,9 @@ async function startServer() {
 
   app.post("/api/admin/adsense", async (req, res) => {
     try {
-      const data = req.body;
-      console.log("[ADMIN] Updating AdSense configs...");
-      fs.writeFileSync(ADSENSE_FILE, JSON.stringify(data, null, 2));
-      cachedAdSense = data;
-      
-      if (firestore) {
-        try {
-          await setDoc(doc(firestore, 'configs', 'adsense'), data);
-          console.log("[Firebase] AdSense synced");
-        } catch (fErr) {
-          console.warn("[Firebase] AdSense sync skipped:", fErr instanceof Error ? fErr.message : fErr);
-        }
-      }
+      await saveAdSense(req.body);
       res.json({ success: true });
     } catch (err: any) {
-      console.error("[ADMIN] AdSense Save Error:", err);
       res.status(500).json({ success: false, error: err.message });
     }
   });
@@ -929,22 +1007,9 @@ async function startServer() {
 
   app.post("/api/admin/analytics", async (req, res) => {
     try {
-      const data = req.body;
-      console.log("[ADMIN] Refreshing Analytics configs...");
-      fs.writeFileSync(ANALYTICS_FILE, JSON.stringify(data, null, 2));
-      cachedAnalytics = data;
-      
-      if (firestore) {
-        try {
-          await setDoc(doc(firestore, 'configs', 'analytics'), data);
-          console.log("[Firebase] Analytics synced");
-        } catch (fErr) {
-          console.warn("[Firebase] Analytics sync skipped:", fErr instanceof Error ? fErr.message : fErr);
-        }
-      }
+      await saveAnalytics(req.body);
       res.json({ success: true });
     } catch (err: any) {
-      console.error("[ADMIN] Analytics Save Error:", err);
       res.status(500).json({ success: false, error: err.message });
     }
   });
