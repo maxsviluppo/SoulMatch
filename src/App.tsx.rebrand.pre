@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, LineChart, Line, Cell } from 'recharts';
 import {
   Heart,
   Users,
@@ -196,7 +195,7 @@ const AppBottomNav = () => {
   const fetchPending = async () => {
     let currentUserId: string | null = null;
     try {
-      const saved = localStorage.getItem('amarsiunpo_user');
+      const saved = localStorage.getItem('soulmatch_user');
       if (saved) {
         const user = JSON.parse(saved);
         currentUserId = user.id;
@@ -245,7 +244,7 @@ const AppBottomNav = () => {
   useEffect(() => {
     let currentUserId: string | null = null;
     try {
-      const saved = localStorage.getItem('amarsiunpo_user');
+      const saved = localStorage.getItem('soulmatch_user');
       if (saved) {
         const user = JSON.parse(saved);
         currentUserId = user.id;
@@ -298,7 +297,7 @@ const AppBottomNav = () => {
     if (path.startsWith('/amici')) return 'soullink';
     if (path.startsWith('/chat')) return 'chat';
     if (path.startsWith('/feed')) return 'feed';
-    if (path.startsWith('/soul-match')) return 'amarsiunpo';
+    if (path.startsWith('/soul-match')) return 'soulmatch';
     return '';
   };
 
@@ -432,17 +431,17 @@ const AppBottomNav = () => {
                 </motion.div>
               </Link>
 
-              {/* AMARSIUNPO (Heart Button) */}
-              <Link to="/soul-match" onClick={() => window.dispatchEvent(new CustomEvent('reset-amarsiunpo'))} className="relative flex-1 group">
+              {/* SoulMatch (Heart Button) */}
+              <Link to="/soul-match" onClick={() => window.dispatchEvent(new CustomEvent('reset-soulmatch'))} className="relative flex-1 group">
                 <motion.div
                   whileTap={{ scale: 0.9 }}
                   className={cn(
                     "flex flex-col items-center py-2.5 rounded-full aspect-square justify-center transition-all duration-300",
-                    activeTab === 'amarsiunpo' ? "text-white shadow-lg" : "text-stone-400 hover:text-white"
+                    activeTab === 'soulmatch' ? "text-white shadow-lg" : "text-stone-400 hover:text-white"
                   )}
-                  style={activeTab === 'amarsiunpo' ? { background: '#f43f5e', boxShadow: '0 0 20px rgba(244,63,94,0.6)' } : {}}
+                  style={activeTab === 'soulmatch' ? { background: '#f43f5e', boxShadow: '0 0 20px rgba(244,63,94,0.6)' } : {}}
                 >
-                  <Heart className={cn("w-5 h-5 mb-0.5", activeTab === 'amarsiunpo' ? "fill-current" : "")} />
+                  <Heart className={cn("w-5 h-5 mb-0.5", activeTab === 'soulmatch' ? "fill-current" : "")} />
                   <span className="text-[6px] font-black uppercase tracking-wider">Match</span>
                 </motion.div>
               </Link>
@@ -495,7 +494,7 @@ const GlobalFlashBanner = () => {
 
   const getSavedUser = () => {
     try {
-      const saved = localStorage.getItem('amarsiunpo_user');
+      const saved = localStorage.getItem('soulmatch_user');
       return saved ? JSON.parse(saved) : null;
     } catch { return null; }
   };
@@ -790,7 +789,7 @@ export const PremiumModal = ({ isOpen, onClose, defaultComparison = false }: { i
   const STRIPE_ANNUAL_LINK = 'https://buy.stripe.com/9B628r9z1cVxd644ld5os02';
 
   const handleCheckout = () => {
-    localStorage.setItem('amarsiunpo_pending_plan', selectedPlan);
+    localStorage.setItem('soulmatch_pending_plan', selectedPlan);
     const link = selectedPlan === 'monthly' ? STRIPE_MONTHLY_LINK : STRIPE_ANNUAL_LINK;
     window.location.href = link;
   };
@@ -997,7 +996,7 @@ const Navbar = () => {
 
   const checkUser = () => {
     try {
-      const saved = localStorage.getItem('amarsiunpo_user');
+      const saved = localStorage.getItem('soulmatch_user');
       if (saved) {
         try {
           setUser(normalizeUser(JSON.parse(saved)));
@@ -1088,11 +1087,8 @@ const Navbar = () => {
       </div>
 
       <Link to="/" className="flex items-center gap-3 group relative z-10">
-        <Heart className="w-8 h-8 text-rose-500 fill-rose-500 animate-pulse-slow" />
         <div className="flex flex-col">
-          <span className="text-xl font-serif font-black tracking-tight leading-none text-white group-hover:text-rose-600 transition-colors">
-            Amarsi Un Po
-          </span>
+          <img src="/senza fondo amarsiunpo.png" alt="AMARSIUNPO Logo" className="h-9 w-auto object-contain" />
           <span className={cn(
             "text-[9px] font-montserrat font-bold uppercase tracking-[0.2em] mt-1 line-clamp-1",
             user?.is_paid ? "text-purple-400" : "text-rose-500"
@@ -1115,7 +1111,7 @@ const Navbar = () => {
 
             <button
               onClick={() => {
-                localStorage.removeItem('amarsiunpo_user');
+                localStorage.removeItem('soulmatch_user');
                 window.dispatchEvent(new Event('user-auth-change'));
                 window.location.href = '/';
               }}
@@ -1142,7 +1138,7 @@ const ProfileCard: React.FC<{ profile: UserProfile; onInteract?: () => void }> =
 
   useEffect(() => {
     try {
-      const saved = localStorage.getItem('amarsiunpo_user');
+      const saved = localStorage.getItem('soulmatch_user');
       if (saved) setCurrentUser(normalizeUser(JSON.parse(saved)));
     } catch (e) { }
   }, []);
@@ -1405,7 +1401,7 @@ const HomePage = () => {
   useEffect(() => {
     window.scrollTo(0, 0);
     try {
-      const saved = localStorage.getItem('amarsiunpo_user');
+      const saved = localStorage.getItem('soulmatch_user');
       if (saved) {
         setIsLoggedIn(true);
         setCurrentUser(normalizeUser(JSON.parse(saved)));
@@ -1425,9 +1421,9 @@ const HomePage = () => {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: 'Amarsi Un Po',
-          text: 'Entra anche tu in Amarsi Un Po, la community per trovare la tua compagnia ideale! ❤️',
-          url: 'https://www.amarsiunpo.it',
+          title: 'SoulMatch',
+          text: 'Entra anche tu in SoulMatch, la community per trovare la tua compagnia ideale! ❤️',
+          url: window.location.origin,
         });
       } catch (error) {
         console.log('Error sharing:', error);
@@ -1440,7 +1436,7 @@ const HomePage = () => {
   };
 
   return (
-    <div className="min-h-screen pt-[460px] pb-12 px-4 flex flex-col items-center justify-center bg-black relative overflow-x-hidden">
+    <div className="min-h-screen pt-[580px] pb-12 px-4 flex flex-col items-center justify-center bg-black relative overflow-x-hidden">
       {/* Floating blurred hearts background — same as Navbar */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden z-0">
         <style>{`
@@ -1498,7 +1494,7 @@ const HomePage = () => {
           </p>
 
           <p className="text-lg text-white/50 leading-relaxed px-4 font-medium">
-            Amarsi Un Po è il luogo sicuro dove incontrare persone reali. Ogni profilo è verificato manualmente per la tua sicurezza.
+            SoulMatch è il luogo sicuro dove incontrare persone reali. Ogni profilo è verificato manualmente per la tua sicurezza.
           </p>
         </div>
 
@@ -1557,7 +1553,7 @@ const HomePage = () => {
 
         {/* Feature cards — dark glass style */}
         <div className="space-y-3 px-1">
-          <h2 className="text-left text-sm font-black text-white/30 uppercase tracking-widest px-1">Perché AMARSIUNPO</h2>
+          <h2 className="text-left text-sm font-black text-white/30 uppercase tracking-widest px-1">Perché SoulMatch</h2>
           {[
             {
               icon: UserPlus,
@@ -1579,7 +1575,7 @@ const HomePage = () => {
             },
             {
               icon: Sparkles,
-              title: "AMARSIUNPO AI",
+              title: "SoulMatch AI",
               desc: "Algoritmo di compatibilità che migliora con il tempo",
               glowColor: 'rgba(245,158,11,0.12)',
               iconBg: 'rgba(245,158,11,0.15)',
@@ -1598,7 +1594,7 @@ const HomePage = () => {
             {
               icon: Share2,
               title: "Condividi App",
-              desc: "Invia AMARSIUNPO ai tuoi amici e invitali!",
+              desc: "Invia SoulMatch ai tuoi amici e invitali!",
               isSpecial: true,
               onClick: handleShare
             },
@@ -1672,7 +1668,7 @@ const HomePage = () => {
         {/* ── STEP TUTORIAL ── */}
         <div className="space-y-8 py-4">
           <div className="text-left space-y-1">
-            <h2 className="text-2xl font-black text-white px-1">Come funziona AMARSIUNPO</h2>
+            <h2 className="text-2xl font-black text-white px-1">Come funziona SoulMatch</h2>
             <p className="text-white/30 text-[10px] uppercase tracking-[0.3em] font-black px-1">La tua guida rapida al successo</p>
           </div>
 
@@ -1694,8 +1690,8 @@ const HomePage = () => {
                  color: "bg-rose-600"
                },
                {
-                 title: "3. La Magia del AMARSIUNPO",
-                 desc: "Usa la funzione AMARSIUNPO per calcolare istantaneamente l'affinità tra te e gli altri utenti.",
+                 title: "3. La Magia del SoulMatch",
+                 desc: "Usa la funzione SoulMatch per calcolare istantaneamente l'affinità tra te e gli altri utenti.",
                  icon: Sparkles,
                  color: "bg-purple-500"
                },
@@ -1760,7 +1756,7 @@ const HomePage = () => {
         <svg viewBox="0 0 320 24" className="w-64" fill="none">
           <path d="M0 12 Q40 0 80 12 Q120 24 160 12 Q200 0 240 12 Q280 24 320 12" stroke="rgba(255,255,255,0.08)" strokeWidth="2" fill="none" strokeLinecap="round" />
         </svg>
-        <p className="text-white/15 text-[9px] font-black uppercase tracking-[0.3em]">AMARSIUNPO &copy; 2025</p>
+        <p className="text-white/15 text-[9px] font-black uppercase tracking-[0.3em]">SoulMatch &copy; 2025</p>
       </div>
 
       <AppFooter />
@@ -1782,7 +1778,7 @@ const LiveChatPage = () => {
 
   useEffect(() => {
     try {
-      const saved = localStorage.getItem('amarsiunpo_user');
+      const saved = localStorage.getItem('soulmatch_user');
       if (saved) {
         setCurrentUser(normalizeUser(JSON.parse(saved)));
       } else {
@@ -2184,7 +2180,7 @@ const ProfileDetailPage = () => {
 
       // 1. Get Current User and ensure real-time data from Supabase
       try {
-        const saved = localStorage.getItem('amarsiunpo_user');
+        const saved = localStorage.getItem('soulmatch_user');
         if (saved) {
           const u = JSON.parse(saved);
           const { data, error } = await supabase.from('users').select('*').eq('id', u.id).single();
@@ -2610,7 +2606,7 @@ const ProfileDetailPage = () => {
             )}
           </div>
 
-          {/* Match Widget Next to Name - Shown only after executing AMARSIUNPO (hasMatched) */}
+          {/* Match Widget Next to Name - Shown only after executing SoulMatch (hasMatched) */}
           {currentUser && hasMatched && (matchScoreShared || matchScore) > 0 && (
              <div className="shrink-0 -mt-17 scale-[0.88] origin-top-right">
                 <div className="relative w-32 h-32 flex items-center justify-center">
@@ -2951,8 +2947,8 @@ const BachecaPage = () => {
   const [filterAge, setFilterAge] = useState<[number, number]>([18, 99]);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
-  const [showAMARSIUNPO, setShowAMARSIUNPO] = useState(false);
-  const [amarsiunpoToast, setSoulmatchToast] = useState(false);
+  const [showSoulMatch, setShowSoulMatch] = useState(false);
+  const [soulmatchToast, setSoulmatchToast] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [showSearch, setShowSearch] = useState(false);
   const [unlockedIds, setUnlockedIds] = useState<string[]>([]);
@@ -3002,13 +2998,13 @@ const BachecaPage = () => {
   };
 
   useEffect(() => {
-    const saved = localStorage.getItem('amarsiunpo_unlocked_ids');
+    const saved = localStorage.getItem('soulmatch_unlocked_ids');
     if (saved) setUnlockedIds(JSON.parse(saved));
-  }, [showAMARSIUNPO]);
+  }, [showSoulMatch]);
 
   useEffect(() => {
     const init = async () => {
-      const saved = localStorage.getItem('amarsiunpo_user');
+      const saved = localStorage.getItem('soulmatch_user');
       if (saved) {
         const u = JSON.parse(saved);
         // Ensure we have REAL data from Supabase
@@ -3026,41 +3022,41 @@ const BachecaPage = () => {
     init();
   }, []);
 
-  const SM_COOLDOWN_KEY = 'amarsiunpo_last_used';
+  const SM_COOLDOWN_KEY = 'soulmatch_last_used';
   const COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24h
 
 
-  const getAMARSIUNPOCooldownRemaining = (): number => {
+  const getSoulMatchCooldownRemaining = (): number => {
     const last = localStorage.getItem(SM_COOLDOWN_KEY);
     if (!last) return 0;
     const elapsed = Date.now() - parseInt(last);
     return Math.max(0, COOLDOWN_MS - elapsed);
   };
 
-  const isAMARSIUNPOOnCooldown = () => getAMARSIUNPOCooldownRemaining() > 0;
+  const isSoulMatchOnCooldown = () => getSoulMatchCooldownRemaining() > 0;
 
-  const [showAMARSIUNPOConfirm, setShowAMARSIUNPOConfirm] = useState(false);
+  const [showSoulMatchConfirm, setShowSoulMatchConfirm] = useState(false);
 
   const formatCooldown = (): string => {
-    const ms = getAMARSIUNPOCooldownRemaining();
+    const ms = getSoulMatchCooldownRemaining();
     const h = Math.floor(ms / 3600000);
     const m = Math.floor((ms % 3600000) / 60000);
     return `${h}h ${m}m`;
   };
 
-  const handleAMARSIUNPOPress = () => {
-    if (isAMARSIUNPOOnCooldown()) {
+  const handleSoulMatchPress = () => {
+    if (isSoulMatchOnCooldown()) {
       setSoulmatchToast(true);
       setTimeout(() => setSoulmatchToast(false), 4000);
       return;
     }
-    setShowAMARSIUNPOConfirm(true);
+    setShowSoulMatchConfirm(true);
   };
 
-  const confirmAMARSIUNPO = () => {
+  const confirmSoulMatch = () => {
     localStorage.setItem(SM_COOLDOWN_KEY, Date.now().toString());
-    setShowAMARSIUNPOConfirm(false);
-    setShowAMARSIUNPO(true);
+    setShowSoulMatchConfirm(false);
+    setShowSoulMatch(true);
   };
 
   const fetchProfiles = async () => {
@@ -3089,7 +3085,7 @@ const BachecaPage = () => {
   };
   useEffect(() => {
     try {
-      const saved = localStorage.getItem('amarsiunpo_user');
+      const saved = localStorage.getItem('soulmatch_user');
       if (saved) {
         const user = normalizeUser(JSON.parse(saved));
         setCurrentUser(user);
@@ -3117,11 +3113,11 @@ const BachecaPage = () => {
         }, 50);
       }
 
-      // Check if we came from Feed to trigger AMARSIUNPO
+      // Check if we came from Feed to trigger SoulMatch
       const params = new URLSearchParams(location.search);
-      if (params.get('amarsiunpo')) {
+      if (params.get('soulmatch')) {
         window.history.replaceState({}, '', window.location.pathname);
-        handleAMARSIUNPOPress();
+        handleSoulMatchPress();
       }
     }
   }, [loading, profiles, location.search]);
@@ -3675,7 +3671,7 @@ const BachecaPage = () => {
 
       {/* ── COOLDOWN TOAST ── */}
       <AnimatePresence>
-        {amarsiunpoToast && (
+        {soulmatchToast && (
           <motion.div
             initial={{ opacity: 0, y: 60 }}
             animate={{ opacity: 1, y: 0 }}
@@ -3686,22 +3682,22 @@ const BachecaPage = () => {
               <Heart className="w-5 h-5 text-rose-400 fill-current" />
             </div>
             <div>
-              <p className="text-xs font-black uppercase tracking-widest text-rose-400">AMARSIUNPO in pausa</p>
+              <p className="text-xs font-black uppercase tracking-widest text-rose-400">SoulMatch in pausa</p>
               <p className="text-[10px] text-stone-300 mt-0.5">Disponibile tra {formatCooldown()} · il potere va usato con saggezza 🌙</p>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {showAMARSIUNPOConfirm && (
+      {showSoulMatchConfirm && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-stone-900/80 backdrop-blur-sm">
-          <AMARSIUNPOConfirmBanner onConfirm={confirmAMARSIUNPO} />
+          <SoulMatchConfirmBanner onConfirm={confirmSoulMatch} />
         </div>
       )}
 
       {/* ── SOULMATCH OVERLAY ── */}
       <AnimatePresence>
-        {showAMARSIUNPO && (
+        {showSoulMatch && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -3710,12 +3706,12 @@ const BachecaPage = () => {
           >
             {/* Top bar */}
             <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-xl border-b border-stone-100 px-5 py-4 flex items-center justify-between">
-              <button onClick={() => setShowAMARSIUNPO(false)} className="w-10 h-10 bg-stone-100 rounded-[16px] flex items-center justify-center text-stone-600 active:scale-90">
+              <button onClick={() => setShowSoulMatch(false)} className="w-10 h-10 bg-stone-100 rounded-[16px] flex items-center justify-center text-stone-600 active:scale-90">
                 <X className="w-5 h-5" />
               </button>
               <div className="text-center">
                 <h2 className="text-base font-serif font-black text-stone-900 flex items-center gap-2">
-                  <Heart className="w-4 h-4 text-rose-600 fill-current" /> AMARSIUNPO
+                  <Heart className="w-4 h-4 text-rose-600 fill-current" /> SoulMatch
                 </h2>
                 <p className="text-[9px] text-stone-400 font-bold uppercase tracking-widest">Top 10 affinità</p>
               </div>
@@ -3790,7 +3786,7 @@ const BachecaPage = () => {
                       {/* CTA */}
                       <Link
                         to={`/profile-detail/${p.id}`}
-                        onClick={() => setShowAMARSIUNPO(false)}
+                        onClick={() => setShowSoulMatch(false)}
                         className="w-10 h-10 bg-rose-600 text-white rounded-[14px] flex items-center justify-center shadow-md active:scale-90 shrink-0"
                       >
                         <ChevronRight className="w-5 h-5" />
@@ -3815,7 +3811,7 @@ const BachecaPage = () => {
                   <Home className="w-6 h-6" />
                   <span className="text-[9px] font-black uppercase tracking-widest">Home</span>
                 </Link>
-                <button onClick={() => setShowAMARSIUNPO(false)} className="flex flex-col items-center gap-1">
+                <button onClick={() => setShowSoulMatch(false)} className="flex flex-col items-center gap-1">
                   <div className="w-14 h-14 -mt-6 rounded-[22px] bg-stone-300 flex items-center justify-center shadow-xl shadow-stone-200/60">
                     <Heart className="w-6 h-6 text-white fill-current" />
                   </div>
@@ -3834,8 +3830,8 @@ const BachecaPage = () => {
   );
 };
 
-// ── AMARSIUNPO Confirm Banner (shown once per session) ──
-const AMARSIUNPOConfirmBanner = ({ onConfirm }: { onConfirm: () => void }) => {
+// ── SoulMatch Confirm Banner (shown once per session) ──
+const SoulMatchConfirmBanner = ({ onConfirm }: { onConfirm: () => void }) => {
   const [confirmed, setConfirmed] = useState(false);
   if (confirmed) return null;
   return (
@@ -3849,10 +3845,10 @@ const AMARSIUNPOConfirmBanner = ({ onConfirm }: { onConfirm: () => void }) => {
           <Heart className="w-5 h-5 fill-current" />
         </div>
         <div className="flex-1">
-          <h3 className="text-sm font-black uppercase tracking-widest mb-1">✨ AMARSIUNPO attivato!</h3>
+          <h3 className="text-sm font-black uppercase tracking-widest mb-1">✨ SoulMatch attivato!</h3>
           <p className="text-[11px] text-rose-100 leading-relaxed">
             Stiamo mostrando i <strong className="text-white">10 profili più compatibili</strong> con te in questo momento.
-            Dopo la consultazione, AMARSIUNPO entrerà in <strong className="text-white">pausa di 24 ore</strong> per rendere ogni incontro speciale.
+            Dopo la consultazione, SoulMatch entrerà in <strong className="text-white">pausa di 24 ore</strong> per rendere ogni incontro speciale.
           </p>
           <button
             onClick={() => { onConfirm(); setConfirmed(true); }}
@@ -3867,8 +3863,8 @@ const AMARSIUNPOConfirmBanner = ({ onConfirm }: { onConfirm: () => void }) => {
 };
 
 // ── Feed Page ──
-// ── AMARSIUNPO Page ──────────────────────────────────────────────────────
-const AMARSIUNPOPage = () => {
+// ── SoulMatch Page ──────────────────────────────────────────────────────
+const SoulMatchPage = () => {
   const [globalProfiles, setGlobalProfiles] = useState<UserProfile[]>([]);
   const [friendProfiles, setFriendProfiles] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -3890,14 +3886,14 @@ const AMARSIUNPOPage = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const saved = localStorage.getItem('amarsiunpo_unlocked_ids');
+    const saved = localStorage.getItem('soulmatch_unlocked_ids');
     if (saved) setUnlockedIds(JSON.parse(saved));
   }, []);
 
   useEffect(() => {
     const handleReset = () => { setTargetUser(null); setShowRankings(false); };
-    window.addEventListener('reset-amarsiunpo', handleReset);
-    return () => window.removeEventListener('reset-amarsiunpo', handleReset);
+    window.addEventListener('reset-soulmatch', handleReset);
+    return () => window.removeEventListener('reset-soulmatch', handleReset);
   }, []);
 
   const fetchSharedMatches = async (userId: string) => {
@@ -3924,7 +3920,7 @@ const AMARSIUNPOPage = () => {
   const unlockId = (id: string) => {
     const next = [...new Set([...unlockedIds, id])];
     setUnlockedIds(next);
-    localStorage.setItem('amarsiunpo_unlocked_ids', JSON.stringify(next));
+    localStorage.setItem('soulmatch_unlocked_ids', JSON.stringify(next));
   };
 
   const fetchGlobalProfiles = async (viewer: UserProfile) => {
@@ -3969,7 +3965,7 @@ const AMARSIUNPOPage = () => {
   useEffect(() => {
     const init = async () => {
       try {
-        const saved = localStorage.getItem('amarsiunpo_user');
+        const saved = localStorage.getItem('soulmatch_user');
         if (saved) {
           const u = JSON.parse(saved);
           const { data: realUser } = await supabase.from('users').select('*').eq('id', u.id).single();
@@ -3986,7 +3982,7 @@ const AMARSIUNPOPage = () => {
           navigate('/register');
         }
       } catch (e) {
-        console.error("AMARSIUNPOPage init exception:", e);
+        console.error("SoulMatchPage init exception:", e);
       } finally {
         setLoading(false);
       }
@@ -4064,7 +4060,7 @@ const AMARSIUNPOPage = () => {
             <div className="w-16 h-16 bg-rose-600 rounded-[28px] flex items-center justify-center shadow-lg shadow-rose-900/40 mb-3 border-2 border-rose-400/30">
                <Heart className="w-8 h-8 text-white fill-current" />
             </div>
-            <h1 className="text-2xl font-serif font-black text-rose-500 tracking-tight">AMARSIUNPO <span className="text-white">Affinita</span></h1>
+            <h1 className="text-2xl font-serif font-black text-rose-500 tracking-tight">SoulMatch <span className="text-white">Affinita</span></h1>
             <p className="text-[9px] font-black text-white/40 uppercase tracking-[0.3em] mt-1">Calcola l'anima tra i tuoi amici</p>
         </div>
 
@@ -4444,7 +4440,7 @@ const FeedPage = () => {
 
   useEffect(() => {
     try {
-      const saved = localStorage.getItem('amarsiunpo_user');
+      const saved = localStorage.getItem('soulmatch_user');
       if (saved) {
         setCurrentUser(normalizeUser(JSON.parse(saved)));
       } else {
@@ -4462,14 +4458,14 @@ const FeedPage = () => {
       }
       
       // Refresh current user data to get latest doc_rejected status
-      const saved = localStorage.getItem('amarsiunpo_user');
+      const saved = localStorage.getItem('soulmatch_user');
       if (saved) {
         const u = JSON.parse(saved);
         const { data: userData } = await supabase.from('users').select('*').eq('id', u.id).maybeSingle();
         if (userData) {
           const norm = normalizeUser(userData);
           setCurrentUser(norm);
-          localStorage.setItem('amarsiunpo_user', JSON.stringify(norm));
+          localStorage.setItem('soulmatch_user', JSON.stringify(norm));
         }
       }
     };
@@ -4823,7 +4819,7 @@ const AmiciPage = () => {
 
   useEffect(() => {
     try {
-      const saved = localStorage.getItem('amarsiunpo_user');
+      const saved = localStorage.getItem('soulmatch_user');
       if (saved) {
         const user = JSON.parse(saved);
         setCurrentUser(user);
@@ -5095,7 +5091,7 @@ const AmiciPage = () => {
                         {isLocked ? 'Utente Misterioso' : req.other_user?.name}
                       </h4>
                       <p className="text-[10px] text-white/30 font-bold uppercase tracking-tight">
-                        {isLocked ? 'Sblocca per vedere' : (req.other_user?.city || 'AMARSIUNPO')}
+                        {isLocked ? 'Sblocca per vedere' : (req.other_user?.city || 'SoulMatch')}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -5594,10 +5590,10 @@ const AdminPage = () => {
   // --- PERSISTENT CLOUD MODULES ---
   const [seoConfig, setSeoConfig] = useState<any>({
     all: {
-      title: 'Amarsi Un Po | Incontri Seri in Italia',
-      description: 'Amarsi Un Po è il portale di incontri premium per single italiani che cercano amore vero, relazioni serie e connessioni autentiche.',
-      keywords: 'incontri seri italia, trovare amore 2025, app incontri italiani, anima gemella, dating premium, amarsi un po, single italia',
-      url: 'https://www.amarsiunpo.it/'
+      title: 'SoulMatch - Trova la tua anima gemella',
+      description: 'Il sito di incontri premium per anime affini.',
+      keywords: 'incontri, soulmatch, amore, chat',
+      url: 'https://soulmatch.it'
     }
   });
   const [adsenseConfig, setAdsenseConfig] = useState<any>({
@@ -5611,33 +5607,20 @@ const AdminPage = () => {
   });
   const [analyticsConfig, setAnalyticsConfig] = useState<any>({
     measurementId: '',
-    trackingId: '',
     tagContent: '',
-    verificationTag: '',
     enabled: false
   });
   const [trafficStats, setTrafficStats] = useState({ 
-    total: 0, 
-    today: 0, 
-    active_live: 0, 
-    avg_time: '0:00mi',
-    bounce_rate: '0%',
-    trend: '+0%',
-    history: [] as any[],
-    adsense: {
-      totalEarnings: 0,
-      totalClicks: 0,
-      totalImpressions: 0,
-      avgCtr: 0,
-      history: [] as any[]
-    }
+    total: 12400, 
+    today: 342, 
+    active_live: 342, 
+    avg_time: '4:52mi',
+    trend: '+14%'
   });
   const [isSaving, setIsSaving] = useState(false);
 
-  const API_BASE = '';
-
   useEffect(() => {
-    const saved = localStorage.getItem('amarsiunpo_user');
+    const saved = localStorage.getItem('soulmatch_user');
     if (saved) setAdminProfile(normalizeUser(JSON.parse(saved)));
     
     if (isAuthenticated) {
@@ -5647,37 +5630,29 @@ const AdminPage = () => {
 
   const fetchAdminModules = async () => {
     try {
-      const [seoRes, adsenseRes, analyticsRes, trafficRes] = await Promise.all([
-        fetch(`${API_BASE}/api/admin/seo`),
-        fetch(`${API_BASE}/api/admin/adsense`),
-        fetch(`${API_BASE}/api/admin/analytics`),
-        fetch(`${API_BASE}/api/admin/traffic`),
-      ]);
-
-      if (seoRes.ok) {
-        const val = await seoRes.json();
-        if (val && !val.all) setSeoConfig({ all: val });
-        else setSeoConfig(val || { all: { title: '', description: '', keywords: '', url: '' } });
-      }
-      if (adsenseRes.ok) {
-        const val = await adsenseRes.json();
-        setAdsenseConfig(val || { enabled: false, client: '', slot: '', format: 'auto', responsive: 'true', metaTag: '', adsTxt: '' });
-      }
-      if (analyticsRes.ok) {
-        const val = await analyticsRes.json();
-        // Support both field name variants
-        setAnalyticsConfig(val || { enabled: false, measurementId: '', trackingId: '', verificationTag: '' });
-      }
-      if (trafficRes.ok) {
-        const val = await trafficRes.json();
-        setTrafficStats(prev => ({
-          ...prev,
-          total: val.total || 0,
-          today: val.today || 0,
-        }));
+      const { data, error } = await supabase.from('site_settings').select('key, value');
+      if (data && !error) {
+        data.forEach(item => {
+          try {
+            const val = typeof item.value === 'string' ? JSON.parse(item.value) : item.value;
+            if (val) {
+              if (item.key === 'seo_config') {
+                // Normalize: ensure it has the .all wrapper
+                if (val && !val.all) {
+                  setSeoConfig({ all: val });
+                } else {
+                  setSeoConfig(val || { all: { title: "", description: "", keywords: "", url: "" } });
+                }
+              }
+              if (item.key === 'adsense_config') setAdsenseConfig(val || { enabled: false, client: "", slot: "", format: "auto", responsive: "true", metaTag: "", adsTxt: "" });
+              if (item.key === 'analytics_config') setAnalyticsConfig(val || { enabled: false, measurementId: "", tagContent: "" });
+              if (item.key === 'traffic_stats') setTrafficStats(val || { total: 0, today: 0, active_live: 0, avg_time: '0:00', trend: '0%' });
+            }
+          } catch(e) { console.error("Parse error for key", item.key, e); }
+        });
       }
     } catch (e) {
-      console.error('Error fetching admin modules:', e);
+      console.error("Error fetching admin modules:", e);
     }
   };
 
@@ -5685,60 +5660,47 @@ const AdminPage = () => {
     if (!data) return;
     setIsSaving(true);
     try {
-      const res = await fetch(`${API_BASE}/api/admin/seo`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      });
-      if (res.ok) {
+      const { error } = await supabase.from('site_settings').upsert({ key: 'seo_config', value: data }, { onConflict: 'key' });
+      if (!error) {
         setSeoConfig(data);
-        setToast({ message: 'Configurazione SEO salvata!', type: 'success' });
-      } else throw new Error('Server error');
-    } catch (e) { setToast({ message: 'Errore salvataggio SEO', type: 'error' }); }
+        setToast({ message: "Configurazione SEO salvata!", type: 'success' });
+      } else throw error;
+    } catch (e) { setToast({ message: "Errore salvataggio SEO", type: 'error' }); }
     setIsSaving(false);
   };
 
   const saveAdSense = async (data: any) => {
     setIsSaving(true);
     try {
-      const res = await fetch(`${API_BASE}/api/admin/adsense`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      });
-      if (res.ok) {
+      const { error } = await supabase.from('site_settings').upsert({ key: 'adsense_config', value: data }, { onConflict: 'key' });
+      if (!error) {
         setAdsenseConfig(data);
-        setToast({ message: 'Google AdSense aggiornato!', type: 'success' });
-      } else throw new Error('Server error');
-    } catch (e) { setToast({ message: 'Errore salvataggio AdSense', type: 'error' }); }
+        setToast({ message: "Google AdSense aggiornato!", type: 'success' });
+      } else throw error;
+    } catch (e) { setToast({ message: "Errore salvataggio AdSense", type: 'error' }); }
     setIsSaving(false);
   };
 
   const saveAnalytics = async (data: any) => {
     setIsSaving(true);
     try {
-      // Ensure both field names are saved for compatibility
-      const toSave = { ...data, trackingId: data.measurementId || data.trackingId };
-      const res = await fetch(`${API_BASE}/api/admin/analytics`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(toSave)
-      });
-      if (res.ok) {
+      const { error } = await supabase.from('site_settings').upsert({ key: 'analytics_config', value: data }, { onConflict: 'key' });
+      if (!error) {
         setAnalyticsConfig(data);
-        setToast({ message: 'Google Analytics aggiornato!', type: 'success' });
-      } else throw new Error('Server error');
-    } catch (e) { setToast({ message: 'Errore salvataggio Analytics', type: 'error' }); }
+        setToast({ message: "Google Analytics aggiornato!", type: 'success' });
+      } else throw error;
+    } catch (e) { setToast({ message: "Errore salvataggio Analytics", type: 'error' }); }
     setIsSaving(false);
   };
 
   const resetTraffic = async () => {
-    if (!window.confirm('Sei sicuro di voler azzerare i contatori del traffico?')) return;
+    if (!window.confirm("Sei sicuro di voler azzerare i contatori del traffico?")) return;
     try {
-      const res = await fetch(`${API_BASE}/api/admin/traffic/reset`, { method: 'POST' });
-      if (res.ok) {
-        setTrafficStats(prev => ({ ...prev, total: 0, today: 0 }));
-        setToast({ message: 'Traffico azzerato correttamente', type: 'info' });
+      const emptyStats = { total: 0, today: 0, active_live: 0, avg_time: '0:00', trend: '0%' };
+      const { error } = await supabase.from('site_settings').upsert({ key: 'traffic_stats', value: emptyStats }, { onConflict: 'key' });
+      if (!error) {
+        setTrafficStats(emptyStats);
+        setToast({ message: "Traffico azzerato correttamente", type: 'info' });
       }
     } catch (e) { }
   };
@@ -5760,38 +5722,6 @@ const AdminPage = () => {
 
   // Modals / Specific UI
   const [activeTab, setActiveTab] = useState<'dashboard' | 'utenti' | 'documenti' | 'segnalazioni' | 'pagamenti' | 'impostazioni' | 'seo' | 'traffico' | 'analytics' | 'adsense'>('dashboard');
-
-  // Real-time traffic polling when on traffico tab
-  const fetchTrafficLive = async () => {
-    try {
-      const res = await fetch(`${API_BASE}/api/admin/traffic`);
-      if (res.ok) {
-        const data = await res.json();
-        setTrafficStats({
-          total: data.total || 0,
-          today: data.today || 0,
-          active_live: data.live || 0,
-          avg_time: `${data.avgTime || 120}s`,
-          bounce_rate: `${data.bounceRate || 35}%`,
-          trend: '+5%',
-          history: data.history || [],
-          adsense: data.adsense || {
-            totalEarnings: 0,
-            totalClicks: 0,
-            totalImpressions: 0,
-            avgCtr: 0,
-            history: []
-          }
-        });
-      }
-    } catch (e) { console.error('Traffic fetch error:', e); }
-  };
-  useEffect(() => {
-    if (!isAuthenticated || activeTab !== 'traffico') return;
-    fetchTrafficLive();
-    const interval = setInterval(fetchTrafficLive, 30000);
-    return () => clearInterval(interval);
-  }, [isAuthenticated, activeTab]);
 
   const handleShareDoc = async (url: string, name: string) => {
     try {
@@ -6123,7 +6053,7 @@ const AdminPage = () => {
             <div className="text-center mb-10">
               <div className="flex items-center justify-center gap-2 mb-2">
                 <Heart className="w-5 h-5 text-rose-500 fill-current" />
-                <h1 className="text-3xl font-black text-white tracking-tighter">AMARSIUNPO</h1>
+                <h1 className="text-3xl font-black text-white tracking-tighter">SoulMatch</h1>
               </div>
               <p className="text-stone-50 text-[10px] font-black uppercase tracking-[0.4em]">Control Center</p>
             </div>
@@ -6185,7 +6115,7 @@ const AdminPage = () => {
           <div className="w-8 h-8 bg-rose-600 rounded-lg flex items-center justify-center shadow-lg shadow-rose-900/20">
             <Heart className="w-4 h-4 text-white fill-current" />
           </div>
-          <span className="font-black tracking-tight text-sm">AMARSIUNPO Admin</span>
+          <span className="font-black tracking-tight text-sm">SoulMatch Admin</span>
         </div>
         <button
           onClick={() => {
@@ -6217,7 +6147,7 @@ const AdminPage = () => {
                 <Heart className="w-5 h-5 text-white fill-current" />
               </div>
               <div className="flex flex-col">
-                <span className="text-xl font-black tracking-tight leading-none text-white">AMARSIUNPO</span>
+                <span className="text-xl font-black tracking-tight leading-none text-white">SoulMatch</span>
                 <span className="text-[9px] font-black text-rose-500 uppercase tracking-widest mt-1">Control Center</span>
               </div>
             </div>
@@ -6296,7 +6226,7 @@ const AdminPage = () => {
                 <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                 <h2 className="text-xl md:text-2xl font-black text-stone-900 capitalize leading-none">{activeTab.replace('_', ' ')}</h2>
               </div>
-              <p className="text-[9px] md:text-[10px] text-stone-400 font-bold uppercase tracking-widest">AMARSIUNPO Back-office</p>
+              <p className="text-[9px] md:text-[10px] text-stone-400 font-bold uppercase tracking-widest">SoulMatch Back-office</p>
             </div>
 
             <div className="md:hidden flex items-center gap-3">
@@ -7465,7 +7395,7 @@ const AdminPage = () => {
                             value={seoConfig?.all?.title || ""} 
                             onChange={(e) => setSeoConfig({...seoConfig, all: {...seoConfig.all, title: e.target.value}})}
                             className="w-full bg-stone-50 border border-stone-200 p-4 rounded-2xl text-stone-900 font-bold outline-none focus:ring-2 focus:ring-rose-500 transition-all"
-                            placeholder="AMARSIUNPO | Incontra..."
+                            placeholder="SoulMatch | Incontra..."
                           />
                         </div>
                         <div className="space-y-2">
@@ -7475,7 +7405,7 @@ const AdminPage = () => {
                             value={seoConfig?.all?.url || ""} 
                             onChange={(e) => setSeoConfig({...seoConfig, all: {...seoConfig.all, url: e.target.value}})}
                             className="w-full bg-stone-50 border border-stone-200 p-4 rounded-2xl text-stone-900 font-bold outline-none focus:ring-2 focus:ring-rose-500 transition-all"
-                            placeholder="https://amarsiunpo.com/"
+                            placeholder="https://soulmatch.com/"
                           />
                         </div>
                       </div>
@@ -7497,7 +7427,7 @@ const AdminPage = () => {
                           value={seoConfig?.all?.keywords || ""} 
                           onChange={(e) => setSeoConfig({...seoConfig, all: {...seoConfig.all, keywords: e.target.value}})}
                           className="w-full bg-stone-50 border border-stone-200 p-4 rounded-2xl text-stone-900 font-bold outline-none focus:ring-2 focus:ring-rose-500 transition-all"
-                          placeholder="incontri, anima gemella, amarsiunpo..."
+                          placeholder="incontri, anima gemella, soulmatch..."
                         />
                       </div>
 
@@ -7517,96 +7447,32 @@ const AdminPage = () => {
               {/* --- TRAFFIC LIVE --- */}
               {activeTab === 'traffico' && (
                 <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-xl font-black text-stone-900">Traffico Live — www.amarsiunpo.it</h3>
-                      <p className="text-[10px] text-stone-400 font-bold uppercase tracking-widest mt-1">Monitoraggio Real-time</p>
-                    </div>
-                    <button
-                      onClick={fetchTrafficLive}
-                      className="flex items-center gap-2 px-5 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all border border-emerald-100"
-                    >
-                      <RefreshCw className="w-3.5 h-3.5" /> Aggiorna Ora
-                    </button>
-                  </div>
-
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div className="bg-white p-6 rounded-3xl border border-stone-100 shadow-sm">
-                      <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-1">Utenti Live</p>
-                      <p className="text-3xl font-black text-stone-900">{trafficStats.active_live}</p>
-                      <p className="text-[9px] text-stone-400 font-bold mt-1">Visitatori in tempo reale</p>
-                    </div>
-                    <div className="bg-white p-6 rounded-3xl border border-stone-100 shadow-sm">
-                      <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-1">Tempo Medio</p>
-                      <p className="text-3xl font-black text-stone-900">{trafficStats.avg_time}</p>
-                      <p className="text-[9px] text-stone-400 font-bold mt-1">Durata sessione</p>
-                    </div>
-                    <div className="bg-white p-6 rounded-3xl border border-stone-100 shadow-sm">
-                      <p className="text-[10px] font-black text-rose-500 uppercase tracking-widest mb-1">Bounce Rate</p>
-                      <p className="text-3xl font-black text-stone-900">{trafficStats.bounce_rate}</p>
-                      <p className="text-[9px] text-stone-400 font-bold mt-1">Frequenza rimbalzo</p>
-                    </div>
-                    <div className="bg-white p-6 rounded-3xl border border-stone-100 shadow-sm">
-                      <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest mb-1">Trend Settimana</p>
-                      <p className="text-3xl font-black text-stone-900">{trafficStats.trend}</p>
-                      <p className="text-[9px] text-stone-400 font-bold mt-1">Crescita vs scorsa set.</p>
-                    </div>
-                  </div>
-
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="bg-white p-8 rounded-[40px] border border-stone-100 shadow-sm relative overflow-hidden group h-[300px] flex flex-col">
-                      <div className="flex items-center justify-between mb-4">
-                        <div>
-                          <p className="text-[10px] font-black text-stone-400 uppercase tracking-[0.3em]">Visite Totali da Reset</p>
-                          <p className="text-3xl font-black text-stone-900 tracking-tighter">{(trafficStats?.total ?? 0).toLocaleString('it-IT')}</p>
+                    <div className="bg-white p-8 rounded-[40px] border border-stone-100 shadow-sm relative overflow-hidden group">
+                      <Activity className="absolute bottom-[-20px] right-[-20px] w-48 h-48 text-stone-50/50 -rotate-12 transition-transform group-hover:rotate-0 duration-700" />
+                      <div className="relative z-10">
+                        <div className="w-14 h-14 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mb-6 shadow-sm">
+                          <Activity className="w-7 h-7" />
                         </div>
-                        <Activity className="w-8 h-8 text-rose-500/20" />
-                      </div>
-                      <div className="flex-1 mt-2">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <AreaChart data={trafficStats.history}>
-                            <defs>
-                              <linearGradient id="colorVisits" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.3}/>
-                                <stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/>
-                              </linearGradient>
-                            </defs>
-                            <Tooltip 
-                              contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', fontSize: '12px', fontWeight: 'bold' }}
-                            />
-                            <Area type="monotone" dataKey="visits" stroke="#f43f5e" fillOpacity={1} fill="url(#colorVisits)" strokeWidth={3} />
-                          </AreaChart>
-                        </ResponsiveContainer>
+                        <p className="text-5xl font-black text-stone-900 tracking-tighter mb-2">{trafficStats?.total?.toLocaleString()}</p>
+                        <p className="text-[10px] font-black text-stone-400 uppercase tracking-[0.3em]">Traffico Totale Reale</p>
+                        <div className="mt-8 flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                          <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Monitoraggio Attivo</span>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="bg-stone-900 p-8 rounded-[40px] border border-stone-800 shadow-2xl relative overflow-hidden group h-[300px] flex flex-col">
-                      <div className="flex items-center justify-between mb-4">
-                        <div>
-                          <p className="text-[10px] font-black text-white/40 uppercase tracking-[0.3em]">Andamento Ingressi Giornalieri</p>
-                          <p className="text-3xl font-black text-white tracking-tighter">{(trafficStats?.today ?? 0).toLocaleString('it-IT')} oggi</p>
+                    <div className="bg-stone-900 p-8 rounded-[40px] border border-stone-800 shadow-2xl relative overflow-hidden group">
+                      <Zap className="absolute bottom-[-20px] right-[-20px] w-48 h-48 text-white/5 -rotate-12 transition-transform group-hover:rotate-0 duration-700" />
+                      <div className="relative z-10">
+                        <div className="w-14 h-14 bg-white/10 text-rose-500 rounded-2xl flex items-center justify-center mb-6 border border-white/10">
+                          <Zap className="w-7 h-7" />
                         </div>
-                        <Zap className="w-8 h-8 text-rose-500" />
+                        <p className="text-5xl font-black text-white tracking-tighter mb-2">{trafficStats?.today?.toLocaleString()}</p>
+                        <p className="text-[10px] font-black text-white/40 uppercase tracking-[0.3em]">Visite Uniche Oggi</p>
+                        <p className="text-white/20 text-[9px] font-medium mt-8 uppercase tracking-widest">Ultimo Reset: {new Date().toLocaleDateString('it-IT')}</p>
                       </div>
-                      <div className="flex-1 mt-2">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={trafficStats.history}>
-                            <Tooltip cursor={{fill: 'rgba(255,255,255,0.05)'}} contentStyle={{ backgroundColor: '#1c1917', border: 'none', borderRadius: '12px', color: 'white' }} />
-                            <Bar dataKey="visits" fill="#f43f5e" radius={[4, 4, 0, 0]} />
-                          </BarChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Info box */}
-                  <div className="bg-blue-50 border border-blue-100 rounded-3xl p-6 flex items-start gap-4">
-                    <div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center shrink-0">
-                      <Globe className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <p className="font-black text-blue-900 text-sm mb-1">Dominio in propagazione</p>
-                      <p className="text-blue-600 text-xs font-medium leading-relaxed">Le visite vengono tracciate in produzione (build distribuita). In sviluppo locale i contatori non si incrementano. Una volta propagato il dominio <strong>www.amarsiunpo.it</strong>, il traffico reale sarà visibile qui.</p>
                     </div>
                   </div>
 
@@ -7614,8 +7480,8 @@ const AdminPage = () => {
                     <div className="bg-rose-50 p-4 rounded-full mb-6">
                       <RefreshCw className="w-8 h-8 text-rose-500" />
                     </div>
-                    <h4 className="text-xl font-black text-stone-900 mb-2">Reset Contatori</h4>
-                    <p className="text-stone-400 text-xs font-medium max-w-sm mb-8">Azzerando il traffico pulirai i contatori del server. Questa azione non può essere annullata ma non influisce sui dati storici di Google Analytics.</p>
+                    <h4 className="text-xl font-black text-stone-900 mb-2">Sicurezza e Reset</h4>
+                    <p className="text-stone-400 text-xs font-medium max-w-sm mb-8">Azzerando il traffico pulirai anche la cache locale. Questa azione non può essere annullata ma non influisce sui dati storici di Analytics.</p>
                     <button 
                       onClick={resetTraffic}
                       className="bg-stone-100 hover:bg-rose-600 hover:text-white text-stone-400 px-10 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all"
@@ -7635,8 +7501,8 @@ const AdminPage = () => {
                         <BarChart3 className="w-8 h-8" />
                       </div>
                       <div>
-                        <h3 className="text-2xl font-black text-stone-900">Google Analytics 4 + Search Console</h3>
-                        <p className="text-[10px] text-stone-400 font-bold uppercase tracking-widest mt-1">Tracking e Verifica Proprietà Sito — www.amarsiunpo.it</p>
+                        <h3 className="text-2xl font-black text-stone-900">Google Analytics 4</h3>
+                        <p className="text-[10px] text-stone-400 font-bold uppercase tracking-widest mt-1">Sincronizzazione Stream Dati Cloud</p>
                       </div>
                       <div className="ml-auto flex items-center gap-3">
                         <span className="text-[10px] font-black text-stone-400 uppercase tracking-widest">Stato GA4:</span>
@@ -7687,17 +7553,17 @@ const AdminPage = () => {
               {/* --- ADSENSE --- */}
               {activeTab === 'adsense' && (
                 <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
-                  <div className="bg-white p-8 rounded-[32px] border border-stone-100 shadow-sm relative overflow-hidden group">
+                  <div className="bg-white p-8 rounded-[32px] border border-stone-200 shadow-sm">
                     <div className="flex items-center gap-6 mb-10 pb-6 border-b border-stone-50">
                       <div className="w-16 h-16 bg-amber-50 text-amber-600 rounded-3xl flex items-center justify-center shadow-sm">
                         <Radio className="w-8 h-8" />
                       </div>
-                      <div className="flex-1">
-                        <h3 className="text-2xl font-black text-stone-900">Google AdSense Analytics</h3>
-                        <p className="text-[10px] text-stone-400 font-bold uppercase tracking-widest mt-1">Guadagni e Performance Banner</p>
+                      <div>
+                        <h3 className="text-2xl font-black text-stone-900">Google AdSense</h3>
+                        <p className="text-[10px] text-stone-400 font-bold uppercase tracking-widest mt-1">Monetizzazione e Banner</p>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-[10px] font-black text-stone-400 uppercase tracking-widest">Stato Ads:</span>
+                      <div className="ml-auto flex items-center gap-3">
+                        <span className="text-[10px] font-black text-stone-400 uppercase tracking-widest">Integrazione:</span>
                         <button 
                           onClick={() => setAdsenseConfig({...(adsenseConfig || {}), enabled: !(adsenseConfig?.enabled)})}
                           className={cn("w-14 h-7 rounded-full transition-all relative", adsenseConfig?.enabled ? "bg-amber-500" : "bg-stone-200")}
@@ -7707,87 +7573,35 @@ const AdminPage = () => {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                      <div className="bg-stone-50 p-6 rounded-3xl border border-stone-100 shadow-sm">
-                        <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest mb-1">Guadagni Totali</p>
-                        <p className="text-3xl font-black text-stone-900">€ {(trafficStats.adsense?.totalEarnings ?? 0).toFixed(2)}</p>
-                      </div>
-                      <div className="bg-stone-50 p-6 rounded-3xl border border-stone-100 shadow-sm">
-                        <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-1">Click Totali</p>
-                        <p className="text-3xl font-black text-stone-900">{trafficStats.adsense?.totalClicks ?? 0}</p>
-                      </div>
-                      <div className="bg-stone-50 p-6 rounded-3xl border border-stone-100 shadow-sm">
-                        <p className="text-[10px] font-black text-rose-500 uppercase tracking-widest mb-1">Impressioni</p>
-                        <p className="text-3xl font-black text-stone-900">{(trafficStats.adsense?.totalImpressions ?? 0).toLocaleString()}</p>
-                      </div>
-                      <div className="bg-stone-50 p-6 rounded-3xl border border-stone-100 shadow-sm">
-                        <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-1">CTR Medio</p>
-                        <p className="text-3xl font-black text-stone-900">{(trafficStats.adsense?.avgCtr ?? 0).toFixed(2)}%</p>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
-                      <div className="bg-white p-6 rounded-[32px] border border-stone-100 h-[300px] flex flex-col shadow-sm">
-                        <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest mb-4">Andamento Guadagni (€)</p>
-                        <div className="flex-1">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={trafficStats.adsense?.history || []}>
-                              <defs>
-                                <linearGradient id="colorEarnings" x1="0" y1="0" x2="0" y2="1">
-                                  <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3}/>
-                                  <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
-                                </linearGradient>
-                              </defs>
-                              <Tooltip contentStyle={{ borderRadius: '12px', border: 'none' }} />
-                              <Area type="monotone" dataKey="earnings" stroke="#f59e0b" fillOpacity={1} fill="url(#colorEarnings)" strokeWidth={3} />
-                            </AreaChart>
-                          </ResponsiveContainer>
-                        </div>
-                      </div>
-
-                      <div className="bg-stone-900 p-6 rounded-[32px] h-[300px] flex flex-col shadow-xl">
-                        <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-4">Click e Impressioni</p>
-                        <div className="flex-1">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={trafficStats.adsense?.history || []}>
-                              <Tooltip cursor={{fill: 'rgba(255,255,255,0.05)'}} contentStyle={{ backgroundColor: '#1c1917', border: 'none', borderRadius: '12px', color: 'white' }} />
-                              <Bar dataKey="clicks" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                              <Bar dataKey="impressions" fill="#f43f5e" radius={[4, 4, 0, 0]} opacity={0.6} />
-                            </BarChart>
-                          </ResponsiveContainer>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-6">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                          <label className="text-[10px] font-black text-stone-500 uppercase tracking-widest ml-1">Client ID (ca-pub-XXXXXXXXXX)</label>
-                          <input 
-                            type="text" 
-                            value={adsenseConfig?.client || ""} 
-                            onChange={(e) => setAdsenseConfig({...(adsenseConfig || {}), client: e.target.value})}
-                            className="w-full bg-stone-50 border border-stone-200 p-4 rounded-2xl text-stone-900 font-bold outline-none focus:ring-2 focus:ring-amber-500 transition-all font-mono"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-[10px] font-black text-stone-500 uppercase tracking-widest ml-1">Meta Tag AdSense</label>
-                          <input 
-                            type="text" 
-                            value={adsenseConfig?.metaTag || ""} 
-                            onChange={(e) => setAdsenseConfig({...(adsenseConfig || {}), metaTag: e.target.value})}
-                            className="w-full bg-stone-50 border border-stone-200 p-4 rounded-2xl text-stone-900 font-bold outline-none focus:ring-2 focus:ring-amber-500 transition-all font-mono"
-                            placeholder='<meta name="google-adsense-account" content="..." />'
-                          />
-                        </div>
+                    <div className="space-y-8">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-stone-500 uppercase tracking-widest ml-1">Client ID (ca-pub-XXXXXXXXXXXXXXXX)</label>
+                        <input 
+                          type="text" 
+                          value={adsenseConfig?.client || ""} 
+                          onChange={(e) => setAdsenseConfig({...(adsenseConfig || {}), client: e.target.value})}
+                          className="w-full bg-stone-50 border border-stone-200 p-4 rounded-2xl text-stone-900 font-bold outline-none focus:ring-2 focus:ring-amber-500 transition-all font-mono"
+                          placeholder="ca-pub-..."
+                        />
                       </div>
 
                       <div className="space-y-2">
-                        <label className="text-[10px] font-black text-stone-500 uppercase tracking-widest ml-1">Contenuto Ads.txt</label>
+                        <label className="text-[10px] font-black text-stone-500 uppercase tracking-widest ml-1">Meta Tag AdSense</label>
                         <textarea 
-                          value={adsenseConfig?.adsTxt || ""} 
-                          onChange={(e) => setAdsenseConfig({...adsenseConfig, adsTxt: e.target.value})}
+                          value={adsenseConfig?.metaTag || ""} 
+                          onChange={(e) => setAdsenseConfig({...(adsenseConfig || {}), metaTag: e.target.value})}
                           className="w-full bg-stone-50 border border-stone-200 p-4 rounded-2xl text-stone-900 font-bold outline-none focus:ring-2 focus:ring-amber-500 transition-all h-24 font-mono text-[10px] resize-none"
+                          placeholder='<meta name="google-adsense-account" content="..." />'
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-stone-500 uppercase tracking-widest ml-1">Contenuto ads.txt</label>
+                        <textarea 
+                          value={adsenseConfig.adsTxt || ""} 
+                          onChange={(e) => setAdsenseConfig({...adsenseConfig, adsTxt: e.target.value})}
+                          className="w-full bg-stone-50 border border-stone-200 p-4 rounded-2xl text-stone-900 font-bold outline-none focus:ring-2 focus:ring-amber-500 transition-all h-32 font-mono text-[10px] resize-none"
+                          placeholder="google.com, pub-XXXXXXXXXXXXXXXX, DIRECT, f08c47fec0942fa0"
                         />
                       </div>
 
@@ -7797,7 +7611,7 @@ const AdminPage = () => {
                         className="w-full bg-stone-900 hover:bg-black text-white py-4 rounded-2xl font-black uppercase tracking-widest shadow-xl transition-all active:scale-95 disabled:opacity-50 mt-4 flex items-center justify-center gap-3"
                       >
                         {isSaving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                        {isSaving ? "In corso..." : "Salva Configurazione AdSense"}
+                        {isSaving ? "In corso..." : "Associa e Attiva AdSense"}
                       </button>
                     </div>
                   </div>
@@ -7941,7 +7755,7 @@ const RegisterPage = ({ setSecurityStatus }: { setSecurityStatus: any }) => {
       return location.state.step;
     }
     // Priority 2: Step based on profile existence
-    const savedUser = localStorage.getItem('amarsiunpo_user');
+    const savedUser = localStorage.getItem('soulmatch_user');
     const isEditing = savedUser ? true : false;
     return isEditing ? 3 : 1;
   });
@@ -7983,8 +7797,8 @@ const RegisterPage = ({ setSecurityStatus }: { setSecurityStatus: any }) => {
   useEffect(() => {
     const initData = async () => {
       try {
-        const authenticatedUserRaw = localStorage.getItem('amarsiunpo_user');
-        const savedDraft = localStorage.getItem('amarsiunpo_reg_draft');
+        const authenticatedUserRaw = localStorage.getItem('soulmatch_user');
+        const savedDraft = localStorage.getItem('soulmatch_reg_draft');
 
         if (savedDraft) {
           setFormData(normalizeUser(JSON.parse(savedDraft)));
@@ -8017,7 +7831,7 @@ const RegisterPage = ({ setSecurityStatus }: { setSecurityStatus: any }) => {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('amarsiunpo_reg_draft', JSON.stringify(formData));
+    localStorage.setItem('soulmatch_reg_draft', JSON.stringify(formData));
   }, [formData]);
 
   const handleNextToStep1 = async () => {
@@ -8042,7 +7856,7 @@ const RegisterPage = ({ setSecurityStatus }: { setSecurityStatus: any }) => {
         const { data: profile } = await supabase.from('users').select('*').eq('id', authCheck.user.id).single();
         if (profile) {
           setToast({ message: "Bentornato! Sei già registrato.", type: 'success' });
-          localStorage.setItem('amarsiunpo_user', JSON.stringify(profile));
+          localStorage.setItem('soulmatch_user', JSON.stringify(profile));
           window.dispatchEvent(new Event('user-auth-change'));
           setTimeout(() => navigate('/bacheca'), 1500);
           return;
@@ -8120,11 +7934,11 @@ const RegisterPage = ({ setSecurityStatus }: { setSecurityStatus: any }) => {
         }
         if (profile.doc_rejected) {
           setSecurityStatus({ type: 'doc_rejected' });
-          localStorage.setItem('amarsiunpo_security_notice', JSON.stringify({ type: 'doc_rejected' }));
+          localStorage.setItem('soulmatch_security_notice', JSON.stringify({ type: 'doc_rejected' }));
         }
 
         console.log("Profile found, saving to local storage");
-        localStorage.setItem('amarsiunpo_user', JSON.stringify(profile));
+        localStorage.setItem('soulmatch_user', JSON.stringify(profile));
         window.dispatchEvent(new Event('user-auth-change'));
         navigate('/bacheca');
       } else {
@@ -8168,7 +7982,7 @@ const RegisterPage = ({ setSecurityStatus }: { setSecurityStatus: any }) => {
     const age = calculateAge(formData.dob);
     if (age < 18) {
       setToast({
-        message: "L'uso di AMARSIUNPO è vietato ai minori di 18 anni.",
+        message: "L'uso di SoulMatch è vietato ai minori di 18 anni.",
         type: 'error'
       });
       return;
@@ -8308,11 +8122,11 @@ const RegisterPage = ({ setSecurityStatus }: { setSecurityStatus: any }) => {
 
       console.log("Supabase Success:", data);
       try {
-        localStorage.setItem('amarsiunpo_user', JSON.stringify(data));
+        localStorage.setItem('soulmatch_user', JSON.stringify(data));
       } catch (err) {
         console.error("LocalStorage error:", err);
       }
-      localStorage.removeItem('amarsiunpo_reg_draft');
+      localStorage.removeItem('soulmatch_reg_draft');
       window.dispatchEvent(new Event('user-auth-change'));
 
       setTimeout(() => {
@@ -8750,7 +8564,7 @@ const FeedComponent = ({ userId, isOwner, global = false }: { userId: any, isOwn
 
   useEffect(() => {
     const checkUser = () => {
-      const saved = localStorage.getItem('amarsiunpo_user');
+      const saved = localStorage.getItem('soulmatch_user');
       if (saved) setCurrentUser(normalizeUser(JSON.parse(saved)));
     };
     checkUser();
@@ -8807,7 +8621,7 @@ const FeedComponent = ({ userId, isOwner, global = false }: { userId: any, isOwn
     const text = commentTexts[postId]?.trim();
     if (!text || isPostingComment[postId]) return;
 
-    const viewer = localStorage.getItem('amarsiunpo_user') ? JSON.parse(localStorage.getItem('amarsiunpo_user')!) : null;
+    const viewer = localStorage.getItem('soulmatch_user') ? JSON.parse(localStorage.getItem('soulmatch_user')!) : null;
     if (!viewer?.id) {
       alert("Devi aver effettuato l'accesso per commentare.");
       return;
@@ -8838,7 +8652,7 @@ const FeedComponent = ({ userId, isOwner, global = false }: { userId: any, isOwn
 
   const fetchPosts = async () => {
     try {
-      const viewer = localStorage.getItem('amarsiunpo_user') ? JSON.parse(localStorage.getItem('amarsiunpo_user')!) : null;
+      const viewer = localStorage.getItem('soulmatch_user') ? JSON.parse(localStorage.getItem('soulmatch_user')!) : null;
       const viewerId = viewer?.id;
 
       const thirtyDaysAgo = new Date();
@@ -8932,7 +8746,7 @@ const FeedComponent = ({ userId, isOwner, global = false }: { userId: any, isOwn
         return;
       }
 
-      const curUser = localStorage.getItem('amarsiunpo_user') ? JSON.parse(localStorage.getItem('amarsiunpo_user')!) : null;
+      const curUser = localStorage.getItem('soulmatch_user') ? JSON.parse(localStorage.getItem('soulmatch_user')!) : null;
       if (curUser) {
         if (!curUser.is_paid) {
           // Utenti Base: 0 post
@@ -8981,7 +8795,7 @@ const FeedComponent = ({ userId, isOwner, global = false }: { userId: any, isOwn
 
   const toggleInteraction = async (postId: string, type: 'like' | 'heart') => {
     try {
-      const viewer = localStorage.getItem('amarsiunpo_user') ? JSON.parse(localStorage.getItem('amarsiunpo_user')!) : null;
+      const viewer = localStorage.getItem('soulmatch_user') ? JSON.parse(localStorage.getItem('soulmatch_user')!) : null;
       if (!viewer?.id) return;
 
       const post = posts.find(p => p.id === postId);
@@ -9465,7 +9279,7 @@ const EditProfilePage = () => {
   useEffect(() => {
     const init = async () => {
       // 1. Check local storage first
-      const saved = localStorage.getItem('amarsiunpo_user');
+      const saved = localStorage.getItem('soulmatch_user');
       if (saved) {
         const parsed = normalizeUser(JSON.parse(saved));
         const isLocalId = /^\d+$/.test(String(parsed.id));
@@ -9525,7 +9339,7 @@ const EditProfilePage = () => {
 
         const updated = await res.json();
         const normalizedUpdated = normalizeUser(updated);
-        localStorage.setItem('amarsiunpo_user', JSON.stringify(normalizedUpdated));
+        localStorage.setItem('soulmatch_user', JSON.stringify(normalizedUpdated));
         setToast({ message: 'Profilo locale aggiornato!', type: 'success' });
         setTimeout(() => navigate('/profile'), 1500);
         return;
@@ -9546,7 +9360,7 @@ const EditProfilePage = () => {
 
       if (error) throw error;
 
-      localStorage.setItem('amarsiunpo_user', JSON.stringify(normalizeUser(data)));
+      localStorage.setItem('soulmatch_user', JSON.stringify(normalizeUser(data)));
       setToast({ message: 'Profilo aggiornato con successo!', type: 'success' });
       setTimeout(() => navigate('/profile'), 1500);
     } catch (e: any) {
@@ -9575,7 +9389,7 @@ const EditProfilePage = () => {
         await supabase.auth.signOut();
       }
 
-      localStorage.removeItem('amarsiunpo_user');
+      localStorage.removeItem('soulmatch_user');
       setToast({ message: 'Profilo eliminato con successo. Arrivederci!', type: 'info' });
 
       setTimeout(() => {
@@ -9648,7 +9462,7 @@ const EditProfilePage = () => {
                     <div>
                       <p className="text-[10px] font-black uppercase tracking-widest text-stone-400">Piano Attivo</p>
                       <p className="text-sm font-black text-stone-900 uppercase flex items-center gap-2">
-                        AMARSIUNPO {user.subscription_type || 'Premium'}
+                        SoulMatch {user.subscription_type || 'Premium'}
                         {user.subscription_expiry && (
                           <span className="px-2 py-0.5 bg-purple-600 text-[8px] text-white rounded-full animate-in fade-in zoom-in duration-500">
                             Scad: {new Date(user.subscription_expiry).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' })}
@@ -9931,7 +9745,7 @@ const ChatPage = () => {
   useEffect(() => {
     const init = async () => {
       try {
-        const saved = localStorage.getItem('amarsiunpo_user');
+        const saved = localStorage.getItem('soulmatch_user');
         if (saved) {
           const u = normalizeUser(JSON.parse(saved));
           setUser(u);
@@ -10834,7 +10648,7 @@ const ProfilePage = () => {
       if (profileErr) {
         console.error("Profile fetch error:", profileErr);
         // Minimal local fallback
-        const savedRaw = localStorage.getItem('amarsiunpo_user');
+        const savedRaw = localStorage.getItem('soulmatch_user');
         if (savedRaw) {
           const saved = JSON.parse(savedRaw);
           if (String(saved.id) === String(userId)) profileData = saved;
@@ -10945,7 +10759,7 @@ const ProfilePage = () => {
   };
 
   useEffect(() => {
-    const saved = localStorage.getItem('amarsiunpo_user');
+    const saved = localStorage.getItem('soulmatch_user');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -10992,10 +10806,10 @@ const ProfilePage = () => {
 
 
       // Sync local storage if needed
-      const saved = localStorage.getItem('amarsiunpo_user');
+      const saved = localStorage.getItem('soulmatch_user');
       if (saved) {
         const parsed = JSON.parse(saved);
-        localStorage.setItem('amarsiunpo_user', JSON.stringify({ ...parsed, ...submissionData }));
+        localStorage.setItem('soulmatch_user', JSON.stringify({ ...parsed, ...submissionData }));
       }
     } else {
       setToast({ message: 'Errore durante il salvataggio: ' + error.message, type: 'error' });
@@ -11010,7 +10824,7 @@ const ProfilePage = () => {
       const { error } = await supabase.rpc('delete_user_account');
       if (error) throw new Error(error.message);
       await supabase.auth.signOut();
-      localStorage.removeItem('amarsiunpo_user');
+      localStorage.removeItem('soulmatch_user');
       setToast({ message: 'Profilo eliminato. Arrivederci!', type: 'info' });
       setTimeout(() => { window.dispatchEvent(new Event('user-auth-change')); navigate('/'); }, 2000);
     } catch (err: any) {
@@ -11155,7 +10969,7 @@ const ProfilePage = () => {
         <button onClick={() => window.location.reload()} className="w-full py-4 bg-rose-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-lg shadow-rose-900/40 hover:bg-rose-500 transition-all">Riprova il caricamento</button>
         <button onClick={() => navigate('/bacheca')} className="w-full py-4 bg-white/5 border border-white/10 text-white/50 rounded-2xl text-[11px] font-black uppercase tracking-widest hover:text-white transition-all">Torna alla Bacheca</button>
         <button onClick={() => {
-          localStorage.removeItem('amarsiunpo_user');
+          localStorage.removeItem('soulmatch_user');
           window.dispatchEvent(new Event('user-auth-change'));
           navigate('/register');
         }} className="mt-6 flex items-center justify-center gap-2 text-white/20 font-black text-[10px] uppercase tracking-widest hover:text-rose-500 transition-colors">
@@ -11786,8 +11600,8 @@ const ProfilePage = () => {
                     setToast({ message: 'Logout effettuato. A presto!', type: 'success' });
                     try {
                       await supabase.auth.signOut();
-                      localStorage.removeItem('amarsiunpo_user');
-                      localStorage.removeItem('amarsiunpo_reg_draft');
+                      localStorage.removeItem('soulmatch_user');
+                      localStorage.removeItem('soulmatch_reg_draft');
                       window.dispatchEvent(new Event('user-auth-change'));
                       setTimeout(() => { window.location.href = '/'; }, 1000);
                     } catch (e) { window.location.href = '/'; }
@@ -11854,7 +11668,7 @@ const AppFooter = () => {
             <Heart className="w-5 h-5 text-white fill-current" />
           </div>
           <div>
-            <p className="text-base font-serif font-black text-white">Amarsi Un Po</p>
+            <p className="text-base font-serif font-black text-white">SoulMatch</p>
             <p className="text-stone-500 text-[9px] uppercase tracking-widest font-bold">Trova la tua anima gemella</p>
           </div>
         </div>
@@ -11916,9 +11730,9 @@ const AppFooter = () => {
 
           {/* Copyright */}
           <p className="text-stone-600 text-[9px] text-center font-medium">
-            © 2026 Amarsi Un Po — Tutti i diritti riservati
+            © 2026 SoulMatch — Tutti i diritti riservati
             <br />
-            <span className="text-stone-700">P.IVA 10122901217 — Castro Massimo</span>
+            <span className="text-stone-700">P.IVA 00000000000 · Made in Italy 🇮🇹</span>
           </p>
         </div>
       </div>
@@ -11986,13 +11800,19 @@ const LegalPage = ({
           </motion.div>
         ))}
 
-
+        {/* Placeholder notice */}
+        <div className="bg-amber-50 border border-amber-100 rounded-[16px] p-4 flex gap-3">
+          <Sparkles className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+          <p className="text-[11px] text-amber-700 font-medium leading-relaxed">
+            Questo documento è in fase di redazione. Il contenuto definitivo sarà disponibile prima del lancio ufficiale dell'applicazione.
+          </p>
+        </div>
       </div>
 
       {/* Bottom decoration */}
       <div className="pointer-events-none mt-16 flex flex-col items-center gap-3">
         <Icon className={cn('w-24 h-24 opacity-[0.04]', iconColor)} />
-        <p className="text-stone-300 text-[9px] font-black uppercase tracking-[0.3em]">Amarsi Un Po © {new Date().getFullYear()}</p>
+        <p className="text-stone-300 text-[9px] font-black uppercase tracking-[0.3em]">SoulMatch © {new Date().getFullYear()}</p>
       </div>
     </div>
   );
@@ -12040,13 +11860,13 @@ const TerminiPage = () => (
     icon={CheckCircle}
     iconBg="bg-rose-50"
     iconColor="text-rose-600"
-    badge="Aggiornato 2026"
+    badge="Aggiornato 2025"
     sections={[
-      { heading: 'Accettazione', body: 'Utilizzando Amarsi Un Po accetti i presenti Termini e Condizioni. Se non li accetti, ti invitiamo a non utilizzare il servizio.' },
-      { heading: 'Età minima (18+)', body: 'Amarsi Un Po è rigorosamente riservato a utenti maggiorenni. L\'iscrizione di minori è vietata e comporta il blocco immediato dell\'account.' },
+      { heading: 'Accettazione', body: 'Utilizzando SoulMatch accetti i presenti Termini e Condizioni. Se non li accetti, ti invitiamo a non utilizzare il servizio.' },
+      { heading: 'Età minima (18+)', body: 'SoulMatch è rigorosamente riservato a utenti maggiorenni. L\'iscrizione di minori è vietata e comporta il blocco immediato dell\'account.' },
       { heading: 'Responsabilità dell\'utente', body: 'L\'utente è responsabile delle proprie attività. È vietato usare il servizio per attività illecite, truffe, molestie o spam.' },
       { heading: 'Sospensione e Ban', body: 'In caso di violazioni, il sistema applica ammonizioni, sospensioni temporanee (24 ore) o ban permanenti in base alla gravità. Il ban comporta l\'impossibilità di futura re-iscrizione.' },
-      { heading: 'Limitazione di responsabilità', body: 'Amarsi Un Po non è responsabile per le interazioni al di fuori della piattaforma. Gli incontri fisici avvengono sotto la responsabilità degli utenti.' },
+      { heading: 'Limitazione di responsabilità', body: 'SoulMatch non è responsabile per le interazioni al di fuori della piattaforma. Gli incontri fisici avvengono sotto la responsabilità degli utenti.' },
       { heading: 'Proprietà Intellettuale', body: 'È vietato l\'uso di foto altrui, VIP o generate da IA. Sono ammesse solo foto reali e personali del titolare dell\'account.' },
     ]}
   />
@@ -12063,7 +11883,7 @@ const RegolamentoPage = () => (
       { heading: '1. Requisiti e Identità', body: 'Età: L\'uso è vietato ai minori di 18 anni. Verifica: È richiesta la verifica del documento per garantire l\'identità ed evitare truffe. I documenti saranno eliminati subito dopo la verifica per la tua privacy. Autenticità: Vietate foto IA, di VIP o di terzi. Solo foto reali e personali.' },
       { heading: '2. Contenuti e Comportamento', body: 'No Nudo/Explicit: Vietati contenuti sessuali espliciti, nudo o foto offensive. Rispetto: Vietati messaggi offensivi o molesti. Ogni contenuto è monitorato dai moderatori. No Spam: Vietato pubblicare numeri di telefono, link esterni (Meta, TikTok), siti adult o pubblicità.' },
       { heading: '3. Segnalazioni e Sanzioni', body: 'Monitoraggio: Ci riserviamo il diritto di rimuovere contenuti inappropriati. Reporting: Usa il tasto segnala in basso ai profili; segnalazioni false o vendicative sono sanzionabili. Sanzioni: Le violazioni portano ad avvertimenti o ban permanenti, bloccando ogni futura re-iscrizione.' },
-      { heading: 'Ecosistema Community', body: 'Accettare il regolamento significa impegnarsi a rispettare l\'ecosistema Amarsi Un Po. Se non sei d\'accordo con questi termini, ti preghiamo di non procedere con l\'iscrizione.' },
+      { heading: 'Ecosistema Community', body: 'Accettare il regolamento significa impegnarsi a rispettare l\'ecosistema SoulMatch. Se non sei d\'accordo con questi termini, ti preghiamo di non procedere con l\'iscrizione.' },
     ]}
   />
 );
@@ -12076,11 +11896,11 @@ const ContattiPage = () => (
     iconBg="bg-rose-50"
     iconColor="text-rose-600"
     sections={[
-      { heading: 'Supporto generale', body: 'Per domande generali sull\'utilizzo dell\'app: castromassimo@gmail.com · www.amarsiunpo.it' },
-      { heading: 'Privacy e dati', body: 'Per richieste relative ai tuoi dati personali, cancellazione account o diritti GDPR: castromassimo@gmail.com' },
-      { heading: 'Segnalazioni urgenti', body: 'Per segnalare comportamenti pericolosi o contenuti illegali con necessità di intervento urgente: castromassimo@gmail.com' },
-      { heading: 'Partnership e stampa', body: 'Per collaborazioni commerciali, partnership o richieste media: castromassimo@gmail.com' },
-      { heading: 'Sede legale', body: 'Castro Massimo · Via Roma · 80029 Sant\'Antimo (Napoli), Italia · P.IVA 10122901217' },
+      { heading: 'Supporto generale', body: 'Per domande generali sull\'utilizzo dell\'app: support@soulmatch.it · Risposta entro 48 ore lavorative.' },
+      { heading: 'Privacy e dati', body: 'Per richieste relative ai tuoi dati personali, cancellazione account o diritti GDPR: privacy@soulmatch.it' },
+      { heading: 'Segnalazioni urgenti', body: 'Per segnalare comportamenti pericolosi o contenuti illegali con necessità di intervento urgente: safety@soulmatch.it' },
+      { heading: 'Partnership e stampa', body: 'Per collaborazioni commerciali, partnership o richieste media: business@soulmatch.it' },
+      { heading: 'Sede legale', body: 'SoulMatch S.r.l. · Via [da completare] · [CAP] [Città], Italia · P.IVA 00000000000' },
     ]}
   />
 );
@@ -12099,7 +11919,7 @@ const SegnalazioniPage = () => (
       { heading: 'Genuinità delle segnalazioni', body: 'Le segnalazioni false o effettuate per fini vendicativi sono sanzionabili e possono portare alla sospensione dell\'account del segnalante.' },
       { heading: 'Protezione e Anonimato', body: 'Le segnalazioni sono anonime. L\'utente segnalato non saprà mai chi ha effettuato la segnalazione.' },
       { heading: 'Blocco Utenti', body: 'Puoi bloccare un utente per impedirgli di vedere il tuo profilo o contattarti. Il blocco è immediato e irreversibile per quell\'utente.' },
-      { heading: 'Sicurezza Reale', body: 'In caso di pericolo o reati, contatta le autorità competenti (112). Per abusi sulla piattaforma scrivi a castromassimo@gmail.com.' },
+      { heading: 'Sicurezza Reale', body: 'In caso di pericolo o reati, contatta le autorità competenti (112). Per abusi sulla piattaforma scrivi a safety@soulmatch.it.' },
     ]}
   />
 );
@@ -12113,11 +11933,11 @@ const FaqPage = () => (
     iconColor="text-blue-600"
     sections={[
       { heading: 'Come funziona il matching?', body: 'Il nostro algoritmo analizza le preferenze, l\'orientamento, gli interessi comuni e la posizione geografica per calcolare una percentuale di affinità tra profili.' },
-      { heading: 'Il servizio è gratuito?', body: 'La registrazione e le funzionalità base sono gratuite. Il piano Premium sblocca funzionalità avanzate come messaggi illimitati, Amarsi Un Po AI e visualizzazione dei profili che ti hanno messo "cuore".' },
+      { heading: 'Il servizio è gratuito?', body: 'La registrazione e le funzionalità base sono gratuite. Il piano Premium sblocca funzionalità avanzate come messaggi illimitati, SoulMatch AI e visualizzazione dei profili che ti hanno messo "cuore".' },
       { heading: 'Come verifico il mio profilo?', body: 'Dopo la registrazione, puoi caricare un documento d\'identità per ottenere il badge "Verificato". La verifica aumenta la fiducia degli altri utenti.' },
       { heading: 'Posso cancellare il mio account?', body: 'Sì, puoi cancellare il tuo account in qualsiasi momento dalla sezione Impostazioni → Gestione Account → Elimina Account. Tutti i tuoi dati saranno rimossi entro 30 giorni.' },
-      { heading: 'Come funziona Amarsi Un Po (la feature)?', body: 'Il tasto Amarsi Un Po nella Bacheca calcola i tuoi 10 profili più compatibili e li mostra in ordine di affinità. È utilizzabile una volta ogni 24 ore per mantenere il valore speciale di ogni match.' },
-      { heading: 'L\'app sarà disponibile su iOS e Android?', body: 'Sì, Amarsi Un Po sarà disponibile su App Store e Google Play. Seguici per essere notificato al momento del lancio.' },
+      { heading: 'Come funziona SoulMatch (la feature)?', body: 'Il tasto SoulMatch nella Bacheca calcola i tuoi 10 profili più compatibili e li mostra in ordine di affinità. È utilizzabile una volta ogni 24 ore per mantenere il valore speciale di ogni match.' },
+      { heading: 'L\'app sarà disponibile su iOS e Android?', body: 'Sì, SoulMatch sarà disponibile su App Store e Google Play. Seguici per essere notificato al momento del lancio.' },
     ]}
   />
 );
@@ -12130,8 +11950,8 @@ const DmcaPage = () => (
     iconBg="bg-stone-100"
     iconColor="text-stone-600"
     sections={[
-      { heading: 'Proprietà dei contenuti', body: 'Gli utenti mantengono la piena proprietà delle foto e dei contenuti caricati. Caricando contenuti su Amarsi Un Po, concedi una licenza limitata per la visualizzazione all\'interno della piattaforma.' },
-      { heading: 'Violazioni copyright', body: 'Se ritieni che un contenuto presente su Amarsi Un Po violi i tuoi diritti d\'autore, puoi inviare una richiesta di rimozione DMCA a: castromassimo@gmail.com' },
+      { heading: 'Proprietà dei contenuti', body: 'Gli utenti mantengono la piena proprietà delle foto e dei contenuti caricati. Caricando contenuti su SoulMatch, concedi una licenza limitata per la visualizzazione all\'interno della piattaforma.' },
+      { heading: 'Violazioni copyright', body: 'Se ritieni che un contenuto presente su SoulMatch violi i tuoi diritti d\'autore, puoi inviare una richiesta di rimozione DMCA a: dmca@soulmatch.it' },
       { heading: 'Procedura di rimozione', body: 'Una richiesta DMCA valida deve includere: identificazione dell\'opera, URL del contenuto, dichiarazione di buona fede e firma. Risponderemo entro 5 giorni lavorativi.' },
       { heading: 'Contenuti vietati', body: 'È vietato caricare contenuti di cui non si possiedono i diritti: foto di altre persone, immagini coperte da copyright, loghi o marchi registrati altrui.' },
     ]}
@@ -12156,10 +11976,10 @@ const SharedRejectedDocumentBanner = ({ currentUser, onUploadSuccess }: { curren
         }).eq('id', currentUser.id);
 
         if (!error) {
-          const saved = localStorage.getItem('amarsiunpo_user');
+          const saved = localStorage.getItem('soulmatch_user');
           if (saved) {
             const parsed = JSON.parse(saved);
-            localStorage.setItem('amarsiunpo_user', JSON.stringify({
+            localStorage.setItem('soulmatch_user', JSON.stringify({
               ...parsed,
               id_document_url: base64,
               doc_rejected: false,
@@ -12212,11 +12032,11 @@ const SubscriptionSuccessPage = () => {
 
   useEffect(() => {
     const processSubscription = async () => {
-      const saved = localStorage.getItem('amarsiunpo_user');
+      const saved = localStorage.getItem('soulmatch_user');
       if (saved) {
         try {
           const u = JSON.parse(saved);
-          const pendingPlan = localStorage.getItem('amarsiunpo_pending_plan') as 'monthly' | 'annual' || 'monthly';
+          const pendingPlan = localStorage.getItem('soulmatch_pending_plan') as 'monthly' | 'annual' || 'monthly';
           
           const expiryDate = new Date();
           if (pendingPlan === 'annual') {
@@ -12242,8 +12062,8 @@ const SubscriptionSuccessPage = () => {
           if (!error) {
             // 2. Update Local Session
             const updatedUser = { ...u, ...subscriptionData };
-            localStorage.setItem('amarsiunpo_user', JSON.stringify(updatedUser));
-            localStorage.removeItem('amarsiunpo_pending_plan');
+            localStorage.setItem('soulmatch_user', JSON.stringify(updatedUser));
+            localStorage.removeItem('soulmatch_pending_plan');
             window.dispatchEvent(new Event('user-auth-change'));
           }
         } catch (e) {
@@ -12317,7 +12137,7 @@ const SubscriptionSuccessPage = () => {
       </motion.div>
 
       <div className="mt-8 text-center text-[10px] text-stone-600 font-bold uppercase tracking-widest">
-        AMARSIUNPO Premium • Ordine #SM-{Math.floor(Math.random() * 100000)}
+        SoulMatch Premium • Ordine #SM-{Math.floor(Math.random() * 100000)}
       </div>
     </div>
   );
@@ -12332,7 +12152,7 @@ const SecurityWarningSideBanner = () => {
 
   useEffect(() => {
     const handleAuthChange = () => {
-      const saved = localStorage.getItem('amarsiunpo_user');
+      const saved = localStorage.getItem('soulmatch_user');
       if (saved) {
         try {
           setCurrentUser(JSON.parse(saved));
@@ -12385,10 +12205,10 @@ const SecurityWarningSideBanner = () => {
         }).eq('id', currentUser.id);
 
         if (!error) {
-          const saved = localStorage.getItem('amarsiunpo_user');
+          const saved = localStorage.getItem('soulmatch_user');
           if (saved) {
             const parsed = JSON.parse(saved);
-            localStorage.setItem('amarsiunpo_user', JSON.stringify({
+            localStorage.setItem('soulmatch_user', JSON.stringify({
               ...parsed,
               id_document_url: base64,
               doc_rejected: false,
@@ -12492,7 +12312,7 @@ const SecurityOverlay = ({ status, onClose }: { status: any; onClose: () => void
 
   const handleClearPostNotice = async () => {
     try {
-      const saved = localStorage.getItem('amarsiunpo_user');
+      const saved = localStorage.getItem('soulmatch_user');
       if (saved) {
         const u = JSON.parse(saved);
         await supabase.from('users').update({ has_post_removal_notice: false }).eq('id', u.id);
@@ -12614,7 +12434,7 @@ const SubscriptionExpiryBanner = ({ user, onRenew }: { user: UserProfile, onRene
         </div>
         
         <p className="text-[11px] text-white/50 leading-relaxed font-bold mb-6 relative z-10">
-          Il tuo piano Premium sta per terminare. Rinnova ora per non perdere i vantaggi sbloccati e continuare la tua esperienza su AMARSIUNPO senza interruzioni.
+          Il tuo piano Premium sta per terminare. Rinnova ora per non perdere i vantaggi sbloccati e continuare la tua esperienza su SoulMatch senza interruzioni.
         </p>
 
         <div className="flex gap-3 relative z-10">
@@ -12651,20 +12471,20 @@ export default function App() {
 
   useEffect(() => {
     // Check if security status is saved in localStorage (e.g. for doc rejection persistence)
-    const savedStatus = localStorage.getItem('amarsiunpo_security_notice');
+    const savedStatus = localStorage.getItem('soulmatch_security_notice');
     if (savedStatus) {
       try { setSecurityStatus(JSON.parse(savedStatus)); } catch (e) {}
     }
   }, []);
 
   const handleCloseSecurity = () => {
-    localStorage.removeItem('amarsiunpo_security_notice');
+    localStorage.removeItem('soulmatch_security_notice');
     setSecurityStatus({ type: null });
   };
   useEffect(() => {
     // 1. Silent verification of the user profile on app startup
     const verifyUser = async () => {
-      const saved = localStorage.getItem('amarsiunpo_user');
+      const saved = localStorage.getItem('soulmatch_user');
       if (saved) {
         try {
           const u = JSON.parse(saved);
@@ -12688,7 +12508,7 @@ export default function App() {
 
             if (!data) {
               console.warn("Profilo non trovato nel database. Pulizia sessione locale.");
-              localStorage.removeItem('amarsiunpo_user');
+              localStorage.removeItem('soulmatch_user');
               window.dispatchEvent(new Event('user-auth-change'));
             } else {
               // Check security status
@@ -12701,10 +12521,10 @@ export default function App() {
               } else if (data.doc_rejected) {
                 setSecurityStatus({ type: 'doc_rejected', rejectedAt: data.doc_rejected_at });
               } else if (data.last_warning_reason) {
-                const warned = localStorage.getItem('amarsiunpo_warned_id');
+                const warned = localStorage.getItem('soulmatch_warned_id');
                 if (warned !== data.last_warning_reason) {
                   setSecurityStatus({ type: 'warning', reason: data.last_warning_reason });
-                  localStorage.setItem('amarsiunpo_warned_id', data.last_warning_reason);
+                  localStorage.setItem('soulmatch_warned_id', data.last_warning_reason);
                 } else {
                   setSecurityStatus({ type: null });
                 }
@@ -12715,7 +12535,7 @@ export default function App() {
               // Update status and storage if changed
               const updatedUser = normalizeUser({ ...u, ...data });
               setCurrentUser(updatedUser);
-              localStorage.setItem('amarsiunpo_user', JSON.stringify(updatedUser));
+              localStorage.setItem('soulmatch_user', JSON.stringify(updatedUser));
             await supabase.from('users').update({ is_online: true, last_seen: new Date().toISOString() }).eq('id', u.id);
           }
         } catch (e) {
@@ -12729,7 +12549,7 @@ export default function App() {
 
     // 2. Heartbeat mechanism to keep user online
     const heartbeatInterval = setInterval(async () => {
-      const saved = localStorage.getItem('amarsiunpo_user');
+      const saved = localStorage.getItem('soulmatch_user');
       if (saved) {
         try {
           const u = JSON.parse(saved);
@@ -12741,7 +12561,7 @@ export default function App() {
     }, 45000); // Every 45 seconds
 
     const handleVisibilityChange = async () => {
-      const saved = localStorage.getItem('amarsiunpo_user');
+      const saved = localStorage.getItem('soulmatch_user');
       if (saved) {
         try {
           const u = JSON.parse(saved);
@@ -12759,7 +12579,7 @@ export default function App() {
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     const handleBeforeUnload = () => {
-      const saved = localStorage.getItem('amarsiunpo_user');
+      const saved = localStorage.getItem('soulmatch_user');
       if (saved) {
         try {
           const u = JSON.parse(saved);
@@ -12772,7 +12592,7 @@ export default function App() {
     window.addEventListener('beforeunload', handleBeforeUnload);
 
     const handleAuthChange = () => {
-      const saved = localStorage.getItem('amarsiunpo_user');
+      const saved = localStorage.getItem('soulmatch_user');
       if (saved) {
         try { setCurrentUser(normalizeUser(JSON.parse(saved))); } catch { setCurrentUser(null); }
       } else {
@@ -12796,7 +12616,7 @@ export default function App() {
   return (
     <Router>
       <style>{`
-          /* Global Scrollbar Styles */
+        /* Global Scrollbar Styles */
         ::-webkit-scrollbar {
           width: 5px;
           height: 5px;
@@ -12867,7 +12687,7 @@ export default function App() {
         <Route path="/bacheca" element={<BachecaPage />} />
         <Route path="/feed" element={<FeedPage />} />
         <Route path="/amici" element={<AmiciPage />} />
-        <Route path="/soul-match" element={<AMARSIUNPOPage />} />
+        <Route path="/soul-match" element={<SoulMatchPage />} />
         <Route path="/register" element={<RegisterPage setSecurityStatus={setSecurityStatus} />} />
         <Route path="/chat" element={<ChatPage />} />
         <Route path="/live-chat/:id" element={<LiveChatPage />} />

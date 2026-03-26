@@ -1,0 +1,20 @@
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://www.amarsiunpo.it/sitemap.xml
+
+# Crawl-delay (optional)
+Crawl-delay: 1
+
+# Allow all main pages
+Allow: /
+Allow: /bacheca
+Allow: /chat
+Allow: /profilo
+Allow: /abbonamento
+Allow: /register
+
+# Block admin and API
+Disallow: /admin
+Disallow: /api/

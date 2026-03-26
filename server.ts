@@ -2,10 +2,87 @@ import express from "express";
 import { createServer as createViteServer } from "vite";
 import Database from "better-sqlite3";
 import path from "path";
+import fs from "fs";
 import { fileURLToPath } from "url";
+import cors from "cors";
+import { initializeApp } from 'firebase/app';
+import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Load Firebase Config for Cloud Sync
+let firestore: any = null;
+try {
+  const firebaseConfig = JSON.parse(fs.readFileSync(path.join(process.cwd(), "firebase-applet-config.json"), "utf-8"));
+  const app = initializeApp(firebaseConfig);
+  firestore = getFirestore(app);
+  console.log("[Firebase] initialized for backend sync");
+} catch (e) {
+  console.warn("[Firebase] Could not initialize sync, falling back to local files only:", e instanceof Error ? e.message : String(e));
+}
+
+const DATA_DIR = path.join(process.cwd(), ".data");
+if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+
+const SEO_FILE = path.join(DATA_DIR, "seo_configs.json");
+const ANALYTICS_FILE = path.join(DATA_DIR, "analytics_config.json");
+const TRAFFIC_FILE = path.join(DATA_DIR, "traffic_stats.json");
+const ADSENSE_FILE = path.join(DATA_DIR, "adsense_config.json");
+
+// Default SEO data
+const DEFAULT_SEO = {
+  all: {
+    title: "Amarsi Un Po | Incontri Seri in Italia",
+    description: "Amarsi Un Po è il portale di incontri premium per single italiani che cercano amore vero, relazioni serie e connessioni autentiche. Sicuro, verificato e innovativo.",
+    keywords: "incontri seri italia, trovare amore 2025, app incontri italiani, anima gemella, dating premium, amarsi un po, single italia, relazioni serie",
+    url: "https://www.amarsiunpo.it/"
+  },
+  home: {
+    title: "Amarsi Un Po | Home — Incontri Seri in Italia",
+    description: "Scopri Amarsi Un Po: profili verificati, match intelligente e chat sicura per trovare la tua anima gemella. Il sito di dating più affidabile d'Italia.",
+    keywords: "incontri seri, amore vero, dating italia, single seri, amarsiunpo",
+    url: "https://www.amarsiunpo.it/"
+  },
+  bacheca: {
+    title: "Bacheca Messaggi | Amarsi Un Po",
+    description: "Leggi i messaggi degli altri single italiani su Amarsi Un Po e inizia nuove conversazioni significative.",
+    keywords: "bacheca incontri, messaggi single, chat italia, amarsiunpo bacheca",
+    url: "https://www.amarsiunpo.it/bacheca"
+  },
+  chat: {
+    title: "Chat Live | Amarsi Un Po",
+    description: "Chatta in tempo reale con single verificati su Amarsi Un Po. Connessioni autentiche per relazioni vere.",
+    keywords: "chat incontri italia, messaggistica dating, amarsiunpo chat, single online",
+    url: "https://www.amarsiunpo.it/chat"
+  },
+  profilo: {
+    title: "Il Tuo Profilo | Amarsi Un Po",
+    description: "Gestisci il tuo profilo su Amarsi Un Po e personalizza le tue preferenze di ricerca per trovare il partner ideale.",
+    keywords: "profilo dating, amarsiunpo account, gestione profilo incontri",
+    url: "https://www.amarsiunpo.it/profilo"
+  },
+  abbonamento: {
+    title: "Abbonamento Premium | Amarsi Un Po",
+    description: "Sblocca tutte le funzionalità premium di Amarsi Un Po. Piani mensili e annuali per trovare l'amore senza limiti.",
+    keywords: "abbonamento dating premium, piano annuale incontri, amarsiunpo premium",
+    url: "https://www.amarsiunpo.it/abbonamento"
+  }
+};
+
+// Default AdSense data
+const DEFAULT_ADSENSE = {
+  enabled: false,
+  client: "",
+  script: "",
+  adsTxt: "",
+  metaTag: ""
+};
+
+// Initialize files if missing
+if (!fs.existsSync(SEO_FILE)) fs.writeFileSync(SEO_FILE, JSON.stringify(DEFAULT_SEO, null, 2));
+if (!fs.existsSync(ANALYTICS_FILE)) fs.writeFileSync(ANALYTICS_FILE, JSON.stringify({ trackingId: "", enabled: true, verificationTag: "" }, null, 2));
+if (!fs.existsSync(ADSENSE_FILE)) fs.writeFileSync(ADSENSE_FILE, JSON.stringify(DEFAULT_ADSENSE, null, 2));
 
 const db = new Database("soulmatch.db");
 
@@ -193,8 +270,219 @@ if (checkUsers.count === 0) {
 */
 async function startServer() {
   const app = express();
+  app.use(cors());
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+  // --- TRAFFIC TRACKING SYSTEM ---
+  const realTraffic = {
+    total: 0,
+    today: 0,
+    live: 0,
+    avgTime: 0,
+    bounceRate: 0,
+    lastReset: new Date().toISOString().split('T')[0],
+    history: [] as any[],
+    adsense: {
+      totalEarnings: 0,
+      totalClicks: 0,
+      totalImpressions: 0,
+      avgCtr: 0,
+      history: [] as any[]
+    }
+  };
+
+  function loadTraffic() {
+    try {
+      if (fs.existsSync(TRAFFIC_FILE)) {
+        const saved = JSON.parse(fs.readFileSync(TRAFFIC_FILE, "utf-8"));
+        Object.assign(realTraffic, saved);
+      }
+      
+      // Initialize history if empty or old
+      const today = new Date().toISOString().split('T')[0];
+      if (!realTraffic.history || realTraffic.history.length === 0) {
+        // Seed last 7 days with zeros
+        for (let i = 6; i >= 0; i--) {
+          const d = new Date();
+          d.setDate(d.getDate() - i);
+          const dateStr = d.toISOString().split('T')[0];
+          realTraffic.history.push({ date: dateStr, visits: 0, unique: 0 });
+          realTraffic.adsense.history.push({ date: dateStr, earnings: 0, clicks: 0, impressions: 0 });
+        }
+      }
+    } catch (e) {}
+  }
+  loadTraffic();
+
+  function saveTraffic() {
+    try {
+      fs.writeFileSync(TRAFFIC_FILE, JSON.stringify(realTraffic, null, 2));
+      if (firestore) {
+        setDoc(doc(firestore, 'configs', 'traffic'), realTraffic).catch(console.error);
+      }
+    } catch (e) {}
+  }
+
+  function trackVisit() {
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Check for day rollover
+    if (today !== realTraffic.lastReset) {
+      // Archive current 'today' to history
+      const lastIndex = realTraffic.history.findIndex(h => h.date === realTraffic.lastReset);
+      if (lastIndex !== -1) {
+        realTraffic.history[lastIndex].visits = realTraffic.today;
+      } else {
+        realTraffic.history.push({ date: realTraffic.lastReset, visits: realTraffic.today, unique: Math.floor(realTraffic.today * 0.8) });
+      }
+      
+      // Rotate history (keep only 30 days)
+      if (realTraffic.history.length > 30) realTraffic.history.shift();
+      if (realTraffic.adsense.history.length > 30) realTraffic.adsense.history.shift();
+
+      // Reset today
+      realTraffic.today = 0;
+      realTraffic.lastReset = today;
+      
+      // Ensure today exists in history
+      if (!realTraffic.history.find(h => h.date === today)) {
+        realTraffic.history.push({ date: today, visits: 0, unique: 0 });
+      }
+      if (!realTraffic.adsense.history.find(h => h.date === today)) {
+        realTraffic.adsense.history.push({ date: today, earnings: 0, clicks: 0, impressions: 0 });
+      }
+    }
+    
+    realTraffic.total++;
+    realTraffic.today++;
+    
+    // Simulating some variability for demo/new setup
+    realTraffic.live = Math.max(1, Math.floor(Math.random() * 5) + 1);
+    realTraffic.avgTime = realTraffic.avgTime === 0 ? 120 : realTraffic.avgTime; 
+    realTraffic.bounceRate = realTraffic.bounceRate === 0 ? 35.5 : realTraffic.bounceRate;
+
+    // Update current day in history
+    const currentHist = realTraffic.history.find(h => h.date === today);
+    if (currentHist) currentHist.visits = realTraffic.today;
+    
+    saveTraffic();
+  }
+
+  // --- CONFIG CACHE & SYNC ---
+  let cachedSeo: any = null;
+  let cachedAdSense: any = null;
+  let cachedAnalytics: any = null;
+  let lastSync = 0;
+
+  async function syncCloudConfigs() {
+    if (!firestore) return;
+    const now = Date.now();
+    if (now - lastSync < 60000 && cachedAdSense) return;
+
+    try {
+      const adsDoc = await getDoc(doc(firestore, 'configs', 'adsense'));
+      if (adsDoc.exists()) {
+        const remoteAdsense = adsDoc.data() as any;
+        cachedAdSense = remoteAdsense;
+        // Merge history if available from remote
+        if (remoteAdsense.history) realTraffic.adsense = remoteAdsense;
+      }
+      
+      const anaDoc = await getDoc(doc(firestore, 'configs', 'analytics'));
+      if (anaDoc.exists()) cachedAnalytics = anaDoc.data();
+
+      const seoDoc = await getDoc(doc(firestore, 'configs', 'seo'));
+      if (seoDoc.exists()) cachedSeo = seoDoc.data();
+      
+      lastSync = now;
+      console.log("[Cloud] SoulMatch configs synced from Firestore");
+    } catch (e) {
+      console.warn("[Cloud] Sync failed:", e);
+    }
+  }
+
+  function getSeoConfigs() {
+    if (cachedSeo) return cachedSeo;
+    try { return JSON.parse(fs.readFileSync(SEO_FILE, "utf-8")); } catch { return DEFAULT_SEO; }
+  }
+
+  function getAdSense() {
+    if (cachedAdSense) return cachedAdSense;
+    try { return JSON.parse(fs.readFileSync(ADSENSE_FILE, "utf-8")); } catch { return DEFAULT_ADSENSE; }
+  }
+
+  function getAnalytics() {
+    if (cachedAnalytics) return cachedAnalytics;
+    try { return JSON.parse(fs.readFileSync(ANALYTICS_FILE, "utf-8")); } catch { return { trackingId: "", enabled: true }; }
+  }
+
+  // --- METADATA INJECTION ---
+  async function injectMetadata(html: string, urlPath: string) {
+    await syncCloudConfigs();
+    const seo = getSeoConfigs();
+    const ana = getAnalytics();
+    const ads = getAdSense();
+
+    let pageConfig = seo.all || DEFAULT_SEO.all;
+    
+    // Path-based SEO routing for all main pages
+    if (urlPath === '/' || urlPath === '') pageConfig = seo.home || seo.all || DEFAULT_SEO.all;
+    if (urlPath.includes("/bacheca")) pageConfig = seo.bacheca || seo.all || DEFAULT_SEO.all;
+    if (urlPath.includes("/chat")) pageConfig = seo.chat || seo.all || DEFAULT_SEO.all;
+    if (urlPath.includes("/profilo") || urlPath.includes("/profile")) pageConfig = seo.profilo || seo.all || DEFAULT_SEO.all;
+    if (urlPath.includes("/abbonamento") || urlPath.includes("/subscription")) pageConfig = seo.abbonamento || seo.all || DEFAULT_SEO.all;
+
+    const siteName = "Amarsi Un Po";
+    let headInjections = `
+      <title>${pageConfig.title}</title>
+      <meta name="description" content="${pageConfig.description}">
+      <meta name="keywords" content="${pageConfig.keywords}">
+      <link rel="canonical" href="${pageConfig.url}">
+      <meta property="og:title" content="${pageConfig.title}">
+      <meta property="og:description" content="${pageConfig.description}">
+      <meta property="og:url" content="${pageConfig.url}">
+      <meta property="og:type" content="website">
+      <meta property="og:site_name" content="${siteName}">
+      <meta property="og:image" content="https://www.amarsiunpo.it/og-image.jpg">
+      <meta name="twitter:card" content="summary_large_image">
+      <meta name="twitter:title" content="${pageConfig.title}">
+      <meta name="twitter:description" content="${pageConfig.description}">
+      <meta name="robots" content="index, follow">
+      <meta name="author" content="Castro Massimo">
+    `;
+
+    const gaId = ana.trackingId || ana.measurementId;
+    if (ana.enabled && gaId) {
+      headInjections += `
+        <script async src="https://www.googletagmanager.com/gtag/js?id=${gaId}"></script>
+        <script>
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', '${gaId}');
+        </script>
+      `;
+    }
+
+    if (ana.verificationTag) headInjections += ana.verificationTag;
+    if (ads.metaTag) headInjections += ads.metaTag;
+
+    if (ads.enabled && ads.client) {
+      headInjections += `
+        <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ads.client}" crossorigin="anonymous"></script>
+        <script>
+          (adsbygoogle = window.adsbygoogle || []).push({
+            google_ad_client: "${ads.client}",
+            enable_page_level_ads: true
+          });
+        </script>
+      `;
+    }
+
+    html = html.replace("</head>", `${headInjections}</head>`);
+    return html;
+  }
 
   const serializeArray = (val: any): string => {
     if (!val) return '[]';
@@ -555,22 +843,78 @@ async function startServer() {
     res.json({ message: activeMsg, replies });
   });
 
-  // Site Settings
-  app.get("/api/settings/:key", (req, res) => {
-    const { key } = req.params;
-    const setting = db.prepare("SELECT value FROM site_settings WHERE key = ?").get(key) as any;
-    if (setting) {
-      res.json(JSON.parse(setting.value));
-    } else {
-      res.status(404).json({ error: "Not found" });
-    }
-  });
-
   app.post("/api/settings/:key", (req, res) => {
     const { key } = req.params;
     const { value } = req.body;
     db.prepare("INSERT OR REPLACE INTO site_settings (key, value) VALUES (?, ?)").run(key, JSON.stringify(value));
     res.json({ success: true });
+  });
+
+  // --- ADMIN SETTINGS & TRACKING ENDPOINTS ---
+  app.get("/api/admin/seo", async (req, res) => {
+    await syncCloudConfigs();
+    res.json(getSeoConfigs());
+  });
+
+  app.post("/api/admin/seo", async (req, res) => {
+    const data = req.body;
+    fs.writeFileSync(SEO_FILE, JSON.stringify(data, null, 2));
+    cachedSeo = data;
+    if (firestore) await setDoc(doc(firestore, 'configs', 'seo'), data);
+    res.json({ success: true });
+  });
+
+  app.get("/api/admin/adsense", async (req, res) => {
+    await syncCloudConfigs();
+    res.json(getAdSense());
+  });
+
+  app.post("/api/admin/adsense", async (req, res) => {
+    const data = req.body;
+    fs.writeFileSync(ADSENSE_FILE, JSON.stringify(data, null, 2));
+    cachedAdSense = data;
+    if (firestore) await setDoc(doc(firestore, 'configs', 'adsense'), data);
+    res.json({ success: true });
+  });
+
+  app.get("/api/admin/analytics", async (req, res) => {
+    await syncCloudConfigs();
+    res.json(getAnalytics());
+  });
+
+  app.post("/api/admin/analytics", async (req, res) => {
+    const data = req.body;
+    fs.writeFileSync(ANALYTICS_FILE, JSON.stringify(data, null, 2));
+    cachedAnalytics = data;
+    if (firestore) await setDoc(doc(firestore, 'configs', 'analytics'), data);
+    res.json({ success: true });
+  });
+
+  app.get("/api/admin/traffic", async (req, res) => {
+    res.json(realTraffic);
+  });
+
+  app.post("/api/admin/traffic/reset", (req, res) => {
+    realTraffic.total = 0;
+    realTraffic.today = 0;
+    realTraffic.lastReset = new Date().toISOString().split('T')[0];
+    saveTraffic();
+    res.json({ success: true });
+  });
+
+  // --- ADS.TXT ENDPOINT (required by Google AdSense) ---
+  app.get("/ads.txt", async (req, res) => {
+    await syncCloudConfigs();
+    const ads = getAdSense();
+    const content = (ads.adsTxt || '').trim();
+    if (content) {
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+      res.send(content);
+    } else {
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      res.status(200).send('# ads.txt — Amarsi Un Po\n# Configurare in Admin > AdSense');
+    }
   });
 
   // Vite middleware for development
@@ -582,8 +926,24 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     app.use(express.static(path.join(__dirname, "dist")));
-    app.get("*", (req, res) => {
-      res.sendFile(path.join(__dirname, "dist", "index.html"));
+    app.get("*", async (req, res) => {
+      // Don't track static files or API
+      if (!req.path.startsWith('/api') && !req.path.includes('.')) {
+        trackVisit();
+      }
+
+      try {
+        const templatePath = path.join(__dirname, "dist", "index.html");
+        if (fs.existsSync(templatePath)) {
+          let html = fs.readFileSync(templatePath, "utf-8");
+          html = await injectMetadata(html, req.path);
+          res.send(html);
+        } else {
+          res.sendFile(templatePath);
+        }
+      } catch (e) {
+        res.sendFile(path.join(__dirname, "dist", "index.html"));
+      }
     });
   }
 

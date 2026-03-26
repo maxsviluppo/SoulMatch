@@ -1,0 +1,160 @@
+198:      const saved = localStorage.getItem('soulmatch_user');
+247:      const saved = localStorage.getItem('soulmatch_user');
+300:    if (path.startsWith('/soul-match')) return 'soulmatch';
+434:              {/* SoulMatch (Heart Button) */}
+435:              <Link to="/soul-match" onClick={() => window.dispatchEvent(new CustomEvent('reset-soulmatch'))} className="relative flex-1 group">
+440:                    activeTab === 'soulmatch' ? "text-white shadow-lg" : "text-stone-400 hover:text-white"
+442:                  style={activeTab === 'soulmatch' ? { background: '#f43f5e', boxShadow: '0 0 20px rgba(244,63,94,0.6)' } : {}}
+444:                  <Heart className={cn("w-5 h-5 mb-0.5", activeTab === 'soulmatch' ? "fill-current" : "")} />
+497:      const saved = localStorage.getItem('soulmatch_user');
+792:    localStorage.setItem('soulmatch_pending_plan', selectedPlan);
+999:      const saved = localStorage.getItem('soulmatch_user');
+1099:          <span className="text-xl font-serif font-black tracking-tight text-white leading-none">SoulMatch</span>
+1122:                localStorage.removeItem('soulmatch_user');
+1149:      const saved = localStorage.getItem('soulmatch_user');
+1412:      const saved = localStorage.getItem('soulmatch_user');
+1432:          title: 'SoulMatch',
+1433:          text: 'Entra anche tu in SoulMatch, la community per trovare la tua compagnia ideale! ❤️',
+1505:            SoulMatch è il luogo sicuro dove incontrare persone reali. Ogni profilo è verificato manualmente per la tua sicurezza.
+1564:          <h2 className="text-left text-sm font-black text-white/30 uppercase tracking-widest px-1">Perché SoulMatch</h2>
+1586:              title: "SoulMatch AI",
+1605:              desc: "Invia SoulMatch ai tuoi amici e invitali!",
+1679:            <h2 className="text-2xl font-black text-white px-1">Come funziona SoulMatch</h2>
+1701:                 title: "3. La Magia del SoulMatch",
+1702:                 desc: "Usa la funzione SoulMatch per calcolare istantaneamente l'affinità tra te e gli altri utenti.",
+1767:        <p className="text-white/15 text-[9px] font-black uppercase tracking-[0.3em]">SoulMatch &copy; 2025</p>
+1789:      const saved = localStorage.getItem('soulmatch_user');
+2191:        const saved = localStorage.getItem('soulmatch_user');
+2617:          {/* Match Widget Next to Name - Shown only after executing SoulMatch (hasMatched) */}
+2958:  const [showSoulMatch, setShowSoulMatch] = useState(false);
+2959:  const [soulmatchToast, setSoulmatchToast] = useState(false);
+3009:    const saved = localStorage.getItem('soulmatch_unlocked_ids');
+3011:  }, [showSoulMatch]);
+3015:      const saved = localStorage.getItem('soulmatch_user');
+3033:  const SM_COOLDOWN_KEY = 'soulmatch_last_used';
+3037:  const getSoulMatchCooldownRemaining = (): number => {
+3044:  const isSoulMatchOnCooldown = () => getSoulMatchCooldownRemaining() > 0;
+3046:  const [showSoulMatchConfirm, setShowSoulMatchConfirm] = useState(false);
+3049:    const ms = getSoulMatchCooldownRemaining();
+3055:  const handleSoulMatchPress = () => {
+3056:    if (isSoulMatchOnCooldown()) {
+3057:      setSoulmatchToast(true);
+3058:      setTimeout(() => setSoulmatchToast(false), 4000);
+3061:    setShowSoulMatchConfirm(true);
+3064:  const confirmSoulMatch = () => {
+3066:    setShowSoulMatchConfirm(false);
+3067:    setShowSoulMatch(true);
+3096:      const saved = localStorage.getItem('soulmatch_user');
+3124:      // Check if we came from Feed to trigger SoulMatch
+3126:      if (params.get('soulmatch')) {
+3128:        handleSoulMatchPress();
+3682:        {soulmatchToast && (
+3693:              <p className="text-xs font-black uppercase tracking-widest text-rose-400">SoulMatch in pausa</p>
+3700:      {showSoulMatchConfirm && (
+3702:          <SoulMatchConfirmBanner onConfirm={confirmSoulMatch} />
+3706:      {/* ── SOULMATCH OVERLAY ── */}
+3708:        {showSoulMatch && (
+3717:              <button onClick={() => setShowSoulMatch(false)} className="w-10 h-10 bg-stone-100 rounded-[16px] flex items-center justify-center text-stone-600 active:scale-90">
+3722:                  <Heart className="w-4 h-4 text-rose-600 fill-current" /> SoulMatch
+3797:                        onClick={() => setShowSoulMatch(false)}
+3822:                <button onClick={() => setShowSoulMatch(false)} className="flex flex-col items-center gap-1">
+3841:// ── SoulMatch Confirm Banner (shown once per session) ──
+3842:const SoulMatchConfirmBanner = ({ onConfirm }: { onConfirm: () => void }) => {
+3856:          <h3 className="text-sm font-black uppercase tracking-widest mb-1">✨ SoulMatch attivato!</h3>
+3859:            Dopo la consultazione, SoulMatch entrerà in <strong className="text-white">pausa di 24 ore</strong> per rendere ogni incontro speciale.
+3874:// ── SoulMatch Page ──────────────────────────────────────────────────────
+3875:const SoulMatchPage = () => {
+3897:    const saved = localStorage.getItem('soulmatch_unlocked_ids');
+3903:    window.addEventListener('reset-soulmatch', handleReset);
+3904:    return () => window.removeEventListener('reset-soulmatch', handleReset);
+3931:    localStorage.setItem('soulmatch_unlocked_ids', JSON.stringify(next));
+3976:        const saved = localStorage.getItem('soulmatch_user');
+3993:        console.error("SoulMatchPage init exception:", e);
+4071:            <h1 className="text-2xl font-serif font-black text-rose-500 tracking-tight">SoulMatch <span className="text-white">Affinita</span></h1>
+4451:      const saved = localStorage.getItem('soulmatch_user');
+4469:      const saved = localStorage.getItem('soulmatch_user');
+4476:          localStorage.setItem('soulmatch_user', JSON.stringify(norm));
+4830:      const saved = localStorage.getItem('soulmatch_user');
+5102:                        {isLocked ? 'Sblocca per vedere' : (req.other_user?.city || 'SoulMatch')}
+5601:      title: 'SoulMatch - Trova la tua anima gemella',
+5603:      keywords: 'incontri, soulmatch, amore, chat',
+5604:      url: 'https://soulmatch.it'
+5631:    const saved = localStorage.getItem('soulmatch_user');
+6064:                <h1 className="text-3xl font-black text-white tracking-tighter">SoulMatch</h1>
+6126:          <span className="font-black tracking-tight text-sm">SoulMatch Admin</span>
+6158:                <span className="text-xl font-black tracking-tight leading-none text-white">SoulMatch</span>
+6237:              <p className="text-[9px] md:text-[10px] text-stone-400 font-bold uppercase tracking-widest">SoulMatch Back-office</p>
+7406:                            placeholder="SoulMatch | Incontra..."
+7416:                            placeholder="https://soulmatch.com/"
+7438:                          placeholder="incontri, anima gemella, soulmatch..."
+7766:    const savedUser = localStorage.getItem('soulmatch_user');
+7808:        const authenticatedUserRaw = localStorage.getItem('soulmatch_user');
+7809:        const savedDraft = localStorage.getItem('soulmatch_reg_draft');
+7842:    localStorage.setItem('soulmatch_reg_draft', JSON.stringify(formData));
+7867:          localStorage.setItem('soulmatch_user', JSON.stringify(profile));
+7945:          localStorage.setItem('soulmatch_security_notice', JSON.stringify({ type: 'doc_rejected' }));
+7949:        localStorage.setItem('soulmatch_user', JSON.stringify(profile));
+7993:        message: "L'uso di SoulMatch è vietato ai minori di 18 anni.",
+8133:        localStorage.setItem('soulmatch_user', JSON.stringify(data));
+8137:      localStorage.removeItem('soulmatch_reg_draft');
+8575:      const saved = localStorage.getItem('soulmatch_user');
+8632:    const viewer = localStorage.getItem('soulmatch_user') ? JSON.parse(localStorage.getItem('soulmatch_user')!) : null;
+8663:      const viewer = localStorage.getItem('soulmatch_user') ? JSON.parse(localStorage.getItem('soulmatch_user')!) : null;
+8757:      const curUser = localStorage.getItem('soulmatch_user') ? JSON.parse(localStorage.getItem('soulmatch_user')!) : null;
+8806:      const viewer = localStorage.getItem('soulmatch_user') ? JSON.parse(localStorage.getItem('soulmatch_user')!) : null;
+9290:      const saved = localStorage.getItem('soulmatch_user');
+9350:        localStorage.setItem('soulmatch_user', JSON.stringify(normalizedUpdated));
+9371:      localStorage.setItem('soulmatch_user', JSON.stringify(normalizeUser(data)));
+9400:      localStorage.removeItem('soulmatch_user');
+9473:                        SoulMatch {user.subscription_type || 'Premium'}
+9756:        const saved = localStorage.getItem('soulmatch_user');
+10659:        const savedRaw = localStorage.getItem('soulmatch_user');
+10770:    const saved = localStorage.getItem('soulmatch_user');
+10817:      const saved = localStorage.getItem('soulmatch_user');
+10820:        localStorage.setItem('soulmatch_user', JSON.stringify({ ...parsed, ...submissionData }));
+10835:      localStorage.removeItem('soulmatch_user');
+10980:          localStorage.removeItem('soulmatch_user');
+11611:                      localStorage.removeItem('soulmatch_user');
+11612:                      localStorage.removeItem('soulmatch_reg_draft');
+11679:            <p className="text-base font-serif font-black text-white">SoulMatch</p>
+11741:            © 2026 SoulMatch — Tutti i diritti riservati
+11823:        <p className="text-stone-300 text-[9px] font-black uppercase tracking-[0.3em]">SoulMatch © {new Date().getFullYear()}</p>
+11873:      { heading: 'Accettazione', body: 'Utilizzando SoulMatch accetti i presenti Termini e Condizioni. Se non li accetti, ti invitiamo a non utilizzare il servizio.' },
+11874:      { heading: 'Età minima (18+)', body: 'SoulMatch è rigorosamente riservato a utenti maggiorenni. L\'iscrizione di minori è vietata e comporta il blocco immediato dell\'account.' },
+11877:      { heading: 'Limitazione di responsabilità', body: 'SoulMatch non è responsabile per le interazioni al di fuori della piattaforma. Gli incontri fisici avvengono sotto la responsabilità degli utenti.' },
+11894:      { heading: 'Ecosistema Community', body: 'Accettare il regolamento significa impegnarsi a rispettare l\'ecosistema SoulMatch. Se non sei d\'accordo con questi termini, ti preghiamo di non procedere con l\'iscrizione.' },
+11907:      { heading: 'Supporto generale', body: 'Per domande generali sull\'utilizzo dell\'app: support@soulmatch.it · Risposta entro 48 ore lavorative.' },
+11908:      { heading: 'Privacy e dati', body: 'Per richieste relative ai tuoi dati personali, cancellazione account o diritti GDPR: privacy@soulmatch.it' },
+11909:      { heading: 'Segnalazioni urgenti', body: 'Per segnalare comportamenti pericolosi o contenuti illegali con necessità di intervento urgente: safety@soulmatch.it' },
+11910:      { heading: 'Partnership e stampa', body: 'Per collaborazioni commerciali, partnership o richieste media: business@soulmatch.it' },
+11911:      { heading: 'Sede legale', body: 'SoulMatch S.r.l. · Via [da completare] · [CAP] [Città], Italia · P.IVA 00000000000' },
+11930:      { heading: 'Sicurezza Reale', body: 'In caso di pericolo o reati, contatta le autorità competenti (112). Per abusi sulla piattaforma scrivi a safety@soulmatch.it.' },
+11944:      { heading: 'Il servizio è gratuito?', body: 'La registrazione e le funzionalità base sono gratuite. Il piano Premium sblocca funzionalità avanzate come messaggi illimitati, SoulMatch AI e visualizzazione dei profili che ti hanno messo "cuore".' },
+11947:      { heading: 'Come funziona SoulMatch (la feature)?', body: 'Il tasto SoulMatch nella Bacheca calcola i tuoi 10 profili più compatibili e li mostra in ordine di affinità. È utilizzabile una volta ogni 24 ore per mantenere il valore speciale di ogni match.' },
+11948:      { heading: 'L\'app sarà disponibile su iOS e Android?', body: 'Sì, SoulMatch sarà disponibile su App Store e Google Play. Seguici per essere notificato al momento del lancio.' },
+11961:      { heading: 'Proprietà dei contenuti', body: 'Gli utenti mantengono la piena proprietà delle foto e dei contenuti caricati. Caricando contenuti su SoulMatch, concedi una licenza limitata per la visualizzazione all\'interno della piattaforma.' },
+11962:      { heading: 'Violazioni copyright', body: 'Se ritieni che un contenuto presente su SoulMatch violi i tuoi diritti d\'autore, puoi inviare una richiesta di rimozione DMCA a: dmca@soulmatch.it' },
+11987:          const saved = localStorage.getItem('soulmatch_user');
+11990:            localStorage.setItem('soulmatch_user', JSON.stringify({
+12043:      const saved = localStorage.getItem('soulmatch_user');
+12047:          const pendingPlan = localStorage.getItem('soulmatch_pending_plan') as 'monthly' | 'annual' || 'monthly';
+12073:            localStorage.setItem('soulmatch_user', JSON.stringify(updatedUser));
+12074:            localStorage.removeItem('soulmatch_pending_plan');
+12148:        SoulMatch Premium • Ordine #SM-{Math.floor(Math.random() * 100000)}
+12163:      const saved = localStorage.getItem('soulmatch_user');
+12216:          const saved = localStorage.getItem('soulmatch_user');
+12219:            localStorage.setItem('soulmatch_user', JSON.stringify({
+12323:      const saved = localStorage.getItem('soulmatch_user');
+12445:          Il tuo piano Premium sta per terminare. Rinnova ora per non perdere i vantaggi sbloccati e continuare la tua esperienza su SoulMatch senza interruzioni.
+12482:    const savedStatus = localStorage.getItem('soulmatch_security_notice');
+12489:    localStorage.removeItem('soulmatch_security_notice');
+12495:      const saved = localStorage.getItem('soulmatch_user');
+12519:              localStorage.removeItem('soulmatch_user');
+12532:                const warned = localStorage.getItem('soulmatch_warned_id');
+12535:                  localStorage.setItem('soulmatch_warned_id', data.last_warning_reason);
+12546:              localStorage.setItem('soulmatch_user', JSON.stringify(updatedUser));
+12560:      const saved = localStorage.getItem('soulmatch_user');
+12572:      const saved = localStorage.getItem('soulmatch_user');
+12590:      const saved = localStorage.getItem('soulmatch_user');
+12603:      const saved = localStorage.getItem('soulmatch_user');
+12698:        <Route path="/soul-match" element={<SoulMatchPage />} />

@@ -1,6 +1,7 @@
 {
-    "short_name": "SoulMatch",
-    "name": "SoulMatch - Trova la tua compagnia ideale",
+    "short_name": "Amarsi Un Po",
+    "name": "Amarsi Un Po - Incontri Seri in Italia",
+    "description": "Il portale di incontri premium per single italiani che cercano amore vero e relazioni serie.",
     "icons": [
         {
             "src": "/favicon.png",
@@ -19,8 +20,10 @@
             "purpose": "maskable"
         }
     ],
-    "start_url": ".",
+    "start_url": "/",
     "display": "standalone",
-    "theme_color": "#e11d48",
-    "background_color": "#ffffff"
+    "theme_color": "#be123c",
+    "background_color": "#ffffff",
+    "lang": "it",
+    "scope": "/"
 }
