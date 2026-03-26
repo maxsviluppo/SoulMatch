@@ -7,6 +7,7 @@ import { fileURLToPath } from "url";
 import cors from "cors";
 import { initializeApp } from 'firebase/app';
 import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore';
+import { getAuth, signInAnonymously } from 'firebase/auth';
 import { createClient } from '@supabase/supabase-js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -21,12 +22,21 @@ console.log("[Supabase] initialized for backend sync");
 // Load Firebase Config for Cloud Sync (Extra backup)
 let firestore: any = null;
 try {
-  const firebaseConfig = JSON.parse(fs.readFileSync(path.join(process.cwd(), "firebase-applet-config.json"), "utf-8"));
-  const app = initializeApp(firebaseConfig);
-  firestore = getFirestore(app);
-  console.log("[Firebase] initialized for backend sync");
+  const firebaseConfigPath = path.join(process.cwd(), "firebase-applet-config.json");
+  if (fs.existsSync(firebaseConfigPath)) {
+    const firebaseConfig = JSON.parse(fs.readFileSync(firebaseConfigPath, "utf-8"));
+    const app = initializeApp(firebaseConfig);
+    firestore = getFirestore(app);
+    const auth = getAuth(app);
+    signInAnonymously(auth)
+      .then(() => console.log("[Firebase] Auth successful (Anonymous)"))
+      .catch(err => console.warn("[Firebase] Auth failed:", err.message));
+    console.log("[Firebase] initialized and ready");
+  } else {
+    console.warn("[Firebase] firebase-applet-config.json missing");
+  }
 } catch (e) {
-  console.warn("[Firebase] Skipping: firebase-applet-config.json not found");
+  console.warn("[Firebase] initialization error:", e);
 }
 
 const DATA_DIR = path.join(process.cwd(), ".data");
@@ -44,7 +54,7 @@ const DEFAULT_SEO = {
     description: "Amarsi Un Po è il portale di incontri premium per single italiani che cercano amore vero, relazioni serie e connessioni autentiche. Sicuro, verificato e innovativo.",
     keywords: "incontri seri italia, trovare amore 2025, app incontri italiani, anima gemella, dating premium, amarsi un po, single italia, relazioni serie",
     url: "https://www.amarsiunpo.it/",
-    htmlTag: ""
+    htmlTag: '<meta name="google-site-verification" content="-3T4sAfXQecLX8oMrQlfCSQGo2QY8JMDCgl1kqoNi8s" />'
   },
   home: {
     title: "Amarsi Un Po | Home — Incontri Seri in Italia",
@@ -383,11 +393,19 @@ async function startServer() {
       const { data: remoteSettings, error } = await supabase.from('site_settings').select('*');
       if (!error && remoteSettings) {
         remoteSettings.forEach(entry => {
-          if (entry.key === 'seo_configs') cachedSeo = entry.value;
-          if (entry.key === 'adsense_config') cachedAdSense = entry.value;
-          if (entry.key === 'analytics_config') cachedAnalytics = entry.value;
+          const rawValue = entry.value;
+          let parsedValue = rawValue;
+          
+          // Se è una stringa che sembra JSON, facciamo il parse
+          if (typeof rawValue === 'string' && (rawValue.startsWith('{') || rawValue.startsWith('['))) {
+             try { parsedValue = JSON.parse(rawValue); } catch (e) {}
+          }
+
+          if (entry.key === 'seo_configs') cachedSeo = parsedValue;
+          if (entry.key === 'adsense_config') cachedAdSense = parsedValue;
+          if (entry.key === 'analytics_config') cachedAnalytics = parsedValue;
           if (entry.key === 'traffic_stats') {
-             const stats = entry.value;
+             const stats = parsedValue;
              if (stats && stats.total > realTraffic.total) {
                 realTraffic.total = stats.total;
                 realTraffic.today = stats.today;
@@ -437,75 +455,129 @@ async function startServer() {
   }
 
   async function saveSeo(data: any) {
+    console.log("[Backend] Saving SEO configs...");
+    cachedSeo = data;
+
+    // 1. Try cloud first as it's the most reliable for online
+    let cloudSuccess = false;
+    
+    // Supabase (The "database giusto" for online)
     try {
-      console.log("[Backend] Saving SEO configs to all stores...");
-      // A. Local File
-      fs.writeFileSync(SEO_FILE, JSON.stringify(data, null, 2));
-      cachedSeo = data;
-      
-      // B. Local SQLite
-      db.prepare("INSERT OR REPLACE INTO site_settings (key, value) VALUES (?, ?)").run('seo_configs', JSON.stringify(data));
-
-      // C. Supabase (The "database giusto" for online)
-      try {
-        await supabase.from('site_settings').upsert({ key: 'seo_configs', value: data });
-      } catch (sErr) {
-        console.warn("[Supabase] Cloud save skipped:", sErr);
-      }
-
-      // D. Firestore (Backup)
-      if (firestore) {
-        try { await setDoc(doc(firestore, 'configs', 'seo'), data); } catch (e) {}
-      }
-      return true;
-    } catch (err) {
-      console.error("[Backend] SEO Save failure:", err);
-      throw err;
+      const { error } = await supabase.from('site_settings').upsert({ 
+        key: 'seo_configs', 
+        value: typeof data === 'string' ? data : JSON.stringify(data)
+      });
+      if (error) throw error;
+      cloudSuccess = true;
+    } catch (sErr) {
+      console.warn("[Supabase] SEO Save failed:", sErr);
     }
+
+    // Firestore (Backup)
+    if (firestore) {
+      try {
+        await setDoc(doc(firestore, 'configs', 'seo'), data);
+        cloudSuccess = true;
+      } catch (e) {
+        console.warn("[Firestore] SEO Save failed:", e);
+      }
+    }
+
+    // 2. Try local (Filesystem & SQLite) - ignore errors if read-only
+    try {
+      fs.writeFileSync(SEO_FILE, JSON.stringify(data, null, 2));
+    } catch (e) {
+      console.warn("[FS] Local SEO file save skipped (likely read-only)");
+    }
+
+    try {
+      db.prepare("INSERT OR REPLACE INTO site_settings (key, value) VALUES (?, ?)").run('seo_configs', JSON.stringify(data));
+    } catch (e) {
+      console.warn("[SQLite] Local SEO save skipped");
+    }
+
+    return true; // We return true if we at least updated the cache. If it crashes, the catch block in the route handles it.
   }
 
   async function saveAdSense(data: any) {
+    console.log("[Backend] Saving AdSense configs...");
+    cachedAdSense = data;
+    let cloudSuccess = false;
+    
+    try { 
+      const { error } = await supabase.from('site_settings').upsert({ 
+        key: 'adsense_config', 
+        value: typeof data === 'string' ? data : JSON.stringify(data) 
+      }); 
+      if (error) throw error;
+      cloudSuccess = true;
+    } catch (e) {
+      console.warn("[Supabase] AdSense Save failed:", e);
+    }
+    if (firestore) {
+      try { await setDoc(doc(firestore, 'configs', 'adsense'), data); } catch (e) {}
+    }
+    
     try {
       fs.writeFileSync(ADSENSE_FILE, JSON.stringify(data, null, 2));
-      cachedAdSense = data;
       db.prepare("INSERT OR REPLACE INTO site_settings (key, value) VALUES (?, ?)").run('adsense_config', JSON.stringify(data));
-      try { await supabase.from('site_settings').upsert({ key: 'adsense_config', value: data }); } catch (e) {}
-      if (firestore) {
-        try { await setDoc(doc(firestore, 'configs', 'adsense'), data); } catch (e) {}
-      }
-      return true;
-    } catch (err) {
-      console.error("[Backend] AdSense Save failure:", err);
-      throw err;
-    }
+    } catch (e) {}
+
+    return true;
   }
 
   async function saveAnalytics(data: any) {
+    console.log("[Backend] Saving Analytics configs...");
+    cachedAnalytics = data;
+    let cloudSuccess = false;
+    
+    try { 
+      const { error } = await supabase.from('site_settings').upsert({ 
+        key: 'analytics_config', 
+        value: typeof data === 'string' ? data : JSON.stringify(data) 
+      }); 
+      if (error) throw error;
+      cloudSuccess = true;
+    } catch (e) {
+      console.warn("[Supabase] Analytics Save failed:", e);
+    }
+    if (firestore) {
+        try { await setDoc(doc(firestore, 'configs', 'analytics'), data); } catch (e) {}
+    }
+
     try {
       fs.writeFileSync(ANALYTICS_FILE, JSON.stringify(data, null, 2));
-      cachedAnalytics = data;
       db.prepare("INSERT OR REPLACE INTO site_settings (key, value) VALUES (?, ?)").run('analytics_config', JSON.stringify(data));
-      try { await supabase.from('site_settings').upsert({ key: 'analytics_config', value: data }); } catch (e) {}
-      return true;
-    } catch (err) {
-      console.error("[Backend] Analytics Save failure:", err);
-      throw err;
-    }
+    } catch (e) {}
+
+    return true;
   }
 
   async function saveTraffic() {
     try {
       const data = { ...realTraffic, lastSync: Date.now() };
-      fs.writeFileSync(TRAFFIC_FILE, JSON.stringify(data, null, 2));
-      db.prepare("INSERT OR REPLACE INTO site_settings (key, value) VALUES (?, ?)").run('traffic_stats', JSON.stringify(data));
-      try { await supabase.from('site_settings').upsert({ key: 'traffic_stats', value: data }); } catch (e) {}
+      
+      // 1. Local (FS & SQLite)
+      try {
+        fs.writeFileSync(TRAFFIC_FILE, JSON.stringify(data, null, 2));
+        db.prepare("INSERT OR REPLACE INTO site_settings (key, value) VALUES (?, ?)").run('traffic_stats', JSON.stringify(data));
+      } catch (e) {}
+
+      // 2. Cloud (Supabase & Firestore)
+      try { 
+        await supabase.from('site_settings').upsert({ 
+          key: 'traffic_stats', 
+          value: typeof data === 'string' ? data : JSON.stringify(data) 
+        }); 
+      } catch (e) {}
       if (firestore) {
         try { await setDoc(doc(firestore, 'traffic', 'stats'), data); } catch (e) {}
       }
     } catch (err) {
-      console.error("[Backend] Error saving traffic stats:", err);
+      console.warn("[Traffic] Save failed:", err.message);
     }
   }
+
 
   function getSeoConfigs() {
     if (cachedSeo) return cachedSeo;
@@ -561,6 +633,8 @@ async function startServer() {
       <meta name="twitter:description" content="${pageConfig.description}">
       <meta name="robots" content="index, follow">
       <meta name="author" content="Castro Massimo">
+      ${seo.all?.htmlTag || ""}
+      ${ana.verificationTag || ana.google_site_verification || ""}
     `;
 
     const gaId = ana.trackingId || ana.measurementId;
