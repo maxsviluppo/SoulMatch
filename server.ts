@@ -36,7 +36,8 @@ const DEFAULT_SEO = {
     title: "Amarsi Un Po | Incontri Seri in Italia",
     description: "Amarsi Un Po è il portale di incontri premium per single italiani che cercano amore vero, relazioni serie e connessioni autentiche. Sicuro, verificato e innovativo.",
     keywords: "incontri seri italia, trovare amore 2025, app incontri italiani, anima gemella, dating premium, amarsi un po, single italia, relazioni serie",
-    url: "https://www.amarsiunpo.it/"
+    url: "https://www.amarsiunpo.it/",
+    htmlTag: ""
   },
   home: {
     title: "Amarsi Un Po | Home — Incontri Seri in Italia",
@@ -414,7 +415,12 @@ async function startServer() {
 
   function getAnalytics() {
     if (cachedAnalytics) return cachedAnalytics;
-    try { return JSON.parse(fs.readFileSync(ANALYTICS_FILE, "utf-8")); } catch { return { trackingId: "", enabled: true }; }
+    try { 
+      const data = JSON.parse(fs.readFileSync(ANALYTICS_FILE, "utf-8"));
+      return { ...{ trackingId: "", enabled: true, verificationTag: "" }, ...data };
+    } catch { 
+      return { trackingId: "", enabled: true, verificationTag: "" }; 
+    }
   }
 
   // --- METADATA INJECTION ---
@@ -432,7 +438,8 @@ async function startServer() {
     if (urlPath.includes("/chat")) pageConfig = seo.chat || seo.all || DEFAULT_SEO.all;
     if (urlPath.includes("/profilo") || urlPath.includes("/profile")) pageConfig = seo.profilo || seo.all || DEFAULT_SEO.all;
     if (urlPath.includes("/abbonamento") || urlPath.includes("/subscription")) pageConfig = seo.abbonamento || seo.all || DEFAULT_SEO.all;
-
+    
+    console.log(`[SEO] Injecting metadata for path: ${urlPath}`);
     const siteName = "Amarsi Un Po";
     let headInjections = `
       <title>${pageConfig.title}</title>
@@ -465,8 +472,18 @@ async function startServer() {
       `;
     }
 
-    if (ana.verificationTag) headInjections += ana.verificationTag;
-    if (ads.metaTag) headInjections += ads.metaTag;
+    if (ana.verificationTag) {
+      console.log(`[SEO] Injecting Search Console tag: ${ana.verificationTag.substring(0, 50)}...`);
+      headInjections += ana.verificationTag;
+    }
+    if (ads.metaTag) {
+      console.log(`[SEO] Injecting AdSense meta tag: ${ads.metaTag.substring(0, 50)}...`);
+      headInjections += ads.metaTag;
+    }
+    if (seo.all?.htmlTag) {
+      console.log(`[SEO] Injecting custom HTML tag: ${seo.all.htmlTag.substring(0, 50)}...`);
+      headInjections += seo.all.htmlTag;
+    }
 
     if (ads.enabled && ads.client) {
       headInjections += `
@@ -921,9 +938,26 @@ async function startServer() {
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true, hmr: { port: 24700 } },
-      appType: "spa",
+      appType: "custom",
     });
     app.use(vite.middlewares);
+    
+    app.get("*", async (req, res, next) => {
+      // Don't track static files or API
+      if (req.path.startsWith('/api') || req.path.includes('.')) {
+        return next();
+      }
+      try {
+        const url = req.originalUrl;
+        let template = fs.readFileSync(path.resolve(__dirname, "index.html"), "utf-8");
+        template = await vite.transformIndexHtml(url, template);
+        template = await injectMetadata(template, req.path);
+        res.status(200).set({ "Content-Type": "text/html" }).end(template);
+      } catch (e: any) {
+        vite.ssrFixStacktrace(e);
+        next(e);
+      }
+    });
   } else {
     app.use(express.static(path.join(__dirname, "dist")));
     app.get("*", async (req, res) => {

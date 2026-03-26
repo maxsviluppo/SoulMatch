@@ -5598,7 +5598,8 @@ const AdminPage = () => {
       title: 'Amarsi Un Po | Incontri Seri in Italia',
       description: 'Amarsi Un Po è il portale di incontri premium per single italiani che cercano amore vero, relazioni serie e connessioni autentiche.',
       keywords: 'incontri seri italia, trovare amore 2025, app incontri italiani, anima gemella, dating premium, amarsi un po, single italia',
-      url: 'https://www.amarsiunpo.it/'
+      url: 'https://www.amarsiunpo.it/',
+      htmlTag: ''
     }
   });
   const [adsenseConfig, setAdsenseConfig] = useState<any>({
@@ -5634,6 +5635,8 @@ const AdminPage = () => {
     }
   });
   const [isSaving, setIsSaving] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+
 
   const API_BASE = '';
 
@@ -5658,7 +5661,7 @@ const AdminPage = () => {
       if (seoRes.ok) {
         const val = await seoRes.json();
         if (val && !val.all) setSeoConfig({ all: val });
-        else setSeoConfig(val || { all: { title: '', description: '', keywords: '', url: '' } });
+        else setSeoConfig(val || { all: { title: '', description: '', keywords: '', url: '', htmlTag: '' } });
       }
       if (adsenseRes.ok) {
         const val = await adsenseRes.json();
@@ -5667,7 +5670,13 @@ const AdminPage = () => {
       if (analyticsRes.ok) {
         const val = await analyticsRes.json();
         // Support both field name variants
-        setAnalyticsConfig(val || { enabled: false, measurementId: '', trackingId: '', verificationTag: '' });
+        setAnalyticsConfig({ 
+          enabled: false, 
+          measurementId: '', 
+          trackingId: '', 
+          verificationTag: '', 
+          ...(val || {}) 
+        });
       }
       if (trafficRes.ok) {
         const val = await trafficRes.json();
@@ -5693,7 +5702,8 @@ const AdminPage = () => {
       });
       if (res.ok) {
         setSeoConfig(data);
-        setToast({ message: 'Configurazione SEO salvata!', type: 'success' });
+        setShowSuccessModal(true);
+        setTimeout(() => setShowSuccessModal(false), 3000);
       } else throw new Error('Server error');
     } catch (e) { setToast({ message: 'Errore salvataggio SEO', type: 'error' }); }
     setIsSaving(false);
@@ -5709,7 +5719,8 @@ const AdminPage = () => {
       });
       if (res.ok) {
         setAdsenseConfig(data);
-        setToast({ message: 'Google AdSense aggiornato!', type: 'success' });
+        setShowSuccessModal(true);
+        setTimeout(() => setShowSuccessModal(false), 3000);
       } else throw new Error('Server error');
     } catch (e) { setToast({ message: 'Errore salvataggio AdSense', type: 'error' }); }
     setIsSaving(false);
@@ -5727,7 +5738,8 @@ const AdminPage = () => {
       });
       if (res.ok) {
         setAnalyticsConfig(data);
-        setToast({ message: 'Google Analytics aggiornato!', type: 'success' });
+        setShowSuccessModal(true);
+        setTimeout(() => setShowSuccessModal(false), 3000);
       } else throw new Error('Server error');
     } catch (e) { setToast({ message: 'Errore salvataggio Analytics', type: 'error' }); }
     setIsSaving(false);
@@ -5777,22 +5789,17 @@ const AdminPage = () => {
       const res = await fetch(`${API_BASE}/api/admin/traffic`);
       if (res.ok) {
         const data = await res.json();
-        setTrafficStats({
-          total: 0,
-          today: 0,
-          active_live: 0,
-          avg_time: '0s',
-          bounce_rate: '0%',
-          trend: '0%',
-          history: [],
-          adsense: {
-            totalEarnings: 0,
-            totalClicks: 0,
-            totalImpressions: 0,
-            avgCtr: 0,
-            history: []
-          }
-        });
+        setTrafficStats(prev => ({
+          ...prev,
+          total: data.total ?? prev.total,
+          today: data.today ?? prev.today,
+          active_live: data.active_live ?? prev.active_live,
+          avg_time: data.avg_time ?? prev.avg_time,
+          bounce_rate: data.bounce_rate ?? prev.bounce_rate,
+          trend: data.trend ?? prev.trend,
+          history: data.history || prev.history,
+          adsense: data.adsense || prev.adsense
+        }));
       }
     } catch (e) { console.error('Traffic fetch error:', e); }
   };
@@ -7511,6 +7518,16 @@ const AdminPage = () => {
                         />
                       </div>
 
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-stone-500 uppercase tracking-widest ml-1">Tag HTML Personalizzato (Meta Tag, Verifiche...)</label>
+                        <textarea 
+                          value={seoConfig?.all?.htmlTag || ""} 
+                          onChange={(e) => setSeoConfig({...seoConfig, all: {...seoConfig.all, htmlTag: e.target.value}})}
+                          className="w-full bg-stone-50 border border-stone-200 p-4 rounded-2xl text-stone-900 font-bold outline-none focus:ring-2 focus:ring-rose-500 transition-all h-24 font-mono text-[10px] resize-none"
+                          placeholder='<meta name="example" content="value" />'
+                        />
+                      </div>
+
                       <button 
                         onClick={() => saveSeo(seoConfig)}
                         disabled={isSaving}
@@ -7816,6 +7833,35 @@ const AdminPage = () => {
             </motion.div>
           )}
         </div>
+        
+        {/* Apple Style Success Modal */}
+        <AnimatePresence>
+          {showSuccessModal && (
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[200] w-[min(90vw,400px)] px-4"
+            >
+              <div className="bg-white/95 backdrop-blur-2xl border border-stone-200 p-6 rounded-[32px] shadow-2xl flex flex-col items-center text-center gap-4">
+                <div className="w-16 h-16 bg-stone-900 rounded-full flex items-center justify-center shadow-lg shadow-stone-200">
+                  <Check className="w-8 h-8 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-stone-900 font-black text-xl uppercase tracking-tight">Impostazioni Salvate</h3>
+                  <p className="text-stone-500 font-bold text-sm">Le modifiche sono state applicate con successo e sincronizzate!</p>
+                </div>
+                <button 
+                  onClick={() => setShowSuccessModal(false)}
+                  className="w-full bg-orange-500 hover:bg-orange-600 text-white py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest active:scale-95 transition-all shadow-lg shadow-orange-100"
+                >
+                  Ho capito
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
 
         {/* Preview document modal */}
         <AnimatePresence>
