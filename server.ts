@@ -874,11 +874,25 @@ async function startServer() {
   });
 
   app.post("/api/admin/seo", async (req, res) => {
-    const data = req.body;
-    fs.writeFileSync(SEO_FILE, JSON.stringify(data, null, 2));
-    cachedSeo = data;
-    if (firestore) await setDoc(doc(firestore, 'configs', 'seo'), data);
-    res.json({ success: true });
+    try {
+      const data = req.body;
+      console.log("[ADMIN] Saving SEO configs...");
+      fs.writeFileSync(SEO_FILE, JSON.stringify(data, null, 2));
+      cachedSeo = data;
+      
+      if (firestore) {
+        try {
+          await setDoc(doc(firestore, 'configs', 'seo'), data);
+          console.log("[Firebase] SEO synced");
+        } catch (fErr) {
+          console.warn("[Firebase] SEO sync skipped (permissions?):", fErr instanceof Error ? fErr.message : fErr);
+        }
+      }
+      res.json({ success: true });
+    } catch (err: any) {
+      console.error("[ADMIN] SEO Save Error:", err);
+      res.status(500).json({ success: false, error: err.message });
+    }
   });
 
   app.get("/api/admin/adsense", async (req, res) => {
@@ -887,11 +901,25 @@ async function startServer() {
   });
 
   app.post("/api/admin/adsense", async (req, res) => {
-    const data = req.body;
-    fs.writeFileSync(ADSENSE_FILE, JSON.stringify(data, null, 2));
-    cachedAdSense = data;
-    if (firestore) await setDoc(doc(firestore, 'configs', 'adsense'), data);
-    res.json({ success: true });
+    try {
+      const data = req.body;
+      console.log("[ADMIN] Updating AdSense configs...");
+      fs.writeFileSync(ADSENSE_FILE, JSON.stringify(data, null, 2));
+      cachedAdSense = data;
+      
+      if (firestore) {
+        try {
+          await setDoc(doc(firestore, 'configs', 'adsense'), data);
+          console.log("[Firebase] AdSense synced");
+        } catch (fErr) {
+          console.warn("[Firebase] AdSense sync skipped:", fErr instanceof Error ? fErr.message : fErr);
+        }
+      }
+      res.json({ success: true });
+    } catch (err: any) {
+      console.error("[ADMIN] AdSense Save Error:", err);
+      res.status(500).json({ success: false, error: err.message });
+    }
   });
 
   app.get("/api/admin/analytics", async (req, res) => {
@@ -900,11 +928,25 @@ async function startServer() {
   });
 
   app.post("/api/admin/analytics", async (req, res) => {
-    const data = req.body;
-    fs.writeFileSync(ANALYTICS_FILE, JSON.stringify(data, null, 2));
-    cachedAnalytics = data;
-    if (firestore) await setDoc(doc(firestore, 'configs', 'analytics'), data);
-    res.json({ success: true });
+    try {
+      const data = req.body;
+      console.log("[ADMIN] Refreshing Analytics configs...");
+      fs.writeFileSync(ANALYTICS_FILE, JSON.stringify(data, null, 2));
+      cachedAnalytics = data;
+      
+      if (firestore) {
+        try {
+          await setDoc(doc(firestore, 'configs', 'analytics'), data);
+          console.log("[Firebase] Analytics synced");
+        } catch (fErr) {
+          console.warn("[Firebase] Analytics sync skipped:", fErr instanceof Error ? fErr.message : fErr);
+        }
+      }
+      res.json({ success: true });
+    } catch (err: any) {
+      console.error("[ADMIN] Analytics Save Error:", err);
+      res.status(500).json({ success: false, error: err.message });
+    }
   });
 
   app.get("/api/admin/traffic", async (req, res) => {
