@@ -121,7 +121,9 @@ const normalizeUser = (u: any): any => {
     looking_for_gender: parseArrField(u?.looking_for_gender),
     photos: parseArrField(u?.photos).filter(p => typeof p === 'string' && p.trim().length > 0),
     last_seen: u?.last_seen,
-    conosciamoci_meglio: conosciamoci
+    conosciamoci_meglio: conosciamoci,
+    accepted_terms: u?.accepted_terms === 1 || u?.accepted_terms === true,
+    accepted_privacy: u?.accepted_privacy === 1 || u?.accepted_privacy === true
   };
 };
 
@@ -1124,7 +1126,8 @@ const Navbar = () => {
             </Link>
 
             <button
-              onClick={() => {
+              onClick={async () => {
+                await supabase.auth.signOut();
                 localStorage.removeItem('amarsiunpo_user');
                 window.dispatchEvent(new Event('user-auth-change'));
                 window.location.href = '/';
@@ -1326,17 +1329,18 @@ const HomeSlider = () => {
 
   useEffect(() => {
     supabase.from('site_settings').select('value').eq('key', 'home_slider').single()
-      .then(({ data, error }) => {
+    const fetchHeroImages = async () => {
+      try {
+        const { data, error } = await supabase.from('site_config').select('value').eq('key', 'hero_vibe_images').maybeSingle();
         if (!error && data?.value) {
-          try {
-            const parsed = JSON.parse(data.value);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              setImages([...parsed].sort(() => Math.random() - 0.5));
-            }
-          } catch (e) {}
+          const parsed = JSON.parse(data.value);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setImages([...parsed].sort(() => Math.random() - 0.5));
+          }
         }
-      })
-      .catch(() => { });
+      } catch (e) {}
+    };
+    fetchHeroImages();
   }, []);
 
   const fallbackImages = [
@@ -3331,7 +3335,7 @@ const BachecaPage = () => {
   const heroProfile = heroProfiles[heroIndex] || null;
 
   return (
-    <div className="min-h-screen pt-16 pb-28 relative overflow-x-hidden" style={{ background: '#0a0a0f' }}>
+    <div className="min-h-screen pt-20 pb-28 relative overflow-x-hidden" style={{ background: '#0a0a0f' }}>
 
       {/* ── FLOATING HEARTS BACKGROUND ── */}
       <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
@@ -8141,10 +8145,18 @@ const RegisterPage = ({ setSecurityStatus }: { setSecurityStatus: any }) => {
     // Priority 2: Step based on profile existence
     const savedUser = localStorage.getItem('amarsiunpo_user');
     const isEditing = savedUser ? true : false;
-    return isEditing ? 3 : 1;
+    if (savedUser) {
+      try {
+        const u = JSON.parse(savedUser);
+        if (!u.accepted_terms || !u.accepted_privacy) return 2;
+        return 3;
+      } catch (e) { return 3; }
+    }
+    return 1;
   });
   const [isLogin, setIsLogin] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
   const [formData, setFormData] = useState<UserProfile>({
     email: '',
@@ -8218,6 +8230,10 @@ const RegisterPage = ({ setSecurityStatus }: { setSecurityStatus: any }) => {
     localStorage.setItem('amarsiunpo_reg_draft', JSON.stringify(formData));
   }, [formData]);
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  }, [step]);
+
   const handleNextToStep1 = async () => {
     if (isLogin) {
       handleLogin();
@@ -8228,38 +8244,35 @@ const RegisterPage = ({ setSecurityStatus }: { setSecurityStatus: any }) => {
       return;
     }
 
-    // Se stiamo creando un nuovo account, verifichiamo se l'email esiste già
+    const email = (formData.email || '').trim();
+    const password = formData.password;
+
     try {
-      const email = formData.email.trim();
-      const password = formData.password;
+      // 1. Check if user profile already exists in our table
+      const { data: profileExists } = await supabase.from('users').select('id, is_blocked, is_suspended').eq('email', email).maybeSingle();
+      
+      if (profileExists) {
+        setToast({ message: "Questa email è già registrata. Prova ad accedere.", type: 'info' });
+        setIsLogin(true);
+        return;
+      }
 
-      // Se l'utente esiste e la password è corretta...
+      // 2. Check if account exists in Auth but not in our table (incomplete registration)
       const { data: authCheck, error: authCheckErr } = await supabase.auth.signInWithPassword({ email, password });
-
+      
       if (!authCheckErr && authCheck.user) {
-        const { data: profile } = await supabase.from('users').select('*').eq('id', authCheck.user.id).single();
-        if (profile) {
-          setToast({ message: "Bentornato! Sei già registrato.", type: 'success' });
-          localStorage.setItem('amarsiunpo_user', JSON.stringify(profile));
-          window.dispatchEvent(new Event('user-auth-change'));
-          setTimeout(() => navigate('/bacheca'), 1500);
-          return;
-        } else {
-          setToast({ message: "Account esistente trovato. Completa il tuo profilo.", type: 'info' });
-          setStep(3); // Salta i termini se ha già un auth record? No, meglio mandarlo ai termini se non ha profilo.
-          return;
-        }
+        // User exists in auth and password is correct, but no profile was found in step 1
+        setToast({ message: "Bentornato! Abbiamo trovato le tue credenziali. Completa ora il tuo profilo.", type: 'info' });
+        setFormData(p => ({ ...p, id: authCheck.user.id }));
+        setStep(3);
+        return;
       }
-
-      if (authCheckErr && authCheckErr.message === 'Invalid login credentials') {
-        const { data: emailExists } = await supabase.from('users').select('id').eq('email', email).maybeSingle();
-        if (emailExists) {
-          setToast({ message: "Questa email è già registrata. Prova ad accedere.", type: 'error' });
-          setIsLogin(true);
-          return;
-        }
-      }
-    } catch (e) { console.error(e); }
+      
+      // If we are here, either the password is wrong OR the user is new.
+      // We'll assume for now that if they aren't in 'users' table, we let them proceed to Step 2.
+    } catch (e) { 
+      console.error("handleNextToStep1 error:", e);
+    }
 
     setStep(2);
   };
@@ -8267,10 +8280,6 @@ const RegisterPage = ({ setSecurityStatus }: { setSecurityStatus: any }) => {
 
 
   const handleLogin = async () => {
-    if (!formData.accepted_terms || !formData.accepted_privacy) {
-      setToast({ message: "Devi accettare i termini e la privacy per procedere.", type: 'info' });
-      return;
-    }
     console.log("Starting login for:", formData.email);
     if (!formData.email || !formData.password) {
       setToast({ message: "Inserisci email e password per accedere.", type: 'info' });
@@ -8327,9 +8336,14 @@ const RegisterPage = ({ setSecurityStatus }: { setSecurityStatus: any }) => {
         navigate('/bacheca');
       } else {
         console.log("No profile record found in 'users' table. Redirecting to complete registration.");
-        setToast({ message: "Bentornato! Il tuo account esiste ma il profilo non è completo. Per favora completa i dati mancanti.", type: 'info' });
+        setToast({ message: "Bentornato! Il tuo account esiste ma il profilo non è completo. Per favore completa i dati mancanti.", type: 'info' });
         setIsLogin(false);
-        setStep(3); // Go to the new Step 3 (Profile Data)
+        // Se non ha ancora accettato i termini, mandalo allo step 2, altrimenti allo step 3
+        if (!profile?.accepted_terms || !profile?.accepted_privacy) {
+          setStep(2);
+        } else {
+          setStep(3);
+        }
       }
     } catch (e) {
       console.error("Exception during login process:", e);
@@ -8347,11 +8361,26 @@ const RegisterPage = ({ setSecurityStatus }: { setSecurityStatus: any }) => {
     if (error) setToast({ message: "Errore login " + provider + ": " + error.message, type: 'error' });
   };
 
-  const handleNextToStep2Legal = () => {
+  const handleNextToStep2Legal = async () => {
     if (!formData.accepted_terms || !formData.accepted_privacy) {
       setToast({ message: "Devi accettare i termini e la privacy per procedere.", type: 'info' });
       return;
     }
+    
+    // Se l'utente è già loggato (ha un id), salviamo subito l'accettazione nel DB per "memorizzarla"
+    if (formData.id) {
+      try {
+        await supabase.from('users').upsert({
+          id: formData.id,
+          accepted_terms: true,
+          accepted_privacy: true
+        });
+        console.log("Terms accepted and persisted for user:", formData.id);
+      } catch (err) {
+        console.error("Error persisting terms:", err);
+      }
+    }
+    
     setStep(3);
   };
 
@@ -8449,6 +8478,8 @@ const RegisterPage = ({ setSecurityStatus }: { setSecurityStatus: any }) => {
   };
 
   const handleSubmit = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     try {
       console.log("Submitting formData:", formData);
 
@@ -8478,11 +8509,13 @@ const RegisterPage = ({ setSecurityStatus }: { setSecurityStatus: any }) => {
             ? "Questo utente è già registrato. Vai alla pagina di accesso."
             : "Errore durante la creazione account: " + authError.message;
           setToast({ message: msg, type: 'error' });
+          setIsSubmitting(false);
           return;
         }
 
         if (!authData.user) {
           setToast({ message: "Errore imprevisto durante la registrazione.", type: 'error' });
+          setIsSubmitting(false);
           return;
         }
 
@@ -8575,7 +8608,7 @@ const RegisterPage = ({ setSecurityStatus }: { setSecurityStatus: any }) => {
             ><ArrowLeft className="w-5 h-5" /></button>
             <div>
               <h1 className="text-xl font-montserrat font-black text-white uppercase tracking-tight">{isEditing ? 'Modifica Profilo' : 'Iscriviti'}</h1>
-              <p className="text-white/30 text-[10px] font-bold uppercase tracking-wider">Step {step} di 6</p>
+              <p className="text-white/30 text-[10px] font-bold uppercase tracking-wider">Step {step === 7 ? 6 : step} di 6</p>
             </div>
           </div>
           <div className="flex gap-1.5">
@@ -11054,6 +11087,7 @@ const ProfilePage = () => {
       }
       else {
         console.warn("No profile found for ID:", userId);
+        setLoading(false);
       }
 
       const { data: requestsData, error: requestsErr } = await supabase
@@ -11139,6 +11173,8 @@ const ProfilePage = () => {
       setLoading(false);
     } catch (e) {
       console.error("fetchData exception:", e);
+      setLoading(false);
+    } finally {
       setLoading(false);
     }
   };
@@ -11353,7 +11389,8 @@ const ProfilePage = () => {
       <div className="flex flex-col gap-3 w-full max-w-xs">
         <button onClick={() => window.location.reload()} className="w-full py-4 bg-rose-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-lg shadow-rose-900/40 hover:bg-rose-500 transition-all">Riprova il caricamento</button>
         <button onClick={() => navigate('/bacheca')} className="w-full py-4 bg-white/5 border border-white/10 text-white/50 rounded-2xl text-[11px] font-black uppercase tracking-widest hover:text-white transition-all">Torna alla Bacheca</button>
-        <button onClick={() => {
+        <button onClick={async () => {
+          await supabase.auth.signOut();
           localStorage.removeItem('amarsiunpo_user');
           window.dispatchEvent(new Event('user-auth-change'));
           navigate('/register');
@@ -12841,13 +12878,19 @@ const ScrollToTop = () => {
   useLayoutEffect(() => {
     // Forza lo scroll all'inizio della pagina su ogni cambio di percorso
     // Usiamo multiple tecniche per assicurarci che accada su tutti i browser e strutture
-    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
-    document.documentElement.scrollTo({ top: 0, left: 0, behavior: 'auto' });
-    document.body.scrollTo({ top: 0, left: 0, behavior: 'auto' });
-    
-    // Fallback disperato per layout complessi
-    const mainContainer = document.querySelector('main, .overflow-y-auto');
-    if (mainContainer) mainContainer.scrollTo({ top: 0, behavior: 'auto' });
+    const scrollTask = () => {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      document.documentElement.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      document.body.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+      
+      const mainContainer = document.querySelector('main, .overflow-y-auto');
+      if (mainContainer) mainContainer.scrollTo({ top: 0, behavior: 'auto' });
+    };
+
+    scrollTask();
+    // Piccolo delay per gestire caricamenti asincroni che potrebbero resettare lo scroll
+    const t = setTimeout(scrollTask, 50);
+    return () => clearTimeout(t);
   }, [pathname]);
 
   return null;
@@ -12914,7 +12957,7 @@ export default function App() {
       if (session?.user) {
         // Fetch public profile
         const { data, error } = await supabase.from('users')
-          .select('id, email, is_online, last_seen, is_blocked, is_suspended, doc_rejected, doc_rejected_at, last_warning_reason, suspension_reason, has_post_removal_notice, is_paid, subscription_type, subscription_expiry')
+          .select('id, email, is_online, last_seen, is_blocked, is_suspended, doc_rejected, doc_rejected_at, last_warning_reason, suspension_reason, has_post_removal_notice, is_paid, subscription_type, subscription_expiry, accepted_terms, accepted_privacy')
           .eq('id', session.user.id)
           .maybeSingle();
 
@@ -12976,7 +13019,7 @@ export default function App() {
           }
 
           const { data, error } = await supabase.from('users')
-            .select('id, email, is_online, last_seen, is_blocked, is_suspended, doc_rejected, doc_rejected_at, last_warning_reason, suspension_reason, has_post_removal_notice, is_paid, subscription_type, subscription_expiry')
+            .select('id, email, is_online, last_seen, is_blocked, is_suspended, doc_rejected, doc_rejected_at, last_warning_reason, suspension_reason, has_post_removal_notice, is_paid, subscription_type, subscription_expiry, accepted_terms, accepted_privacy')
             .eq('id', u.id)
             .maybeSingle();
 
