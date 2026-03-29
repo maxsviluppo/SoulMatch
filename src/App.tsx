@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useLayoutEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, LineChart, Line, Cell } from 'recharts';
@@ -5623,6 +5623,8 @@ const AdminPage = () => {
     total: 0, 
     today: 0, 
     active_live: 0, 
+    active_users: 0,
+    new_users: 0,
     avg_time: '0:00mi',
     bounce_rate: '0%',
     trend: '+0%',
@@ -5878,7 +5880,21 @@ const AdminPage = () => {
         }));
       }
 
-      // 2. Local Backend Fallback
+      // 2. Supabase Fallback for Active and New Users
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const yesterdayStart = new Date(todayStart);
+      yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+
+      const [activeRes, newRes] = await Promise.all([
+        supabase.from('users').select('id', { count: 'exact', head: true }).gt('last_seen', yesterdayStart.toISOString()),
+        supabase.from('users').select('id', { count: 'exact', head: true }).gt('created_at', todayStart.toISOString())
+      ]);
+
+      const supActive = activeRes.count ?? 0;
+      const supNew = newRes.count ?? 0;
+
+      // 3. Local Backend Fallback
       const res = await fetch(`${API_BASE}/api/admin/traffic`);
       if (res.ok) {
         const data = await res.json();
@@ -5887,14 +5903,25 @@ const AdminPage = () => {
           total: data.total ?? prev.total,
           today: data.today ?? prev.today,
           active_live: data.active_live ?? prev.active_live,
+          active_users: data.active_users ?? (supActive || prev.active_users),
+          new_users: data.new_users ?? (supNew || prev.new_users),
           avg_time: data.avg_time ?? prev.avg_time,
           bounce_rate: data.bounce_rate ?? prev.bounce_rate,
           trend: data.trend ?? prev.trend,
           history: data.history || prev.history,
           adsense: data.adsense || prev.adsense
         }));
+      } else {
+        // Just update Supabase metrics if backend fails
+        setTrafficStats(prev => ({
+          ...prev,
+          active_users: supActive || prev.active_users,
+          new_users: supNew || prev.new_users
+        }));
       }
-    } catch (e) { console.error('Traffic fetch error:', e); }
+    } catch (e) {
+      console.error('Traffic fetch error:', e);
+    }
   };
   useEffect(() => {
     if (!isAuthenticated || activeTab !== 'traffico') return;
@@ -7650,11 +7677,21 @@ const AdminPage = () => {
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
                     <div className="bg-white p-6 rounded-3xl border border-stone-100 shadow-sm">
                       <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-1">Utenti Live</p>
                       <p className="text-3xl font-black text-stone-900">{trafficStats.active_live}</p>
                       <p className="text-[9px] text-stone-400 font-bold mt-1">Visitatori in tempo reale</p>
+                    </div>
+                    <div className="bg-white p-6 rounded-3xl border border-stone-100 shadow-sm">
+                      <p className="text-[10px] font-black text-purple-500 uppercase tracking-widest mb-1">Utenti Attivi</p>
+                      <p className="text-3xl font-black text-stone-900">{trafficStats.active_users}</p>
+                      <p className="text-[9px] text-stone-400 font-bold mt-1">Nelle ultime 24 ore</p>
+                    </div>
+                    <div className="bg-white p-6 rounded-3xl border border-stone-100 shadow-sm">
+                      <p className="text-[10px] font-black text-rose-600 uppercase tracking-widest mb-1">Nuovi Utenti</p>
+                      <p className="text-3xl font-black text-stone-900">{trafficStats.new_users}</p>
+                      <p className="text-[9px] text-stone-400 font-bold mt-1">Registrati oggi</p>
                     </div>
                     <div className="bg-white p-6 rounded-3xl border border-stone-100 shadow-sm">
                       <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-1">Tempo Medio</p>
@@ -8470,7 +8507,7 @@ const RegisterPage = ({ setSecurityStatus }: { setSecurityStatus: any }) => {
 
 
   return (
-    <div className="min-h-screen pt-16 pb-12 px-4 flex justify-center" style={{ background: '#0a0a0f' }}>
+    <div className="min-h-screen pt-[130px] pb-12 px-4 flex justify-center" style={{ background: '#0a0a0f' }}>
       <AnimatePresence>
         {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       </AnimatePresence>
@@ -12085,7 +12122,7 @@ const LegalPage = ({
 }) => {
   const navigate = useNavigate();
   return (
-    <div className="min-h-screen bg-stone-50 pt-[72px] pb-24">
+    <div className="min-h-screen bg-stone-50 pt-[130px] pb-24">
       {/* Header */}
       <div className="px-5 pt-4 pb-6 max-w-md mx-auto">
         <button
@@ -12777,6 +12814,24 @@ const SubscriptionExpiryBanner = ({ user, onRenew }: { user: UserProfile, onRene
   );
 };
 
+const ScrollToTop = () => {
+  const { pathname } = useLocation();
+
+  useLayoutEffect(() => {
+    // Forza lo scroll all'inizio della pagina su ogni cambio di percorso
+    // Usiamo multiple tecniche per assicurarci che accada su tutti i browser e strutture
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    document.documentElement.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    document.body.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    
+    // Fallback disperato per layout complessi
+    const mainContainer = document.querySelector('main, .overflow-y-auto');
+    if (mainContainer) mainContainer.scrollTo({ top: 0, behavior: 'auto' });
+  }, [pathname]);
+
+  return null;
+};
+
 export default function App() {
   const [securityStatus, setSecurityStatus] = useState<any>({ type: null });
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
@@ -12936,6 +12991,7 @@ export default function App() {
 
   return (
     <Router>
+      <ScrollToTop />
       <style>{`
           /* Global Scrollbar Styles */
         ::-webkit-scrollbar {
